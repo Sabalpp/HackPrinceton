@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "description": "A responder's structured answer to a care request (parsed from their message).",
+  "properties": {
+    "estimated_arrival_minutes": {
+      "anyOf": [
+        {
+          "maximum": 1440,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Estimated Arrival Minutes"
+    },
+    "request_id": {
+      "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "responder_id": {
+      "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+      "title": "Responder Id",
+      "type": "string"
+    },
+    "response": {
+      "enum": [
+        "accepted",
+        "declined",
+        "completed",
+        "need_more_help"
+      ],
+      "title": "Response",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "responder_id",
+    "response"
+  ],
+  "title": "ResponderReply",
+  "type": "object"
+}

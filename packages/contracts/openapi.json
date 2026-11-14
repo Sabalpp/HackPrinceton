@@ -1,0 +1,2229 @@
+{
+  "components": {
+    "schemas": {
+      "AssistanceCategory": {
+        "enum": [
+          "grocery_assistance",
+          "transportation",
+          "meal_assistance",
+          "medication_pickup",
+          "household_help",
+          "companionship",
+          "urgent_check_in",
+          "other"
+        ],
+        "title": "AssistanceCategory",
+        "type": "string"
+      },
+      "CareCircleMember": {
+        "additionalProperties": false,
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/AssistanceCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "emergency_contact": {
+            "title": "Emergency Contact",
+            "type": "boolean"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "relationship": {
+            "title": "Relationship",
+            "type": "string"
+          },
+          "responder_id": {
+            "title": "Responder Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "responder_id",
+          "display_name",
+          "relationship",
+          "categories",
+          "emergency_contact",
+          "priority",
+          "reachable"
+        ],
+        "title": "CareCircleMember",
+        "type": "object"
+      },
+      "CareRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "parent_reply",
+                  "emergency_policy"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Basis"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "default": "",
+            "title": "Details",
+            "type": "string"
+          },
+          "estimated_arrival_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Arrival Minutes"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/CareRequestOrigin"
+          },
+          "parent_approved": {
+            "title": "Parent Approved",
+            "type": "boolean"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "request_type": {
+            "$ref": "#/components/schemas/AssistanceCategory"
+          },
+          "requested_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Time"
+          },
+          "responder_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Id"
+          },
+          "responder_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Name"
+          },
+          "responder_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Responder Note"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CareRequestStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "parent_id",
+          "request_type",
+          "status",
+          "responder_id",
+          "parent_approved",
+          "origin",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CareRequest",
+        "type": "object"
+      },
+      "CareRequestOrigin": {
+        "enum": [
+          "conversation",
+          "emergency"
+        ],
+        "title": "CareRequestOrigin",
+        "type": "string"
+      },
+      "CareRequestStatus": {
+        "enum": [
+          "created",
+          "awaiting_approval",
+          "approved",
+          "sent",
+          "accepted",
+          "completed",
+          "declined",
+          "cancelled",
+          "expired",
+          "failed"
+        ],
+        "title": "CareRequestStatus",
+        "type": "string"
+      },
+      "CheckIn": {
+        "additionalProperties": false,
+        "properties": {
+          "checkin_id": {
+            "title": "Checkin Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "energy": {
+            "enum": [
+              "high",
+              "normal",
+              "low",
+              "unknown"
+            ],
+            "title": "Energy",
+            "type": "string"
+          },
+          "mood": {
+            "enum": [
+              "good",
+              "okay",
+              "low",
+              "unknown"
+            ],
+            "title": "Mood",
+            "type": "string"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkin_id",
+          "parent_id",
+          "summary",
+          "mood",
+          "energy",
+          "created_at"
+        ],
+        "title": "CheckIn",
+        "type": "object"
+      },
+      "DataMode": {
+        "enum": [
+          "live",
+          "simulated"
+        ],
+        "title": "DataMode",
+        "type": "string"
+      },
+      "EscalationReason": {
+        "enum": [
+          "help_requested",
+          "no_response",
+          "parent_reported_emergency"
+        ],
+        "title": "EscalationReason",
+        "type": "string"
+      },
+      "FallDemoIn": {
+        "properties": {
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "seed": {
+            "default": 1,
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "trace": {
+            "default": "fall",
+            "enum": [
+              "walking",
+              "sitting",
+              "bending",
+              "lying_down",
+              "fall",
+              "recovery"
+            ],
+            "title": "Trace",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id"
+        ],
+        "title": "FallDemoIn",
+        "type": "object"
+      },
+      "FallIngestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          }
+        },
+        "required": [
+          "event_id",
+          "incident_id",
+          "duplicate",
+          "detail"
+        ],
+        "title": "FallIngestResult",
+        "type": "object"
+      },
+      "FallSuspectedEvent": {
+        "additionalProperties": false,
+        "description": "A possible-fall event from a detector. NOT a medically validated detection.",
+        "properties": {
+          "confidence": {
+            "description": "Detector output score. NOT a validated clinical probability.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "event_id": {
+            "examples": [
+              "fall_001"
+            ],
+            "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "fall.suspected",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "parent_id": {
+            "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "simulated_imu",
+              "replayed_dataset",
+              "device"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "parent_id",
+          "event_type",
+          "source",
+          "timestamp",
+          "confidence",
+          "data_mode"
+        ],
+        "title": "FallSuspectedEvent",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthIngestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "HealthIngestResult",
+        "type": "object"
+      },
+      "HealthObservation": {
+        "additionalProperties": false,
+        "description": "One normalized daily health observation (Fitbit via Google Health API, or simulated).",
+        "properties": {
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "observation_id": {
+            "examples": [
+              "health_001"
+            ],
+            "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "parent_id": {
+            "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "resting_heart_rate": {
+            "anyOf": [
+              {
+                "maximum": 250.0,
+                "minimum": 20.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resting Heart Rate"
+          },
+          "sleep_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Minutes"
+          },
+          "source": {
+            "enum": [
+              "fitbit",
+              "simulated"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "maximum": 200000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "timestamp": {
+            "description": "Start of the observed day (UTC, ISO-8601)",
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "parent_id",
+          "source",
+          "data_mode",
+          "timestamp"
+        ],
+        "title": "HealthObservation",
+        "type": "object"
+      },
+      "HealthSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "data_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataMode"
+              },
+              {
+                "enum": [
+                  "mixed",
+                  "none"
+                ],
+                "type": "string"
+              }
+            ],
+            "title": "Data Mode"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/HealthObservation"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "suggest_checkin": {
+            "title": "Suggest Checkin",
+            "type": "boolean"
+          },
+          "trends": {
+            "items": {
+              "$ref": "#/components/schemas/MetricTrend"
+            },
+            "title": "Trends",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parent_id",
+          "data_mode",
+          "observations",
+          "trends",
+          "suggest_checkin",
+          "disclaimer"
+        ],
+        "title": "HealthSummary",
+        "type": "object"
+      },
+      "InboundDemoIn": {
+        "properties": {
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "person_id",
+          "text"
+        ],
+        "title": "InboundDemoIn",
+        "type": "object"
+      },
+      "IncidentResolution": {
+        "enum": [
+          "parent_ok",
+          "responder_confirmed",
+          "family_resolved"
+        ],
+        "title": "IncidentResolution",
+        "type": "string"
+      },
+      "IncidentStatus": {
+        "enum": [
+          "checking",
+          "escalated",
+          "responder_en_route",
+          "resolved"
+        ],
+        "title": "IncidentStatus",
+        "type": "string"
+      },
+      "Me": {
+        "additionalProperties": false,
+        "properties": {
+          "parent_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parent Ids",
+            "type": "array"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonSummary"
+          }
+        },
+        "required": [
+          "person",
+          "parent_ids"
+        ],
+        "title": "Me",
+        "type": "object"
+      },
+      "MetricTrend": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "direction": {
+            "enum": [
+              "up",
+              "down",
+              "stable",
+              "insufficient_data"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "steps",
+              "resting_heart_rate",
+              "sleep_minutes"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "notable": {
+            "title": "Notable",
+            "type": "boolean"
+          },
+          "observation": {
+            "description": "Plain-language, NON-diagnostic description",
+            "title": "Observation",
+            "type": "string"
+          },
+          "percent_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent Change"
+          },
+          "recent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent"
+          }
+        },
+        "required": [
+          "metric",
+          "baseline",
+          "recent",
+          "percent_change",
+          "direction",
+          "notable",
+          "observation"
+        ],
+        "title": "MetricTrend",
+        "type": "object"
+      },
+      "ParentOverview": {
+        "additionalProperties": false,
+        "properties": {
+          "active_incidents": {
+            "items": {
+              "$ref": "#/components/schemas/SafetyIncident"
+            },
+            "title": "Active Incidents",
+            "type": "array"
+          },
+          "care_circle": {
+            "items": {
+              "$ref": "#/components/schemas/CareCircleMember"
+            },
+            "title": "Care Circle",
+            "type": "array"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent": {
+            "$ref": "#/components/schemas/ParentProfile"
+          },
+          "permissions": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "title": "Permissions",
+            "type": "object"
+          },
+          "recent_requests": {
+            "items": {
+              "$ref": "#/components/schemas/CareRequest"
+            },
+            "title": "Recent Requests",
+            "type": "array"
+          },
+          "viewer_role": {
+            "$ref": "#/components/schemas/PersonRole"
+          }
+        },
+        "required": [
+          "parent",
+          "viewer_role",
+          "permissions",
+          "latest_checkin",
+          "health",
+          "active_incidents",
+          "recent_requests",
+          "care_circle"
+        ],
+        "title": "ParentOverview",
+        "type": "object"
+      },
+      "ParentProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "emergency_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergency Number"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "display_name",
+          "timezone",
+          "emergency_number"
+        ],
+        "title": "ParentProfile",
+        "type": "object"
+      },
+      "PersonRole": {
+        "enum": [
+          "parent",
+          "child",
+          "responder",
+          "admin"
+        ],
+        "title": "PersonRole",
+        "type": "string"
+      },
+      "PersonSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "reachable": {
+            "description": "True once this person has messaged FarCare (opt-in)",
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/PersonRole"
+          }
+        },
+        "required": [
+          "person_id",
+          "display_name",
+          "role",
+          "reachable"
+        ],
+        "title": "PersonSummary",
+        "type": "object"
+      },
+      "SafetyIncident": {
+        "additionalProperties": false,
+        "properties": {
+          "check_deadline": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Deadline"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Detector output score, not a clinical probability",
+            "title": "Confidence"
+          },
+          "data_mode": {
+            "$ref": "#/components/schemas/DataMode"
+          },
+          "escalated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalated At"
+          },
+          "escalation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incident_id": {
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "no_responder_available": {
+            "title": "No Responder Available",
+            "type": "boolean"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentResolution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IncidentStatus"
+          },
+          "trigger": {
+            "enum": [
+              "fall.suspected",
+              "parent_message"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id",
+          "parent_id",
+          "trigger",
+          "source",
+          "data_mode",
+          "status",
+          "escalation_reason",
+          "resolution",
+          "no_responder_available",
+          "check_deadline",
+          "opened_at",
+          "escalated_at",
+          "resolved_at"
+        ],
+        "title": "SafetyIncident",
+        "type": "object"
+      },
+      "SystemHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "ai": {
+            "enum": [
+              "gemini",
+              "fallback"
+            ],
+            "title": "Ai",
+            "type": "string"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deployed git commit, if known",
+            "title": "Commit"
+          },
+          "database": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Database",
+            "type": "string"
+          },
+          "demo_mode": {
+            "title": "Demo Mode",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "messaging": {
+            "enum": [
+              "photon",
+              "console"
+            ],
+            "title": "Messaging",
+            "type": "string"
+          },
+          "photon_delivery": {
+            "title": "Photon Delivery",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "environment",
+          "database",
+          "messaging",
+          "photon_delivery",
+          "ai",
+          "demo_mode"
+        ],
+        "title": "SystemHealth",
+        "type": "object"
+      },
+      "TimelineEvent": {
+        "additionalProperties": false,
+        "description": "Dashboard timeline / real-time stream item (also sent over SSE).",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "examples": [
+              "care_request.updated",
+              "incident.escalated",
+              "checkin.recorded"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "ref_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Id"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "kind",
+          "summary",
+          "ref_id",
+          "data",
+          "created_at"
+        ],
+        "title": "TimelineEvent",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Care coordination for aging parents and their distant families. Hackathon prototype \u2014 not a medical device.",
+    "title": "FarCare API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/demo/fall": {
+      "post": {
+        "operationId": "demo_fall_api_demo_fall_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FallDemoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Fall",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/inbound": {
+      "post": {
+        "operationId": "demo_inbound_api_demo_inbound_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboundDemoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Inbound",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/outbox": {
+      "get": {
+        "operationId": "outbox_api_demo_outbox_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Outbox",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/people": {
+      "get": {
+        "operationId": "people_api_demo_people_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "People",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/reset": {
+      "post": {
+        "operationId": "reset_api_demo_reset_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/events/fall": {
+      "post": {
+        "operationId": "ingest_fall_api_events_fall_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-farcare-ingest-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Farcare-Ingest-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FallSuspectedEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FallIngestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Fall",
+        "tags": [
+          "ingestion"
+        ]
+      }
+    },
+    "/api/health/observations": {
+      "post": {
+        "operationId": "ingest_health_api_health_observations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-farcare-ingest-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Farcare-Ingest-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/HealthObservation"
+                },
+                "title": "Observations",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthIngestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingest Health",
+        "tags": [
+          "ingestion"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "me_api_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/care-circle": {
+      "get": {
+        "operationId": "care_circle_api_parents__parent_id__care_circle_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CareCircleMember"
+                  },
+                  "title": "Response Care Circle Api Parents  Parent Id  Care Circle Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Care Circle",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/care-requests": {
+      "get": {
+        "operationId": "list_requests_api_parents__parent_id__care_requests_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CareRequest"
+                  },
+                  "title": "Response List Requests Api Parents  Parent Id  Care Requests Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Requests",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/health": {
+      "get": {
+        "operationId": "health_summary_api_parents__parent_id__health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 35,
+              "maximum": 120,
+              "minimum": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HealthSummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Health Summary Api Parents  Parent Id  Health Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Health Summary",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/incidents": {
+      "get": {
+        "operationId": "list_incidents_api_parents__parent_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SafetyIncident"
+                  },
+                  "title": "Response List Incidents Api Parents  Parent Id  Incidents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Incidents",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/incidents/{incident_id}/resolve": {
+      "post": {
+        "operationId": "resolve_incident_api_parents__parent_id__incidents__incident_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SafetyIncident"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Incident",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/overview": {
+      "get": {
+        "operationId": "overview_api_parents__parent_id__overview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overview",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/stream": {
+      "get": {
+        "description": "Server-Sent Events. Each event: `event: timeline` + JSON TimelineEvent.\n\nEventSource can't set headers, so pass ?access_token=... . Reconnects resume via\nthe standard Last-Event-ID header.",
+        "operationId": "stream_api_parents__parent_id__stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "description": "EventSource can't send headers",
+            "in": "query",
+            "name": "access_token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "EventSource can't send headers",
+              "title": "Access Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/timeline": {
+      "get": {
+        "operationId": "get_timeline_api_parents__parent_id__timeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TimelineEvent"
+                  },
+                  "title": "Response Get Timeline Api Parents  Parent Id  Timeline Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Timeline",
+        "tags": [
+          "family dashboard"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "system_health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "System Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/webhooks/photon": {
+      "post": {
+        "operationId": "photon_webhook_webhooks_photon_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Photon Webhook",
+        "tags": [
+          "webhooks"
+        ]
+      }
+    }
+  }
+}

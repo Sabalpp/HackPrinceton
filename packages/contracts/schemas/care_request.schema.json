@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "AssistanceCategory": {
+      "enum": [
+        "grocery_assistance",
+        "transportation",
+        "meal_assistance",
+        "medication_pickup",
+        "household_help",
+        "companionship",
+        "urgent_check_in",
+        "other"
+      ],
+      "title": "AssistanceCategory",
+      "type": "string"
+    },
+    "CareRequestOrigin": {
+      "enum": [
+        "conversation",
+        "emergency"
+      ],
+      "title": "CareRequestOrigin",
+      "type": "string"
+    },
+    "CareRequestStatus": {
+      "enum": [
+        "created",
+        "awaiting_approval",
+        "approved",
+        "sent",
+        "accepted",
+        "completed",
+        "declined",
+        "cancelled",
+        "expired",
+        "failed"
+      ],
+      "title": "CareRequestStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approval_basis": {
+      "anyOf": [
+        {
+          "enum": [
+            "parent_reply",
+            "emergency_policy"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approval Basis"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "details": {
+      "default": "",
+      "title": "Details",
+      "type": "string"
+    },
+    "estimated_arrival_minutes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Estimated Arrival Minutes"
+    },
+    "incident_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Incident Id"
+    },
+    "origin": {
+      "$ref": "#/$defs/CareRequestOrigin"
+    },
+    "parent_approved": {
+      "title": "Parent Approved",
+      "type": "boolean"
+    },
+    "parent_id": {
+      "title": "Parent Id",
+      "type": "string"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "request_type": {
+      "$ref": "#/$defs/AssistanceCategory"
+    },
+    "requested_time": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Requested Time"
+    },
+    "responder_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Responder Id"
+    },
+    "responder_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Responder Name"
+    },
+    "responder_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Responder Note"
+    },
+    "status": {
+      "$ref": "#/$defs/CareRequestStatus"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "parent_id",
+    "request_type",
+    "status",
+    "responder_id",
+    "parent_approved",
+    "origin",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "CareRequest",
+  "type": "object"
+}

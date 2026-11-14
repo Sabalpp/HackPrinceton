@@ -1,0 +1,59 @@
+{
+  "additionalProperties": false,
+  "description": "Dashboard timeline / real-time stream item (also sent over SSE).",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "data": {
+      "additionalProperties": true,
+      "title": "Data",
+      "type": "object"
+    },
+    "id": {
+      "title": "Id",
+      "type": "integer"
+    },
+    "kind": {
+      "examples": [
+        "care_request.updated",
+        "incident.escalated",
+        "checkin.recorded"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "parent_id": {
+      "title": "Parent Id",
+      "type": "string"
+    },
+    "ref_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Ref Id"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "parent_id",
+    "kind",
+    "summary",
+    "ref_id",
+    "data",
+    "created_at"
+  ],
+  "title": "TimelineEvent",
+  "type": "object"
+}

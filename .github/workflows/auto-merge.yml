@@ -1,0 +1,49 @@
+# Enables GitHub's native auto-merge (squash) on APPROVED, NON-DRAFT PRs into main.
+# GitHub then merges only after every required check in the main ruleset passes and the
+# required review is present — this workflow cannot bypass either.
+#
+# Security notes:
+# - Runs on `pull_request_review` / `pull_request`, never `pull_request_target`, and never
+#   checks out or executes PR code. Fork PRs get a read-only token and simply no-op.
+# - Merges done with the default GITHUB_TOKEN do NOT trigger other workflows (GitHub rule),
+#   so the post-merge Deploy workflow would not start. Set an AUTOMERGE_TOKEN secret
+#   (fine-grained PAT: contents + pull requests read/write on this repo only) to fix that;
+#   otherwise run Deploy manually or rely on the hosts' Git integrations. See docs/architecture.md.
+name: Auto-merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    name: Enable auto-merge
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event_name == 'pull_request' || github.event.review.state == 'approved')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the PR is approved
+        id: approved
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          decision=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json reviewDecision -q .reviewDecision)
+          echo "reviewDecision=$decision"
+          echo "ok=$([ "$decision" = "APPROVED" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Enable squash auto-merge
+        if: steps.approved.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN || github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --auto --squash

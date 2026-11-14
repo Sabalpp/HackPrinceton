@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-journal
+
+# Secrets / env (only *.example files are committed)
+.env
+.env.*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.vercel
+
+# Datasets (never commit raw sensor datasets)
+research/**/data/
+
+# OS / editors
+.DS_Store
+.idea/

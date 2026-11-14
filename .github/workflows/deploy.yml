@@ -1,0 +1,80 @@
+# Production deploy verification. Only runs for commits on main.
+#
+# Hosting model (see docs/architecture.md):
+# - Frontend: Vercel Git integration (root directory apps/web) deploys main automatically.
+# - Backend: a container host that auto-deploys main (Render/Railway/Fly/Vultr), OR set the
+#   BACKEND_DEPLOY_HOOK_URL secret and this workflow triggers it.
+# This workflow re-runs CI on main, triggers the backend hook if configured, waits until the
+# API reports the new commit, then runs smoke tests against the live URLs.
+#
+# Repository variables: API_BASE_URL, WEB_BASE_URL. Secrets: BACKEND_DEPLOY_HOOK_URL (optional).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: CI on main
+    uses: ./.github/workflows/ci.yml
+
+  backend:
+    name: Backend deploy + smoke test
+    needs: checks
+    if: github.ref == 'refs/heads/main' && vars.API_BASE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Trigger backend deploy hook (optional)
+        env:
+          HOOK: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            curl -fsS -X POST "$HOOK" > /dev/null && echo "Deploy hook triggered"
+          else
+            echo "No BACKEND_DEPLOY_HOOK_URL; relying on the host's auto-deploy from main."
+          fi
+      - name: Wait for the new version to be live
+        env:
+          API: ${{ vars.API_BASE_URL }}
+        run: |
+          for i in $(seq 1 60); do
+            commit=$(curl -fsS "$API/health" | jq -r '.commit // ""' || true)
+            if [ "$commit" = "$GITHUB_SHA" ]; then echo "Live at $commit"; exit 0; fi
+            if [ -z "$commit" ] && curl -fsS "$API/health" > /dev/null; then
+              echo "::warning::API is healthy but doesn't report its commit (set GIT_COMMIT on the host)."
+              exit 0
+            fi
+            echo "waiting ($i/60) live=${commit:-unknown} want=$GITHUB_SHA"
+            sleep 15
+          done
+          echo "::error::Backend did not reach $GITHUB_SHA in time"; exit 1
+      - name: Smoke test API
+        run: bash scripts/smoke_test.sh "${{ vars.API_BASE_URL }}"
+
+  frontend:
+    name: Frontend smoke test
+    needs: checks
+    if: github.ref == 'refs/heads/main' && vars.WEB_BASE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Web responds
+        env:
+          WEB: ${{ vars.WEB_BASE_URL }}
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS -o /dev/null "$WEB" && { echo "Web is up"; exit 0; }
+            sleep 15
+          done
+          exit 1

@@ -1,0 +1,16 @@
+{
+  "incident_id": "inc_001",
+  "parent_id": "parent_001",
+  "trigger": "fall.suspected",
+  "source": "simulated_imu",
+  "data_mode": "simulated",
+  "confidence": 0.91,
+  "status": "escalated",
+  "escalation_reason": "no_response",
+  "resolution": null,
+  "no_responder_available": false,
+  "check_deadline": "2026-11-14T15:31:00Z",
+  "opened_at": "2026-11-14T15:30:00Z",
+  "escalated_at": "2026-11-14T15:31:05Z",
+  "resolved_at": null
+}

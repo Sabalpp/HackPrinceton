@@ -1,0 +1,69 @@
+{
+  "$defs": {
+    "DataMode": {
+      "enum": [
+        "live",
+        "simulated"
+      ],
+      "title": "DataMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A possible-fall event from a detector. NOT a medically validated detection.",
+  "properties": {
+    "confidence": {
+      "description": "Detector output score. NOT a validated clinical probability.",
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "data_mode": {
+      "$ref": "#/$defs/DataMode"
+    },
+    "event_id": {
+      "examples": [
+        "fall_001"
+      ],
+      "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "event_type": {
+      "const": "fall.suspected",
+      "title": "Event Type",
+      "type": "string"
+    },
+    "parent_id": {
+      "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+      "title": "Parent Id",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "simulated_imu",
+        "replayed_dataset",
+        "device"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "parent_id",
+    "event_type",
+    "source",
+    "timestamp",
+    "confidence",
+    "data_mode"
+  ],
+  "title": "FallSuspectedEvent",
+  "type": "object"
+}

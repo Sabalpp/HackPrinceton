@@ -1,0 +1,164 @@
+{
+  "$defs": {
+    "DataMode": {
+      "enum": [
+        "live",
+        "simulated"
+      ],
+      "title": "DataMode",
+      "type": "string"
+    },
+    "EscalationReason": {
+      "enum": [
+        "help_requested",
+        "no_response",
+        "parent_reported_emergency"
+      ],
+      "title": "EscalationReason",
+      "type": "string"
+    },
+    "IncidentResolution": {
+      "enum": [
+        "parent_ok",
+        "responder_confirmed",
+        "family_resolved"
+      ],
+      "title": "IncidentResolution",
+      "type": "string"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "checking",
+        "escalated",
+        "responder_en_route",
+        "resolved"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "check_deadline": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Check Deadline"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Detector output score, not a clinical probability",
+      "title": "Confidence"
+    },
+    "data_mode": {
+      "$ref": "#/$defs/DataMode"
+    },
+    "escalated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Escalated At"
+    },
+    "escalation_reason": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EscalationReason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "no_responder_available": {
+      "title": "No Responder Available",
+      "type": "boolean"
+    },
+    "opened_at": {
+      "format": "date-time",
+      "title": "Opened At",
+      "type": "string"
+    },
+    "parent_id": {
+      "title": "Parent Id",
+      "type": "string"
+    },
+    "resolution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IncidentResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolved_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Resolved At"
+    },
+    "source": {
+      "title": "Source",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/IncidentStatus"
+    },
+    "trigger": {
+      "enum": [
+        "fall.suspected",
+        "parent_message"
+      ],
+      "title": "Trigger",
+      "type": "string"
+    }
+  },
+  "required": [
+    "incident_id",
+    "parent_id",
+    "trigger",
+    "source",
+    "data_mode",
+    "status",
+    "escalation_reason",
+    "resolution",
+    "no_responder_available",
+    "check_deadline",
+    "opened_at",
+    "escalated_at",
+    "resolved_at"
+  ],
+  "title": "SafetyIncident",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+{
+  "observation_id": "health_001",
+  "parent_id": "parent_001",
+  "source": "fitbit",
+  "data_mode": "simulated",
+  "timestamp": "2026-11-14T00:00:00Z",
+  "steps": 1200,
+  "resting_heart_rate": 72,
+  "sleep_minutes": 390
+}

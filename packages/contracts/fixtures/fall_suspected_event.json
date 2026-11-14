@@ -1,0 +1,9 @@
+{
+  "event_id": "fall_001",
+  "parent_id": "parent_001",
+  "event_type": "fall.suspected",
+  "source": "simulated_imu",
+  "timestamp": "2026-11-14T15:30:00Z",
+  "confidence": 0.91,
+  "data_mode": "simulated"
+}

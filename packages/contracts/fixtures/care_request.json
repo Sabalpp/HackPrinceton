@@ -1,0 +1,18 @@
+{
+  "request_id": "care_001",
+  "parent_id": "parent_001",
+  "request_type": "grocery_assistance",
+  "status": "awaiting_approval",
+  "responder_id": "responder_001",
+  "responder_name": "Asha",
+  "parent_approved": false,
+  "approval_basis": null,
+  "origin": "conversation",
+  "details": "",
+  "requested_time": "tomorrow",
+  "estimated_arrival_minutes": null,
+  "responder_note": null,
+  "incident_id": null,
+  "created_at": "2026-11-14T15:30:00Z",
+  "updated_at": "2026-11-14T15:30:02Z"
+}

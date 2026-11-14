@@ -1,0 +1,779 @@
+{
+  "$defs": {
+    "AssistanceCategory": {
+      "enum": [
+        "grocery_assistance",
+        "transportation",
+        "meal_assistance",
+        "medication_pickup",
+        "household_help",
+        "companionship",
+        "urgent_check_in",
+        "other"
+      ],
+      "title": "AssistanceCategory",
+      "type": "string"
+    },
+    "CareCircleMember": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/AssistanceCategory"
+          },
+          "title": "Categories",
+          "type": "array"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "emergency_contact": {
+          "title": "Emergency Contact",
+          "type": "boolean"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "integer"
+        },
+        "reachable": {
+          "title": "Reachable",
+          "type": "boolean"
+        },
+        "relationship": {
+          "title": "Relationship",
+          "type": "string"
+        },
+        "responder_id": {
+          "title": "Responder Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "responder_id",
+        "display_name",
+        "relationship",
+        "categories",
+        "emergency_contact",
+        "priority",
+        "reachable"
+      ],
+      "title": "CareCircleMember",
+      "type": "object"
+    },
+    "CareRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_basis": {
+          "anyOf": [
+            {
+              "enum": [
+                "parent_reply",
+                "emergency_policy"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approval Basis"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "details": {
+          "default": "",
+          "title": "Details",
+          "type": "string"
+        },
+        "estimated_arrival_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Arrival Minutes"
+        },
+        "incident_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Incident Id"
+        },
+        "origin": {
+          "$ref": "#/$defs/CareRequestOrigin"
+        },
+        "parent_approved": {
+          "title": "Parent Approved",
+          "type": "boolean"
+        },
+        "parent_id": {
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "request_type": {
+          "$ref": "#/$defs/AssistanceCategory"
+        },
+        "requested_time": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Time"
+        },
+        "responder_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Responder Id"
+        },
+        "responder_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Responder Name"
+        },
+        "responder_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Responder Note"
+        },
+        "status": {
+          "$ref": "#/$defs/CareRequestStatus"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "parent_id",
+        "request_type",
+        "status",
+        "responder_id",
+        "parent_approved",
+        "origin",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "CareRequest",
+      "type": "object"
+    },
+    "CareRequestOrigin": {
+      "enum": [
+        "conversation",
+        "emergency"
+      ],
+      "title": "CareRequestOrigin",
+      "type": "string"
+    },
+    "CareRequestStatus": {
+      "enum": [
+        "created",
+        "awaiting_approval",
+        "approved",
+        "sent",
+        "accepted",
+        "completed",
+        "declined",
+        "cancelled",
+        "expired",
+        "failed"
+      ],
+      "title": "CareRequestStatus",
+      "type": "string"
+    },
+    "CheckIn": {
+      "additionalProperties": false,
+      "properties": {
+        "checkin_id": {
+          "title": "Checkin Id",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "energy": {
+          "enum": [
+            "high",
+            "normal",
+            "low",
+            "unknown"
+          ],
+          "title": "Energy",
+          "type": "string"
+        },
+        "mood": {
+          "enum": [
+            "good",
+            "okay",
+            "low",
+            "unknown"
+          ],
+          "title": "Mood",
+          "type": "string"
+        },
+        "parent_id": {
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "checkin_id",
+        "parent_id",
+        "summary",
+        "mood",
+        "energy",
+        "created_at"
+      ],
+      "title": "CheckIn",
+      "type": "object"
+    },
+    "DataMode": {
+      "enum": [
+        "live",
+        "simulated"
+      ],
+      "title": "DataMode",
+      "type": "string"
+    },
+    "EscalationReason": {
+      "enum": [
+        "help_requested",
+        "no_response",
+        "parent_reported_emergency"
+      ],
+      "title": "EscalationReason",
+      "type": "string"
+    },
+    "HealthObservation": {
+      "additionalProperties": false,
+      "description": "One normalized daily health observation (Fitbit via Google Health API, or simulated).",
+      "properties": {
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "observation_id": {
+          "examples": [
+            "health_001"
+          ],
+          "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "parent_id": {
+          "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "resting_heart_rate": {
+          "anyOf": [
+            {
+              "maximum": 250,
+              "minimum": 20,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resting Heart Rate"
+        },
+        "sleep_minutes": {
+          "anyOf": [
+            {
+              "maximum": 1440,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sleep Minutes"
+        },
+        "source": {
+          "enum": [
+            "fitbit",
+            "simulated"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "maximum": 200000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Steps"
+        },
+        "timestamp": {
+          "description": "Start of the observed day (UTC, ISO-8601)",
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observation_id",
+        "parent_id",
+        "source",
+        "data_mode",
+        "timestamp"
+      ],
+      "title": "HealthObservation",
+      "type": "object"
+    },
+    "HealthSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "data_mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DataMode"
+            },
+            {
+              "enum": [
+                "mixed",
+                "none"
+              ],
+              "type": "string"
+            }
+          ],
+          "title": "Data Mode"
+        },
+        "disclaimer": {
+          "title": "Disclaimer",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "$ref": "#/$defs/HealthObservation"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "parent_id": {
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "suggest_checkin": {
+          "title": "Suggest Checkin",
+          "type": "boolean"
+        },
+        "trends": {
+          "items": {
+            "$ref": "#/$defs/MetricTrend"
+          },
+          "title": "Trends",
+          "type": "array"
+        }
+      },
+      "required": [
+        "parent_id",
+        "data_mode",
+        "observations",
+        "trends",
+        "suggest_checkin",
+        "disclaimer"
+      ],
+      "title": "HealthSummary",
+      "type": "object"
+    },
+    "IncidentResolution": {
+      "enum": [
+        "parent_ok",
+        "responder_confirmed",
+        "family_resolved"
+      ],
+      "title": "IncidentResolution",
+      "type": "string"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "checking",
+        "escalated",
+        "responder_en_route",
+        "resolved"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    },
+    "MetricTrend": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Baseline"
+        },
+        "direction": {
+          "enum": [
+            "up",
+            "down",
+            "stable",
+            "insufficient_data"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "steps",
+            "resting_heart_rate",
+            "sleep_minutes"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "notable": {
+          "title": "Notable",
+          "type": "boolean"
+        },
+        "observation": {
+          "description": "Plain-language, NON-diagnostic description",
+          "title": "Observation",
+          "type": "string"
+        },
+        "percent_change": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Percent Change"
+        },
+        "recent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recent"
+        }
+      },
+      "required": [
+        "metric",
+        "baseline",
+        "recent",
+        "percent_change",
+        "direction",
+        "notable",
+        "observation"
+      ],
+      "title": "MetricTrend",
+      "type": "object"
+    },
+    "ParentProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "emergency_number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Emergency Number"
+        },
+        "parent_id": {
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "timezone": {
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parent_id",
+        "display_name",
+        "timezone",
+        "emergency_number"
+      ],
+      "title": "ParentProfile",
+      "type": "object"
+    },
+    "PersonRole": {
+      "enum": [
+        "parent",
+        "child",
+        "responder",
+        "admin"
+      ],
+      "title": "PersonRole",
+      "type": "string"
+    },
+    "SafetyIncident": {
+      "additionalProperties": false,
+      "properties": {
+        "check_deadline": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Check Deadline"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Detector output score, not a clinical probability",
+          "title": "Confidence"
+        },
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "escalated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Escalated At"
+        },
+        "escalation_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EscalationReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "no_responder_available": {
+          "title": "No Responder Available",
+          "type": "boolean"
+        },
+        "opened_at": {
+          "format": "date-time",
+          "title": "Opened At",
+          "type": "string"
+        },
+        "parent_id": {
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "resolution": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IncidentResolution"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Resolved At"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/IncidentStatus"
+        },
+        "trigger": {
+          "enum": [
+            "fall.suspected",
+            "parent_message"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id",
+        "parent_id",
+        "trigger",
+        "source",
+        "data_mode",
+        "status",
+        "escalation_reason",
+        "resolution",
+        "no_responder_available",
+        "check_deadline",
+        "opened_at",
+        "escalated_at",
+        "resolved_at"
+      ],
+      "title": "SafetyIncident",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "active_incidents": {
+      "items": {
+        "$ref": "#/$defs/SafetyIncident"
+      },
+      "title": "Active Incidents",
+      "type": "array"
+    },
+    "care_circle": {
+      "items": {
+        "$ref": "#/$defs/CareCircleMember"
+      },
+      "title": "Care Circle",
+      "type": "array"
+    },
+    "health": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HealthSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latest_checkin": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CheckIn"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parent": {
+      "$ref": "#/$defs/ParentProfile"
+    },
+    "permissions": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Permissions",
+      "type": "object"
+    },
+    "recent_requests": {
+      "items": {
+        "$ref": "#/$defs/CareRequest"
+      },
+      "title": "Recent Requests",
+      "type": "array"
+    },
+    "viewer_role": {
+      "$ref": "#/$defs/PersonRole"
+    }
+  },
+  "required": [
+    "parent",
+    "viewer_role",
+    "permissions",
+    "latest_checkin",
+    "health",
+    "active_incidents",
+    "recent_requests",
+    "care_circle"
+  ],
+  "title": "ParentOverview",
+  "type": "object"
+}

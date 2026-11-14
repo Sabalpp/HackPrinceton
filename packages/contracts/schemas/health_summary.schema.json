@@ -1,0 +1,230 @@
+{
+  "$defs": {
+    "DataMode": {
+      "enum": [
+        "live",
+        "simulated"
+      ],
+      "title": "DataMode",
+      "type": "string"
+    },
+    "HealthObservation": {
+      "additionalProperties": false,
+      "description": "One normalized daily health observation (Fitbit via Google Health API, or simulated).",
+      "properties": {
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "observation_id": {
+          "examples": [
+            "health_001"
+          ],
+          "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "parent_id": {
+          "pattern": "^[A-Za-z0-9_\\-:.]{1,128}$",
+          "title": "Parent Id",
+          "type": "string"
+        },
+        "resting_heart_rate": {
+          "anyOf": [
+            {
+              "maximum": 250,
+              "minimum": 20,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resting Heart Rate"
+        },
+        "sleep_minutes": {
+          "anyOf": [
+            {
+              "maximum": 1440,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sleep Minutes"
+        },
+        "source": {
+          "enum": [
+            "fitbit",
+            "simulated"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "steps": {
+          "anyOf": [
+            {
+              "maximum": 200000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Steps"
+        },
+        "timestamp": {
+          "description": "Start of the observed day (UTC, ISO-8601)",
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      "required": [
+        "observation_id",
+        "parent_id",
+        "source",
+        "data_mode",
+        "timestamp"
+      ],
+      "title": "HealthObservation",
+      "type": "object"
+    },
+    "MetricTrend": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Baseline"
+        },
+        "direction": {
+          "enum": [
+            "up",
+            "down",
+            "stable",
+            "insufficient_data"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "metric": {
+          "enum": [
+            "steps",
+            "resting_heart_rate",
+            "sleep_minutes"
+          ],
+          "title": "Metric",
+          "type": "string"
+        },
+        "notable": {
+          "title": "Notable",
+          "type": "boolean"
+        },
+        "observation": {
+          "description": "Plain-language, NON-diagnostic description",
+          "title": "Observation",
+          "type": "string"
+        },
+        "percent_change": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Percent Change"
+        },
+        "recent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recent"
+        }
+      },
+      "required": [
+        "metric",
+        "baseline",
+        "recent",
+        "percent_change",
+        "direction",
+        "notable",
+        "observation"
+      ],
+      "title": "MetricTrend",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "data_mode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DataMode"
+        },
+        {
+          "enum": [
+            "mixed",
+            "none"
+          ],
+          "type": "string"
+        }
+      ],
+      "title": "Data Mode"
+    },
+    "disclaimer": {
+      "title": "Disclaimer",
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/HealthObservation"
+      },
+      "title": "Observations",
+      "type": "array"
+    },
+    "parent_id": {
+      "title": "Parent Id",
+      "type": "string"
+    },
+    "suggest_checkin": {
+      "title": "Suggest Checkin",
+      "type": "boolean"
+    },
+    "trends": {
+      "items": {
+        "$ref": "#/$defs/MetricTrend"
+      },
+      "title": "Trends",
+      "type": "array"
+    }
+  },
+  "required": [
+    "parent_id",
+    "data_mode",
+    "observations",
+    "trends",
+    "suggest_checkin",
+    "disclaimer"
+  ],
+  "title": "HealthSummary",
+  "type": "object"
+}

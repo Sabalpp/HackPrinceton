@@ -1,0 +1,37 @@
+[project]
+name = "farcare-api"
+version = "0.1.0"
+description = "FarCare backend: care coordination, safety events, Photon messaging, Gemini agent"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.162",
+    "google-genai>=3.3,<4",
+    "httpx>=0.28",
+    "photonhq-api==0.6.0",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
+    "sqlmodel>=0.0.50",
+    "standardwebhooks>=1.1",
+    "tzdata>=2025.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "ruff>=0.17",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["B008", "S101", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::SyntaxWarning", "ignore::DeprecationWarning"]

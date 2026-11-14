@@ -1,0 +1,9 @@
+{
+  "id": 42,
+  "parent_id": "parent_001",
+  "kind": "care_request.updated",
+  "summary": "Asha accepted at 4 PM",
+  "ref_id": "care_001",
+  "data": {"from": "sent", "to": "accepted", "request_type": "grocery_assistance", "responder_id": "responder_001", "origin": "conversation", "eta_minutes": null, "time": "4 PM"},
+  "created_at": "2026-11-14T15:35:00Z"
+}

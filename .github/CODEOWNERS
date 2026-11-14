@@ -1,0 +1,5 @@
+# Changes here need review from a code owner (enforced by the main ruleset).
+# Shared contracts and CI are integration points: Sumit (integration lead) or Sabal (repo owner).
+/.github/                              @sumitkarki07 @Sabalpp
+/packages/contracts/                   @sumitkarki07 @Sabalpp
+/apps/api/app/schemas/contracts.py     @sumitkarki07 @Sabalpp
