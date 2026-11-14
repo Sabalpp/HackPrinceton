@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import init_db, session_scope
-from app.routes import demo, ingest, parents, system, webhooks
+from app.routes import console, demo, ingest, parents, system, webhooks
 from app.seed import seed
 from app.services.background import poll_loop, tick_loop
 
@@ -25,11 +25,11 @@ async def lifespan(app: FastAPI):
     tasks: list[asyncio.Task] = []
     if settings.background_tasks_enabled:
         tasks.append(asyncio.create_task(tick_loop()))
-        if settings.photon_enabled and settings.photon_delivery == "poll":
+        if settings.use_photon and settings.photon_delivery == "poll":
             tasks.append(asyncio.create_task(poll_loop()))
     log.info(
         "FarCare API ready (messaging=%s, ai=%s, demo=%s)",
-        "photon" if settings.photon_enabled else "console",
+        "photon" if settings.use_photon else "console",
         "gemini" if settings.gemini_enabled else "fallback",
         settings.demo_mode,
     )
@@ -56,3 +56,4 @@ app.include_router(parents.router)
 app.include_router(ingest.router)
 app.include_router(webhooks.router)
 app.include_router(demo.router)
+app.include_router(console.router)

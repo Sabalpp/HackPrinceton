@@ -3,6 +3,7 @@
 See apps/api/.env.example for documentation of each variable.
 """
 
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -11,7 +12,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Tests (APP_ENV=test set in the process env) never read a developer's .env, so local keys
+    # and mock-mode switches can't leak into the suite.
+    model_config = SettingsConfigDict(
+        env_file=None if os.environ.get("APP_ENV") == "test" else ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str = "sqlite:///./farcare.db"
@@ -29,6 +36,9 @@ class Settings(BaseSettings):
     # Demo mode enables /api/demo/* routes (admin token required).
     demo_mode: bool = True
     seed_demo_data: bool = True
+    # false = start with no health data, so it all arrives through POST /api/health/observations
+    # (from Sabal's sync, or scripts/mock_fitbit_sender.py standing in for it)
+    seed_health_data: bool = True
     demo_child_token: str = "dev-child-token"  # noqa: S105 dev-only; refused in production
     demo_parent_token: str = "dev-parent-token"  # noqa: S105 dev-only; refused in production
     demo_admin_token: str = "dev-admin-token"  # noqa: S105 dev-only; refused in production
@@ -48,6 +58,9 @@ class Settings(BaseSettings):
     # poll:    backend polls list_messages (local dev without a tunnel)
     # off:     no inbound delivery
     photon_delivery: Literal["webhook", "poll", "off"] = "webhook"
+    # auto: real Photon when PHOTON_API_KEY + PHOTON_PROJECT_ID are set, otherwise simulated.
+    # console: always simulate (keep your keys in .env but run with mock people).
+    messaging_channel: Literal["auto", "photon", "console"] = "auto"
     photon_poll_interval_seconds: float = 2.0
 
     # --- Gemini -------------------------------------------------------------
@@ -61,11 +74,21 @@ class Settings(BaseSettings):
     request_reply_timeout_seconds: int = 3600
     approval_timeout_seconds: int = 7200
     fall_dedupe_window_seconds: int = 600
+    family_check_timeout_seconds: int = 300  # "Mom isn't answering" safety check window
+
+    # --- Proactive wellness check-ins (at most once per parent per local day) ---
+    proactive_checkins_enabled: bool = True
+    proactive_checkin_hours: str = "9-19"  # parent's local hours [start, end)
+    proactive_quiet_after_chat_hours: int = 6  # don't interrupt an active conversation
     tick_interval_seconds: float = 5.0
 
     @property
     def photon_enabled(self) -> bool:
         return bool(self.photon_api_key and self.photon_project_id)
+
+    @property
+    def use_photon(self) -> bool:
+        return self.photon_enabled and self.messaging_channel != "console"
 
     @property
     def gemini_enabled(self) -> bool:

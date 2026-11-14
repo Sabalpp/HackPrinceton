@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FarCare Demo Console</title>
+<style>
+/* Layout: four phones on the left (what each person sees), the family dashboard on the right. */
+:root {
+  --bg: #f3f6f5; --panel: #ffffff; --ink: #16211f; --muted: #5d6c68; --line: #dbe3e0;
+  --accent: #0e7466; --accent-ink: #ffffff; --bubble: #eef2f1; --mine: #0e7466;
+  --ok: #1d7f47; --ok-bg: #e2f3e8; --warn: #9a6512; --warn-bg: #f8eedb;
+  --crit: #b4341c; --crit-bg: #fbe5df; --todo: #5f6e6a; --todo-bg: #eceff0;
+  --parent: #8a4fb0; --child: #2f5fb3; --responder: #0e7466;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0e1413; --panel: #151d1b; --ink: #e4edea; --muted: #94a5a0; --line: #26322f;
+  --accent: #4cc3ae; --accent-ink: #062a24; --bubble: #1e2826; --mine: #2f8f80;
+  --ok: #55c486; --ok-bg: #15301f; --warn: #e2ab52; --warn-bg: #33270f;
+  --crit: #f0866a; --crit-bg: #3a1a12; --todo: #9aa9a5; --todo-bg: #1f2826;
+  --parent: #c693e6; --child: #7ea6ef; --responder: #4cc3ae; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+header { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 12px/1.6 var(--mono); padding: 1px 9px; border-radius: 999px; background: var(--todo-bg); color: var(--todo); white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.crit { background: var(--crit-bg); color: var(--crit); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+button { font: 500 13px var(--sans); border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 11px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 16px; padding: 16px 18px 28px; }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-content: start; }
+.phone { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; display: grid; grid-template-rows: auto 1fr auto auto; height: 520px; min-width: 0; }
+.phone-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.who { font-weight: 600; } .role { font: 12px var(--mono); color: var(--muted); }
+.thread { overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.msg { max-width: 88%; padding: 7px 10px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; }
+.msg.from-farcare { align-self: flex-start; background: var(--bubble); border-bottom-left-radius: 4px; }
+.msg.from-me { align-self: flex-end; background: var(--mine); color: #fff; border-bottom-right-radius: 4px; }
+.meta { font: 11px var(--mono); color: var(--muted); }
+.msg.from-me + .meta, .meta.mine { align-self: flex-end; }
+.empty { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+.quick { display: flex; gap: 6px; overflow-x: auto; padding: 6px 12px 0; }
+.quick button { font-size: 12px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+form.compose { display: flex; gap: 6px; padding: 8px 12px 12px; }
+form.compose input { flex: 1; min-width: 0; font: 14px var(--sans); padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--ink); }
+aside { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.row { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.list { display: grid; gap: 8px; }
+.item { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; padding-bottom: 0; }
+.small { font-size: 12.5px; color: var(--muted); }
+.feed { max-height: 360px; overflow-y: auto; }
+.feed .item { grid-template-columns: 58px 1fr; column-gap: 8px; }
+.feed time { font: 11px/1.8 var(--mono); color: var(--muted); }
+.kind { font: 11px var(--mono); color: var(--muted); }
+svg { width: 100%; height: auto; display: block; }
+.alert { border-left: 4px solid var(--crit); }
+.token { display: none; gap: 6px; align-items: center; }
+.token.show { display: flex; }
+.token input { font: 12px var(--mono); padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 180px; }
+.call-btn { font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+.callbar { display: none; margin: 6px 12px 0; padding: 10px 12px; border-radius: 12px; background: var(--ok-bg); color: var(--ink); gap: 6px; }
+.callbar.on { display: grid; }
+.callbar .state { font: 600 12px var(--mono); color: var(--ok); display: flex; justify-content: space-between; gap: 8px; }
+.callbar .caption { font-size: 13.5px; min-height: 1.4em; overflow-wrap: anywhere; }
+.callbar button { justify-self: start; border-color: var(--crit); color: var(--crit); }
+.phone.oncall .quick, .phone.oncall form.compose { display: none; }
+.pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+@media (prefers-reduced-motion: no-preference) { .pulse { animation: blink 1.2s ease-in-out infinite; } }
+@keyframes blink { 50% { opacity: .25; } }
+.voice-pick { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.voice-pick select { font: 12px var(--sans); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>FarCare Demo Console</h1>
+  <div class="chips" id="status"><span class="chip">connecting…</span></div>
+  <div class="token" id="tokenBox"><label for="token" class="small">Admin token</label><input id="token" type="password" autocomplete="off"><button id="saveToken">Use</button></div>
+  <label class="voice-pick" for="lang">Voice
+    <select id="lang">
+      <option value="en-US">English (US)</option>
+      <option value="en-IN">English (India)</option>
+      <option value="ne-NP">Nepali</option>
+      <option value="hi-IN">Hindi</option>
+    </select>
+  </label>
+  <div class="controls">
+    <button class="primary" data-act="sync-decline" title="Mock Fitbit sync: 35 days, activity dropping">Sync Fitbit (dropping)</button>
+    <button data-act="sync-normal" title="Mock Fitbit sync: a normal month">Sync Fitbit (normal)</button>
+    <button data-act="fall" title="Replay a labeled synthetic fall trace through the detector">Replay fall</button>
+    <button data-act="walking">Replay walking</button>
+    <button data-act="checkin" title="Send the daily wellness check-in now">Daily check-in</button>
+    <button data-act="reset" title="Clear messages, requests and incidents (and health data)">Reset</button>
+  </div>
+</header>
+
+<main>
+  <section class="phones" id="phones" aria-label="What each person sees on their phone"></section>
+  <aside>
+    <div class="card" id="alerts"><h2>Safety alerts</h2><div class="list" id="alertList"></div></div>
+    <div class="card"><h2>Help requests</h2><div class="list" id="requestList"></div></div>
+    <div class="card"><div class="row"><h2>Sita's activity</h2><span class="chip" id="healthMode">no data</span></div><div id="chart"></div><div class="list small" id="trendList"></div></div>
+    <div class="card"><div class="row"><h2>Live timeline</h2><span class="chip" id="streamState">stream off</span></div><div class="list feed" id="feed"></div></div>
+  </aside>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const PARENT = "parent_001";
+const CAST = [
+  { id: "parent_001", role: "parent", label: "Mother · Kathmandu",
+    quick: ["I haven't been feeling very energetic lately.", "Can someone help me with groceries tomorrow?", "Yes", "No", "OK", "HELP"] },
+  { id: "child_001", role: "child", label: "Son · United States",
+    quick: ["status", "Can someone help Mom with groceries tomorrow?", "I haven't heard from Mom all day, I'm worried"] },
+  { id: "responder_001", role: "responder", label: "Neighbor",
+    quick: ["Yes, I can help at 4pm", "YES 10", "Sorry, I can't today", "Done, she's okay", "She needs an ambulance"] },
+  { id: "responder_002", role: "responder", label: "Family friend",
+    quick: ["Yes, on my way", "YES 15", "No, sorry", "Done"] },
+];
+let TOKEN = __DEV_TOKEN__;
+try { TOKEN = TOKEN || localStorage.getItem("farcare_admin_token") || ""; } catch {}
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 2600); }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}) } });
+  if (res.status === 401 || res.status === 403) { $("tokenBox").classList.add("show"); throw new Error("Enter the admin token to use the console."); }
+  if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 160)}`);
+  return res.json();
+}
+
+/* ---------------- phones ---------------- */
+const threads = {};
+let people = {};
+function buildPhones() {
+  const wrap = $("phones");
+  for (const c of CAST) {
+    const phone = el("article", "phone");
+    const head = el("div", "phone-head");
+    const name = el("span", "who", c.id); name.id = `name-${c.id}`; name.style.color = `var(--${c.role})`;
+    const callBtn = el("button", "call-btn", "Call"); callBtn.type = "button"; callBtn.id = `callbtn-${c.id}`;
+    callBtn.title = "Talk to FarCare by voice (browser speech, free)";
+    callBtn.onclick = () => (call && call.personId === c.id ? endCall() : startCall(c.id));
+    const right = el("span", "role", c.label + " "); right.append(callBtn);
+    head.append(name, right);
+    const thread = el("div", "thread"); thread.setAttribute("aria-live", "polite"); threads[c.id] = thread;
+    const bar = el("div", "callbar"); bar.id = `callbar-${c.id}`;
+    const state = el("div", "state"); state.innerHTML = '<span><span class="pulse"></span><span class="st">Connecting…</span></span><span class="clock">0:00</span>';
+    const caption = el("div", "caption"); caption.id = `caption-${c.id}`;
+    const end = el("button", null, "End call"); end.type = "button"; end.onclick = () => endCall();
+    bar.append(state, caption, end);
+    thread.append(el("div", "empty", "No messages yet. Type below as this person, or tap a suggestion."));
+    const quick = el("div", "quick");
+    for (const q of c.quick) { const b = el("button", null, q); b.type = "button"; b.onclick = () => send(c.id, q); quick.append(b); }
+    const form = el("form", "compose");
+    const input = el("input"); input.id = `in-${c.id}`; input.placeholder = "Text FarCare as this person…"; input.setAttribute("aria-label", `Message as ${c.id}`);
+    const btn = el("button", "primary", "Send");
+    form.append(input, btn);
+    form.onsubmit = (e) => { e.preventDefault(); if (input.value.trim()) { send(c.id, input.value.trim()); input.value = ""; } };
+    phone.id = `phone-${c.id}`;
+    phone.append(head, thread, bar, quick, form);
+    wrap.append(phone);
+  }
+}
+let lastMsgKey = "";
+function renderMessages(items) {
+  const key = items.length + ":" + (items.at(-1)?.id || "");
+  if (key === lastMsgKey) return;
+  lastMsgKey = key;
+  for (const c of CAST) {
+    const thread = threads[c.id];
+    const mine = items.filter((m) => m.person_id === c.id);
+    thread.replaceChildren();
+    if (!mine.length) { thread.append(el("div", "empty", "No messages yet. Type below as this person, or tap a suggestion.")); continue; }
+    for (const m of mine) {
+      const fromMe = m.direction === "in";
+      thread.append(el("div", "msg " + (fromMe ? "from-me" : "from-farcare"), m.text));
+      const meta = el("div", "meta" + (fromMe ? " mine" : ""), `${time(m.at)} · ${fromMe ? "sent" : "FarCare"} · ${m.channel}${m.status && !["done", "sent", "simulated"].includes(m.status) ? " · " + m.status : ""}`);
+      thread.append(meta);
+    }
+    thread.scrollTop = thread.scrollHeight;
+  }
+}
+async function send(personId, text) {
+  try {
+    await api("/api/demo/inbound", { method: "POST", body: JSON.stringify({ person_id: personId, text }) });
+    refresh();
+  } catch (e) { toast(e.message); }
+}
+
+/* ---------------- browser voice call (free: Web Speech API) ----------------
+   Hands-free loop: FarCare greets -> listen -> send what was heard to the SAME backend
+   (channel "voice") -> speak the reply -> listen again. "Goodbye" or End call hangs up.
+   Spoken turns are stored as voice turns, so the next text message remembers the call. */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let call = null;
+const lang = () => $("lang").value;
+const GOODBYE = /\b(good ?bye|bye|hang up|that'?s all|end (the )?call)\b/i;
+
+function speakable(text) {
+  return text
+    .replace(/\[Demo:[^\]]*\]/g, "")
+    .replace(/Reply YES or NO\.?/gi, "Just say yes or no.")
+    .replace(/Reply OK if you're fine, or HELP if you'd like someone to come\.?/gi, "Just say okay if you're fine, or help if you'd like someone to come.")
+    .replace(/Reply DONE when you've finished\.?/gi, "Say done when you've finished.")
+    .replace(/\bReply\b/g, "Say")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
+    .replace(/\s+/g, " ").trim();
+}
+function setCallState(text) { if (call) $(`callbar-${call.personId}`).querySelector(".st").textContent = text; }
+function setCaption(text) { if (call) $(`caption-${call.personId}`).textContent = text; }
+
+function speak(text) {
+  return new Promise((resolve) => {
+    const clean = speakable(text);
+    if (!clean || !window.speechSynthesis) return resolve();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = lang(); u.rate = 0.95;
+    const voice = speechSynthesis.getVoices().find((v) => v.lang === lang()) || speechSynthesis.getVoices().find((v) => v.lang.startsWith(lang().slice(0, 2)));
+    if (voice) u.voice = voice;
+    u.onend = resolve; u.onerror = resolve;
+    setCallState("FarCare is speaking…"); setCaption(clean);
+    speechSynthesis.speak(u);
+  });
+}
+
+function listen() {
+  if (!call) return;
+  const rec = new SR();
+  call.rec = rec; rec.lang = lang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  let final = "";
+  setCallState("Listening… speak now");
+  rec.onresult = (e) => {
+    let interim = "";
+    for (const r of e.results) (r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript));
+    setCaption("You: " + (final || interim));
+  };
+  rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { toast("Microphone blocked. Allow mic access for localhost and try again."); endCall(false); } };
+  rec.onend = () => {
+    if (!call || call.rec !== rec) return;
+    if (final.trim()) handleUtterance(final.trim());
+    else if (call.active) listen();  // silence: keep the line open
+  };
+  try { rec.start(); } catch { setTimeout(() => call && listen(), 300); }
+}
+
+async function handleUtterance(text) {
+  if (!call) return;
+  call.turns += 1;
+  if (GOODBYE.test(text)) { await speak("Thank you for calling. Take care, goodbye."); return endCall(); }
+  setCallState("FarCare is thinking…");
+  try {
+    const res = await api("/api/demo/inbound", { method: "POST", body: JSON.stringify({ person_id: call.personId, text, channel: "voice" }) });
+    refresh();
+    const mine = res.outbound.filter((m) => m.to_id === call?.personId).map((m) => m.text);
+    await speak(mine.join(" ") || "Okay, I've noted that.");
+  } catch (e) { toast(e.message); await speak("Sorry, I couldn't reach FarCare. Please try again."); }
+  if (call && call.active) listen();
+}
+
+async function startCall(personId) {
+  if (!SR || !window.speechSynthesis) { toast("This browser can't do speech recognition. Use Chrome, Edge or Safari."); return; }
+  if (call) endCall();
+  const name = people[personId]?.display_name || "there";
+  call = { personId, active: true, turns: 0, started: Date.now(), rec: null };
+  $(`phone-${personId}`).classList.add("oncall");
+  $(`callbar-${personId}`).classList.add("on");
+  $(`callbtn-${personId}`).textContent = "Hang up";
+  call.timer = setInterval(() => {
+    if (!call) return; const s = Math.floor((Date.now() - call.started) / 1000);
+    $(`callbar-${call.personId}`).querySelector(".clock").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }, 1000);
+  await speak(`Hi ${name}, this is FarCare. How can I help you today?`);
+  listen();
+}
+
+function endCall(record = true) {
+  if (!call) return;
+  const { personId, turns, started, rec, timer } = call;
+  call = null;
+  try { rec && rec.abort(); } catch {}
+  speechSynthesis.cancel(); clearInterval(timer);
+  $(`phone-${personId}`).classList.remove("oncall");
+  $(`callbar-${personId}`).classList.remove("on");
+  $(`callbtn-${personId}`).textContent = "Call";
+  if (record && turns > 0) {
+    api("/api/demo/voice-call-ended", { method: "POST", body: JSON.stringify({ person_id: personId, turns, seconds: Math.round((Date.now() - started) / 1000) }) })
+      .then(() => { toast("Call ended. FarCare remembers it: try texting a follow-up."); refresh(); }).catch(() => {});
+  }
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+
+/* ---------------- dashboard side ---------------- */
+const pill = (text, cls) => el("span", "chip " + (cls || ""), text);
+const REQ_CLS = { accepted: "ok", completed: "ok", sent: "warn", awaiting_approval: "warn", approved: "warn", declined: "crit", failed: "crit", expired: "crit", cancelled: "" };
+const INC_CLS = { checking: "warn", escalated: "crit", responder_en_route: "warn", resolved: "ok" };
+
+function renderOverview(ov) {
+  const alerts = $("alertList"); alerts.replaceChildren();
+  $("alerts").classList.toggle("alert", ov.active_incidents.length > 0);
+  if (!ov.active_incidents.length) alerts.append(el("div", "small", "No active alerts."));
+  for (const inc of ov.active_incidents) {
+    const it = el("div", "item");
+    const row = el("div", "row");
+    row.append(el("strong", null, inc.trigger === "fall.suspected" ? "Possible fall" : inc.trigger === "family_concern" ? "Family asked to check" : "Emergency message"), pill(inc.status.replaceAll("_", " "), INC_CLS[inc.status]));
+    it.append(row, el("div", "small", [inc.escalation_reason && `reason: ${inc.escalation_reason.replaceAll("_", " ")}`, inc.confidence != null && `detector score ${inc.confidence} (not a clinical probability)`, inc.data_mode === "simulated" && "simulated"].filter(Boolean).join(" · ") || "waiting for Sita's reply"));
+    const btn = el("button", null, "Mark resolved"); btn.onclick = async () => { try { await api(`/api/parents/${PARENT}/incidents/${inc.incident_id}/resolve`, { method: "POST" }); refresh(); } catch (e) { toast(e.message); } };
+    it.append(btn); alerts.append(it);
+  }
+  const reqs = $("requestList"); reqs.replaceChildren();
+  if (!ov.recent_requests.length) reqs.append(el("div", "small", "No requests yet."));
+  for (const r of ov.recent_requests.slice(0, 6)) {
+    const it = el("div", "item"); const row = el("div", "row");
+    row.append(el("strong", null, r.request_type.replaceAll("_", " ") + (r.requested_time ? ` (${r.requested_time})` : "")), pill(r.status.replaceAll("_", " "), REQ_CLS[r.status]));
+    it.append(row, el("div", "small", [r.responder_name && `helper: ${r.responder_name}`, r.responder_note && `at ${r.responder_note}`, r.estimated_arrival_minutes != null && `ETA ${r.estimated_arrival_minutes} min`, r.requested_by_name && `asked by ${r.requested_by_name}`, r.origin === "emergency" && "emergency policy"].filter(Boolean).join(" · ") || " "));
+    reqs.append(it);
+  }
+  renderHealth(ov.health);
+}
+
+function renderHealth(h) {
+  const chart = $("chart"), trends = $("trendList"), mode = $("healthMode");
+  chart.replaceChildren(); trends.replaceChildren();
+  if (!h || !h.observations.length) { mode.textContent = "no data"; mode.className = "chip"; trends.append(el("div", null, "No health data yet. Press “Sync Fitbit” to have Sabal's mock sync send some.")); return; }
+  mode.textContent = h.data_mode; mode.className = "chip " + (h.data_mode === "live" ? "ok" : "warn");
+  const pts = h.observations.filter((o) => o.steps != null);
+  const W = 360, H = 130, L = 30, R = 6, T = 8, B = 18;
+  const max = Math.max(5000, ...pts.map((o) => o.steps));
+  const x = (i) => L + i * (W - L - R) / Math.max(1, pts.length - 1), y = (v) => T + (1 - v / max) * (H - T - B);
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Daily steps");
+  const add = (tag, a) => { const n = document.createElementNS(ns, tag); for (const k in a) n.setAttribute(k, a[k]); svg.append(n); return n; };
+  for (const v of [0, max / 2, max]) { add("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--line)" }); add("text", { x: L - 4, y: y(v) + 3, "text-anchor": "end", "font-size": 9, fill: "var(--muted)" }).textContent = Math.round(v / 1000) + "k"; }
+  const steps = h.trends.find((t) => t.metric === "steps");
+  if (steps && steps.baseline) add("line", { x1: L, x2: W - R, y1: y(steps.baseline), y2: y(steps.baseline), stroke: "var(--muted)", "stroke-dasharray": "4 3" });
+  add("polyline", { points: pts.map((o, i) => `${x(i)},${y(o.steps)}`).join(" "), fill: "none", stroke: "var(--accent)", "stroke-width": 2 });
+  add("circle", { cx: x(pts.length - 1), cy: y(pts.at(-1).steps), r: 3.5, fill: "var(--warn)" });
+  add("text", { x: L, y: H - 4, "font-size": 9, fill: "var(--muted)" }).textContent = pts[0].timestamp.slice(5, 10);
+  add("text", { x: W - R, y: H - 4, "text-anchor": "end", "font-size": 9, fill: "var(--muted)" }).textContent = pts.at(-1).timestamp.slice(5, 10) + ` · ${pts.at(-1).steps.toLocaleString()} steps`;
+  chart.append(svg);
+  for (const t of h.trends) trends.append(el("div", null, (t.notable ? "● " : "") + t.observation));
+  trends.append(el("div", null, h.disclaimer));
+}
+
+function addFeed(ev, prepend = true) {
+  const feed = $("feed");
+  if (feed.querySelector(`[data-id="${ev.id}"]`)) return;
+  feed.querySelector(".empty")?.remove();
+  const it = el("div", "item"); it.dataset.id = ev.id;
+  const body = el("div"); body.append(el("div", null, ev.summary), el("div", "kind", ev.kind));
+  it.append(el("time", null, time(ev.created_at)), body);
+  prepend ? feed.prepend(it) : feed.append(it);
+}
+
+/* ---------------- status, stream, refresh ---------------- */
+async function renderStatus() {
+  const h = await (await fetch("/health")).json();
+  const box = $("status"); box.replaceChildren(
+    pill(`messages: ${h.messaging === "photon" ? "real iMessage" : "simulated"}`, h.messaging === "photon" ? "ok" : "warn"),
+    pill(`AI: ${h.ai}`, h.ai === "gemini" ? "ok" : "warn"),
+    pill(`db ${h.database}`, h.database === "ok" ? "ok" : "crit"));
+}
+let source;
+function connectStream() {
+  if (source) source.close();
+  if (!TOKEN) return;
+  source = new EventSource(`/api/parents/${PARENT}/stream?access_token=${encodeURIComponent(TOKEN)}`);
+  source.onopen = () => { $("streamState").textContent = "live"; $("streamState").className = "chip ok"; };
+  source.onerror = () => { $("streamState").textContent = "reconnecting"; $("streamState").className = "chip warn"; };
+  source.addEventListener("timeline", (e) => { addFeed(JSON.parse(e.data)); refresh(); });
+}
+async function loadFeed() {
+  const feed = $("feed"); feed.replaceChildren();
+  const items = await api(`/api/parents/${PARENT}/timeline?limit=40`);
+  if (!items.length) feed.append(el("div", "empty small", "Events appear here the moment they happen."));
+  for (const ev of items) addFeed(ev, false);
+}
+let busy = false;
+async function refresh() {
+  if (busy) return; busy = true;
+  try {
+    const [msgs, ov, ppl] = await Promise.all([api("/api/demo/messages"), api(`/api/parents/${PARENT}/overview`), api("/api/demo/people")]);
+    people = Object.fromEntries(ppl.map((p) => [p.person_id, p]));
+    for (const c of CAST) { const p = people[c.id]; if (p) $(`name-${c.id}`).textContent = p.display_name; }
+    renderMessages(msgs); renderOverview(ov);
+  } catch (e) { toast(e.message); }
+  finally { busy = false; }
+}
+
+const ACTIONS = {
+  "sync-decline": () => api("/api/demo/health-sync", { method: "POST", body: JSON.stringify({ scenario: "decline" }) }).then((r) => `Fitbit sync: ${r.changed} new/changed of ${r.accepted}${r.suggest_checkin ? ", check-in suggested" : ""}`),
+  "sync-normal": () => api("/api/demo/health-sync", { method: "POST", body: JSON.stringify({ scenario: "normal" }) }).then((r) => `Fitbit sync: ${r.changed} new/changed of ${r.accepted}`),
+  fall: () => api("/api/demo/fall", { method: "POST", body: JSON.stringify({ parent_id: PARENT, trace: "fall" }) }).then((r) => `Detector: ${r.detection.label} (score ${r.detection.score})${r.ingest?.duplicate ? ", merged into open incident" : ""}`),
+  walking: () => api("/api/demo/fall", { method: "POST", body: JSON.stringify({ parent_id: PARENT, trace: "walking" }) }).then((r) => `Detector: ${r.detection.label}, no alert`),
+  checkin: () => api("/api/demo/checkin", { method: "POST", body: JSON.stringify({ parent_id: PARENT }) }).then((r) => r.sent ? "Daily check-in sent to Sita" : r.detail),
+  reset: () => api("/api/demo/reset?include_health=true", { method: "POST" }).then(() => { lastMsgKey = ""; loadFeed(); return "Cleared. Press “Sync Fitbit” to load health data again."; }),
+};
+document.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
+  b.disabled = true;
+  try { toast(await ACTIONS[b.dataset.act]()); refresh(); } catch (e) { toast(e.message); } finally { b.disabled = false; }
+}));
+$("saveToken").onclick = () => { TOKEN = $("token").value.trim(); try { localStorage.setItem("farcare_admin_token", TOKEN); } catch {} $("tokenBox").classList.remove("show"); start(); };
+
+async function start() {
+  if (!TOKEN) { $("tokenBox").classList.add("show"); }
+  renderStatus().catch(() => {});
+  if (!TOKEN) return;
+  await loadFeed().catch((e) => toast(e.message));
+  connectStream(); refresh();
+}
+buildPhones();
+start();
+setInterval(refresh, 2500);
+setInterval(() => renderStatus().catch(() => {}), 15000);
+</script>
+</body>
+</html>

@@ -23,16 +23,19 @@ the other. Photon treats them as different senders.
 1. **Photon project** (Beta dashboard `app.beta.photon.codes`): create a server key with
    `project:read`, `project:write` (+ `platforms:write` to assign lines by API). Put
    `PHOTON_API_KEY` and `PHOTON_PROJECT_ID` in the backend env.
-2. **Assign a shared iMessage line for each cast handle** (Dashboard → iMessage → "Add the number
-   you or your user will send from"). Each assignment uses plan capacity. Confirm we have enough
-   seats.
+2. **Assign a shared iMessage line for each cast handle**: set the `DEMO_*_HANDLE` values, then
+   `cd apps/api && uv run python scripts/photon_setup.py assign` (or use the dashboard: iMessage
+   → "Add the number you or your user will send from"). Each assignment uses plan capacity, so
+   confirm we have enough seats. `scripts/photon_setup.py status` shows who maps to which line.
 3. **Every cast member texts their FarCare number once** (e.g. "JOIN"). This is required: a shared
    line can't message anyone who hasn't texted it since assignment. Check with
    `GET /api/demo/people` that all are `reachable: true`.
-4. **Inbound delivery:** deployed backend → add a webhook destination to
-   `https://<api>/webhooks/photon` (events: `message.received`) and set `PHOTON_WEBHOOK_SECRET`.
+4. **Inbound delivery:** deployed backend → `uv run python scripts/photon_setup.py webhook --url
+   https://<api>/webhooks/photon` (subscribes to `message.received` and prints the signing
+   secret once), then set `PHOTON_WEBHOOK_SECRET`.
    Laptop-only backup → `PHOTON_DELIVERY=poll` (no public URL needed).
-5. **Gemini:** set `GEMINI_API_KEY`, `GEMINI_MODEL`. `/health` shows `"ai": "gemini"`. If quota
+5. **Gemini:** set `GEMINI_API_KEY`, run `uv run python scripts/check_gemini.py`, and set the
+   `GEMINI_MODEL` it recommends. `/health` shows `"ai": "gemini"`. If quota
    runs out mid-demo the fallback answers automatically, and the core flow is unchanged.
 6. Set `DEMO_EMERGENCY_NUMBER` to the verified local emergency number for the story's location,
    and `SAFETY_CHECK_TIMEOUT_SECONDS=45` so the no-response path fits in the demo.
@@ -54,6 +57,24 @@ the other. Photon treats them as different senders.
 | 9 | Asha | *"Done, she's okay"* | Incident `resolved`. Dashboard shows the full incident timeline. |
 | 10 | Presenter | closing line over the dashboard | — |
 
+**Photon-track extras (show "context across people and time"):**
+
+- **Son asks for Mom:** Aarav texts *"Can someone help Mom with groceries tomorrow?"* FarCare
+  asks **Sita for consent first** (*"Aarav asked me to arrange…"*), and only after her YES
+  contacts Asha. Aarav is told at each step.
+- **"Mom isn't answering":** Aarav texts *"I haven't heard from Mom all day, I'm worried."*
+  FarCare checks in with Sita. If there's no answer (`FAMILY_CHECK_TIMEOUT_SECONDS`), the same
+  deterministic escalation as a fall runs.
+- **Proactive check-in:** demo control `POST /api/demo/checkin`. Sita gets a gentle *"Good
+  morning, Sita 🌼 Just checking in…"* that mentions her lower activity. In real use this
+  happens at most once a day, in her daytime, and never while she's mid-conversation.
+
+**Voice (free, in the Demo Console):** press **Call** on Sita's phone in `/console`, use Chrome,
+and allow the microphone. Say *"Can someone help me with groceries tomorrow?"*, answer *"yes"*,
+then say *"goodbye"*. Then text Sita's next message: FarCare remembers what was said on the call.
+This is browser speech, not a phone call, so it doesn't count for Photon's Best Voice Agent
+prize (see docs/photon-track.md for the phone-number option).
+
 Optional extras if time allows: Asha replies *"Sorry, I can't"* in step 5 to show FarCare
 proposing Ram. Or Sita replies *"OK"* in step 7 to show a false alarm resolving with an FYI to
 Aarav.
@@ -62,7 +83,7 @@ Aarav.
 
 | Failure | Do this |
 | --- | --- |
-| Photon down / phone has no signal | Use the dashboard's demo controls (or `POST /api/demo/inbound`) to send the same lines as each person. The UI and state machine behave identically. Say so honestly. |
+| Photon down / phone has no signal | Open `https://<api>/console` (Demo Console: a phone per person, live dashboard, demo buttons) and type each person's lines there, or use `POST /api/demo/inbound`. The state machine behaves identically. Say so honestly. |
 | Webhook not arriving | Switch backend to `PHOTON_DELIVERY=poll` and restart. |
 | Gemini quota/latency | Nothing to do. Fallback replies automatically (`/health` → `ai: fallback` after restart without key). |
 | Backend host asleep/crashed | Run locally: `uv run uvicorn app.main:app` + `PHOTON_DELIVERY=poll`. Point the web app at it. |

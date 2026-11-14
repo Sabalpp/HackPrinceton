@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 def channel_name() -> str:
-    return "photon" if get_settings().photon_enabled else "console"
+    return "photon" if get_settings().use_photon else "console"
 
 
 def is_reachable(person: Person) -> bool:
@@ -63,6 +63,21 @@ def send_to_person(
     session.add(msg)
     session.flush()
     return msg
+
+
+def show_typing(person: Person) -> None:
+    """Best-effort typing indicator while the agent thinks. Never raises."""
+    if channel_name() != "photon" or not is_reachable(person):
+        return
+    from app.integrations.photon import client as photon
+
+    try:
+        photon.set_typing(
+            space_id=person.photon_space_id,  # type: ignore[arg-type]
+            sender_id=person.photon_agent_user_id,
+        )  # type: ignore[arg-type]
+    except Exception as exc:
+        log.info("Typing indicator failed (ignored): %s", type(exc).__name__)
 
 
 def delivered(msg: OutboundMessage) -> bool:

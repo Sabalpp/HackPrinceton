@@ -15,9 +15,9 @@ from sqlmodel import Session, select
 
 from app.db import session_scope, utcnow
 from app.integrations.gemini import agent
-from app.integrations.messaging import send_to_person
+from app.integrations.messaging import send_to_person, show_typing
 from app.integrations.photon.inbound import InboundText, normalize_handle
-from app.models import ConversationTurn, FamilyLink, InboundMessageRow, Person
+from app.models import ConversationTurn, InboundMessageRow, Person
 from app.services import care_requests, safety, timeline
 from app.services.replies import (
     looks_like_emergency,
@@ -83,6 +83,15 @@ def _turn(s: Session, person: Person, role: str, text: str) -> None:
     s.add(ConversationTurn(person_id=person.id, role=role, text=text[:2000]))
 
 
+VOICE_MARK = "(by voice call) "
+
+
+def _as_turn(msg: InboundText) -> str:
+    """Stored user turn. Voice turns are marked so the agent knows later that something was
+    said on a call, which lets the next text continue it."""
+    return (VOICE_MARK + msg.text) if msg.channel == "voice" else msg.text
+
+
 def _reply(s: Session, person: Person, msg: InboundText, text: str, suffix: str = "") -> None:
     if not text:
         return
@@ -119,7 +128,7 @@ def handle(s: Session, msg: InboundText) -> str:
 
 def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
     text = msg.text
-    _turn(s, parent, "user", text)
+    _turn(s, parent, "user", _as_turn(msg))
 
     incident = safety.active_incident(s, parent.id)
     if incident is not None:
@@ -151,6 +160,15 @@ def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
                 _reply(
                     s, parent, msg, f"Great, I've asked {name}. I'll let you know when they reply."
                 )
+                care_requests.notify_requester(
+                    s,
+                    pending,
+                    lambda who: (
+                        f"{who} said yes, so I've asked {name}. I'll let you know when "
+                        f"{name} replies."
+                    ),
+                    f"care:{pending.id}:requester_approved",
+                )
             return
         if decision == "no":
             care_requests.cancel(
@@ -162,8 +180,18 @@ def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
                 msg,
                 "Okay, I won't contact anyone. Just let me know if you change your mind.",
             )
+            care_requests.notify_requester(
+                s,
+                pending,
+                lambda who: (
+                    f"{who} would rather not have help with that right now, so I haven't "
+                    "contacted anyone."
+                ),
+                f"care:{pending.id}:requester_declined",
+            )
             return
 
+    show_typing(parent)
     result = agent.respond(s, parent, text)
     timeline.record(
         s,
@@ -211,25 +239,32 @@ def _handle_responder(s: Session, responder: Person, msg: InboundText, first_con
 
 
 def _handle_child(s: Session, child: Person, msg: InboundText, first_contact: bool) -> None:
-    links = s.exec(select(FamilyLink).where(FamilyLink.member_id == child.id)).all()
-    lines = []
-    for link in links:
-        parent = s.get(Person, link.parent_id)
-        if parent is None:
-            continue
-        who = link.parent_label or parent.display_name
-        inc = safety.active_incident(s, parent.id)
-        if inc is not None:
-            lines.append(f"{who}: active safety alert ({inc.status.replace('_', ' ')}).")
-        reqs = care_requests.open_requests(s, parent.id)
-        for r in reqs[:3]:
-            lines.append(f"{who}: {care_requests.label(r)} - {r.status.replace('_', ' ')}.")
-        if inc is None and not reqs:
-            lines.append(f"{who}: no active alerts or open requests.")
+    from app.integrations.gemini import family_agent
+    from app.services import family
+
+    links = family.links_for(s, child)
+    if not links:
+        _reply(s, child, msg, "Hi! You're not linked to anyone in FarCare yet.")
+        return
+    link, parent = links[0]  # hackathon scope: one linked parent per family member
+    _turn(s, child, "user", _as_turn(msg))
     intro = (
-        f"Hi {child.display_name}! You're connected to FarCare. You'll get updates here; "
-        "text STATUS anytime.\n"
+        f"Hi {child.display_name}! You're connected to FarCare for {family.who(link, parent)}. "
+        "You'll get updates here, and you can ask me anything.\n"
         if first_contact
         else ""
     )
-    _reply(s, child, msg, intro + ("\n".join(lines) or "No linked family members yet."))
+    if first_contact and msg.text.strip().lower() in ("join", "hi", "hello", "start"):
+        reply, mode = "\n".join(family.status_lines(s, link, parent)), "fallback"
+    else:
+        show_typing(child)
+        reply, mode = family_agent.respond(s, child, link, parent, msg.text)
+    timeline.record(
+        s,
+        parent.id,
+        "agent.replied",
+        f"FarCare replied to {child.display_name}",
+        data={"ai_mode": mode, "to": child.id},
+        visibility=timeline.PARENT_ONLY,
+    )
+    _reply(s, child, msg, intro + reply)

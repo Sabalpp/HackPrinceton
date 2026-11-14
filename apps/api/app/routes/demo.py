@@ -24,6 +24,7 @@ from app.models import (
     CheckInRow,
     ConversationTurn,
     FallEventRecord,
+    HealthObservationRow,
     InboundMessageRow,
     OutboundMessage,
     Person,
@@ -31,7 +32,7 @@ from app.models import (
     TimelineEventRow,
 )
 from app.schemas.contracts import DataMode, FallSuspectedEvent
-from app.services import conversation, safety
+from app.services import conversation, proactive, safety
 
 router = APIRouter(prefix="/api/demo", tags=["demo"], dependencies=[Depends(require_demo_admin)])
 
@@ -68,9 +69,28 @@ def demo_fall(body: FallDemoIn, session: Session = Depends(get_session)):
     }
 
 
+class CheckinDemoIn(BaseModel):
+    parent_id: str
+
+
+@router.post("/checkin")
+def demo_checkin(body: CheckinDemoIn, session: Session = Depends(get_session)):
+    """Send the proactive wellness check-in now (skips the daily time window)."""
+    parent = session.get(Person, body.parent_id)
+    if parent is None or parent.role != "parent":
+        raise HTTPException(404, "Unknown parent_id")
+    msg = proactive.maybe_checkin(
+        session, parent, force=True, key=f"proactive:{parent.id}:demo:{secrets.token_hex(4)}"
+    )
+    if msg is None:
+        return {"sent": False, "detail": "Skipped: unreachable, open incident, or pending approval"}
+    return {"sent": msg.status in ("sent", "simulated"), "status": msg.status, "text": msg.text}
+
+
 class InboundDemoIn(BaseModel):
     person_id: str
     text: str = Field(min_length=1, max_length=2000)
+    channel: Literal["text", "voice"] = "text"
 
 
 @router.post("/inbound")
@@ -87,6 +107,7 @@ def demo_inbound(body: InboundDemoIn):
             sender_handle=handle,
             text=body.text,
             simulated=True,
+            channel=body.channel,
         )
     )
     with session_scope() as s:
@@ -102,6 +123,7 @@ def _out(s: Session, m: OutboundMessage) -> dict:
     person = s.get(Person, m.person_id) if m.person_id else None
     return {
         "to": person.display_name if person else None,
+        "to_id": person.id if person else None,
         "to_role": person.role if person else None,
         "channel": m.channel,
         "status": m.status,
@@ -110,12 +132,120 @@ def _out(s: Session, m: OutboundMessage) -> dict:
     }
 
 
+class VoiceCallEndedIn(BaseModel):
+    person_id: str
+    turns: int = Field(default=0, ge=0, le=500)
+    seconds: int = Field(default=0, ge=0, le=7200)
+
+
+@router.post("/voice-call-ended")
+def voice_call_ended(body: VoiceCallEndedIn, session: Session = Depends(get_session)):
+    """Browser voice call finished. Spoken turns are already in conversation memory
+    (marked as voice), so the next text continues the call; this records that it happened."""
+    from app.services import family, timeline
+
+    person = session.get(Person, body.person_id)
+    if person is None:
+        raise HTTPException(404, "Unknown person")
+    parent_id = person.id if person.role == "parent" else None
+    if person.role == "child":
+        links = family.links_for(session, person)
+        parent_id = links[0][1].id if links else None
+    if parent_id:
+        minutes, secs = divmod(body.seconds, 60)
+        timeline.record(
+            session,
+            parent_id,
+            "voice.call_ended",
+            f"{person.display_name} talked with FarCare by voice "
+            f"({body.turns} turn{'s' if body.turns != 1 else ''}, {minutes}:{secs:02d}).",
+            data={
+                "person_id": person.id,
+                "turns": body.turns,
+                "seconds": body.seconds,
+                "channel": "browser_voice",
+            },
+            visibility=timeline.PARENT_ONLY,
+        )
+    return {"recorded": bool(parent_id)}
+
+
 @router.get("/outbox")
 def outbox(limit: int = 50, session: Session = Depends(get_session)):
     rows = session.exec(
         select(OutboundMessage).order_by(OutboundMessage.created_at.desc()).limit(min(limit, 200))  # type: ignore[union-attr]
     ).all()
     return [_out(session, m) for m in rows]
+
+
+@router.get("/messages")
+def messages(limit: int = 300, session: Session = Depends(get_session)):
+    """Every conversation in both directions, oldest first (for the demo console's phones)."""
+    from app.integrations.photon.inbound import normalize_handle
+
+    by_handle = {p.handle: p for p in session.exec(select(Person)).all() if p.handle}
+    items: list[dict] = []
+    for row in session.exec(select(InboundMessageRow)).all():
+        person = by_handle.get(normalize_handle(row.payload.get("sender_handle", "")))
+        if person is None:
+            continue
+        items.append(
+            {
+                "id": f"in:{row.id}",
+                "person_id": person.id,
+                "direction": "in",
+                "text": row.payload.get("text", ""),
+                "status": row.status,
+                "channel": (
+                    "voice"
+                    if row.payload.get("channel") == "voice"
+                    else "simulated"
+                    if row.payload.get("simulated")
+                    else "photon"
+                ),
+                "at": row.received_at.isoformat(),
+            }
+        )
+    for m in session.exec(select(OutboundMessage)).all():
+        if m.person_id:
+            items.append(
+                {
+                    "id": f"out:{m.id}",
+                    "person_id": m.person_id,
+                    "direction": "out",
+                    "text": m.text,
+                    "status": m.status,
+                    "channel": m.channel,
+                    "at": m.created_at.isoformat(),
+                }
+            )
+    items.sort(key=lambda i: i["at"])
+    return items[-min(limit, 1000) :]
+
+
+class HealthSyncDemoIn(BaseModel):
+    parent_id: str = "parent_001"
+    scenario: Literal["decline", "normal", "recovering"] = "decline"
+    days: int = Field(default=35, ge=1, le=120)
+
+
+@router.post("/health-sync")
+def demo_health_sync(body: HealthSyncDemoIn, session: Session = Depends(get_session)):
+    """Run the mock Fitbit sender (Sabal's stand-in) server-side through the real ingest path."""
+    import importlib.util
+    from pathlib import Path
+
+    from app.routes.ingest import ingest_health
+    from app.schemas.contracts import HealthObservation
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "mock_fitbit_sender.py"
+    if not path.exists():
+        raise HTTPException(404, "Mock sender not available in this build")
+    spec = importlib.util.spec_from_file_location("mock_fitbit_sender", path)
+    sender = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sender)  # type: ignore[union-attr]
+    payload = sender.backfill(body.parent_id, body.days, body.scenario)
+    return ingest_health([HealthObservation.model_validate(p) for p in payload], session)
 
 
 @router.get("/people")
@@ -133,7 +263,10 @@ def people(session: Session = Depends(get_session)):
 
 
 @router.post("/reset")
-def reset(session: Session = Depends(get_session)):
+def reset(include_health: bool = False, session: Session = Depends(get_session)):
+    """Clear workflow state. include_health=true also clears health observations."""
+    if include_health:
+        session.exec(delete(HealthObservationRow))  # type: ignore[call-overload]
     for table in (
         CareRequestRow,
         SafetyIncidentRow,

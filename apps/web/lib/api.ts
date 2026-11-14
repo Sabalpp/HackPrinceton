@@ -1,25 +1,55 @@
 /**
- * Typed FarCare API client. Types are GENERATED from the backend contracts
- * (packages/contracts/openapi.json -> lib/api-types.ts via `npm run gen:api`).
- * Never hand-edit api-types.ts; never redefine these shapes by hand.
+ * Typed FarCare API client: the ONLY place the UI talks to the backend.
  *
- * Set NEXT_PUBLIC_USE_MOCKS=true to develop the UI without a running backend.
+ * Types are GENERATED from the backend contracts (packages/contracts/openapi.json ->
+ * lib/api-types.ts via `npm run gen:api`). Never hand-edit api-types.ts or redefine its shapes.
+ *
+ * NEXT_PUBLIC_USE_MOCKS=true  -> lib/mock-server.ts answers in the browser (dummy data, live events)
+ * NEXT_PUBLIC_USE_MOCKS=false -> real FastAPI at NEXT_PUBLIC_API_URL, live updates over SSE
  */
 import type { components } from "./api-types";
-import { mockData } from "./mocks";
+import { mockServer } from "./mock-server";
+import { mockMe, mockSystemHealth } from "./mocks";
 
 export type Schemas = components["schemas"];
 export type ParentOverview = Schemas["ParentOverview"];
+export type ParentProfile = Schemas["ParentProfile"];
 export type HealthSummary = Schemas["HealthSummary"];
+export type HealthObservation = Schemas["HealthObservation"];
+export type MetricTrend = Schemas["MetricTrend"];
 export type CareRequest = Schemas["CareRequest"];
+export type CareRequestStatus = Schemas["CareRequestStatus"];
 export type CareCircleMember = Schemas["CareCircleMember"];
+export type AssistanceCategory = Schemas["AssistanceCategory"];
+export type CheckIn = Schemas["CheckIn"];
 export type SafetyIncident = Schemas["SafetyIncident"];
+export type IncidentStatus = Schemas["IncidentStatus"];
 export type TimelineEvent = Schemas["TimelineEvent"];
 export type Me = Schemas["Me"];
 export type SystemHealth = Schemas["SystemHealth"];
 
+/*
+ * /api/demo/* responses are plain dicts in the backend (untyped in OpenAPI). These mirror
+ * apps/api/app/routes/demo.py exactly; ask Sumit to add response models if they change.
+ */
+export type DemoPerson = { person_id: string; display_name: string; role: string; has_handle: boolean; reachable: boolean };
+export type OutboxMessage = { to: string | null; to_role: string | null; channel: string; status: string; text: string; created_at: string };
+export type DemoFallResult = {
+  trace: string;
+  data_mode: "simulated";
+  detection: { label: string; score: number; [k: string]: unknown };
+  ingest: Schemas["FallIngestResult"] | null;
+};
+export type FallTrace = Schemas["FallDemoIn"]["trace"];
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+
+/**
+ * Viewer token for the family dashboard. Defaults to the documented dev token, which the
+ * backend refuses in production; deployments set NEXT_PUBLIC_VIEWER_TOKEN.
+ */
+export const VIEWER_TOKEN = process.env.NEXT_PUBLIC_VIEWER_TOKEN ?? "dev-child-token";
 
 export class ApiError extends Error {
   constructor(
@@ -30,68 +60,90 @@ export class ApiError extends Error {
   }
 }
 
-async function get<T>(path: string, token: string | null): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
+async function request<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: "no-store",
+    });
+  } catch {
+    // fetch() rejects only on network failure (API down, CORS, offline).
+    throw new ApiError(0, "Can't reach FarCare right now.");
+  }
   if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText} for ${path}`);
   return (await res.json()) as T;
 }
 
-async function post<T>(path: string, token: string | null, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText} for ${path}`);
-  return (await res.json()) as T;
-}
+const get = <T>(path: string, token: string | null) => request<T>(path, token);
+const post = <T>(path: string, token: string | null, body?: unknown) =>
+  request<T>(path, token, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+
+const p = (parentId: string) => `/api/parents/${encodeURIComponent(parentId)}`;
+const mock = <T>(fn: () => Promise<T>) => fn().catch((e: Error) => Promise.reject(new ApiError(404, e.message)));
 
 export const api = {
-  health: () => (USE_MOCKS ? Promise.resolve(mockData.health) : get<SystemHealth>("/health", null)),
-  me: (token: string) => (USE_MOCKS ? Promise.resolve(mockData.me) : get<Me>("/api/me", token)),
+  health: () => (USE_MOCKS ? Promise.resolve(mockSystemHealth) : get<SystemHealth>("/health", null)),
+  me: (token: string) => (USE_MOCKS ? Promise.resolve(mockMe) : get<Me>("/api/me", token)),
+
   overview: (token: string, parentId: string) =>
+    USE_MOCKS ? mockServer.overview() : get<ParentOverview>(`${p(parentId)}/overview`, token),
+  healthSummary: (token: string, parentId: string, days = 35) =>
+    USE_MOCKS ? mockServer.health(days) : get<HealthSummary | null>(`${p(parentId)}/health?days=${days}`, token),
+  careCircle: (token: string, parentId: string) =>
+    USE_MOCKS ? mockServer.careCircle() : get<CareCircleMember[]>(`${p(parentId)}/care-circle`, token),
+  careRequests: (token: string, parentId: string, limit = 50) =>
+    USE_MOCKS ? mockServer.careRequests(limit) : get<CareRequest[]>(`${p(parentId)}/care-requests?limit=${limit}`, token),
+  incidents: (token: string, parentId: string, activeOnly = false) =>
     USE_MOCKS
-      ? Promise.resolve(mockData.overview)
-      : get<ParentOverview>(`/api/parents/${parentId}/overview`, token),
-  timeline: (token: string, parentId: string) =>
-    USE_MOCKS
-      ? Promise.resolve(mockData.timeline)
-      : get<TimelineEvent[]>(`/api/parents/${parentId}/timeline`, token),
-  careRequests: (token: string, parentId: string) =>
-    USE_MOCKS
-      ? Promise.resolve(mockData.overview.recent_requests)
-      : get<CareRequest[]>(`/api/parents/${parentId}/care-requests`, token),
-  incidents: (token: string, parentId: string) =>
-    USE_MOCKS
-      ? Promise.resolve(mockData.overview.active_incidents)
-      : get<SafetyIncident[]>(`/api/parents/${parentId}/incidents`, token),
+      ? mockServer.incidents(activeOnly)
+      : get<SafetyIncident[]>(`${p(parentId)}/incidents?active_only=${activeOnly}`, token),
+  timeline: (token: string, parentId: string, limit = 100) =>
+    USE_MOCKS ? mockServer.timeline(limit) : get<TimelineEvent[]>(`${p(parentId)}/timeline?limit=${limit}`, token),
   resolveIncident: (token: string, parentId: string, incidentId: string) =>
-    post<SafetyIncident>(`/api/parents/${parentId}/incidents/${incidentId}/resolve`, token),
-  // Demo controls (admin token, DEMO_MODE=true on the backend)
-  demoFall: (adminToken: string, parentId: string, trace = "fall") =>
-    post<unknown>("/api/demo/fall", adminToken, { parent_id: parentId, trace }),
+    USE_MOCKS
+      ? mock(() => mockServer.resolveIncident(incidentId))
+      : post<SafetyIncident>(`${p(parentId)}/incidents/${encodeURIComponent(incidentId)}/resolve`, token),
+
+  // Demo controls: admin token + DEMO_MODE=true on the backend. Everything is labeled simulated.
+  demoFall: (adminToken: string, parentId: string, trace: FallTrace = "fall") =>
+    USE_MOCKS ? mockServer.demoFall(trace) : post<DemoFallResult>("/api/demo/fall", adminToken, { parent_id: parentId, trace }),
   demoInbound: (adminToken: string, personId: string, text: string) =>
-    post<unknown>("/api/demo/inbound", adminToken, { person_id: personId, text }),
+    USE_MOCKS
+      ? mock(() => mockServer.demoInbound(personId, text))
+      : post<{ outbound: OutboxMessage[] }>("/api/demo/inbound", adminToken, { person_id: personId, text }),
+  demoPeople: (adminToken: string) => (USE_MOCKS ? mockServer.demoPeople() : get<DemoPerson[]>("/api/demo/people", adminToken)),
+  demoOutbox: (adminToken: string, limit = 50) =>
+    USE_MOCKS ? mockServer.demoOutbox(limit) : get<OutboxMessage[]>(`/api/demo/outbox?limit=${limit}`, adminToken),
+  demoReset: (adminToken: string) => (USE_MOCKS ? mockServer.demoReset() : post<{ reset: boolean }>("/api/demo/reset", adminToken)),
 };
 
+export type StreamStatus = "connecting" | "live" | "reconnecting";
+
 /**
- * Live dashboard updates over Server-Sent Events. Returns an unsubscribe function.
- * EventSource reconnects automatically and resumes via Last-Event-ID.
+ * Live dashboard updates. Real mode: SSE (`event: timeline`), EventSource reconnects and resumes
+ * via Last-Event-ID. Mock mode: events from the in-browser mock backend. Returns unsubscribe.
  */
 export function subscribeTimeline(
   token: string,
   parentId: string,
   onEvent: (event: TimelineEvent) => void,
+  onStatus?: (status: StreamStatus) => void,
 ): () => void {
-  if (USE_MOCKS) return () => {};
-  const url = `${API_URL}/api/parents/${parentId}/stream?access_token=${encodeURIComponent(token)}`;
+  if (USE_MOCKS) {
+    const off = mockServer.subscribe(onEvent);
+    return () => {
+      off();
+    };
+  }
+  const url = `${API_URL}${p(parentId)}/stream?access_token=${encodeURIComponent(token)}`;
   const source = new EventSource(url);
+  source.onopen = () => onStatus?.("live");
+  source.onerror = () => onStatus?.("reconnecting");
   source.addEventListener("timeline", (e) => onEvent(JSON.parse((e as MessageEvent).data)));
   return () => source.close();
 }

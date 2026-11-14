@@ -18,7 +18,7 @@ from sqlmodel import Session, select
 from app.config import get_settings
 from app.db import new_id, utcnow
 from app.integrations.messaging import delivered, is_reachable, send_to_person
-from app.models import CareCircleMember, CareRequestRow, Person
+from app.models import CareCircleMember, CareRequestRow, FamilyLink, Person
 from app.schemas.contracts import (
     AssistanceCategory,
     CareRequest,
@@ -96,6 +96,7 @@ def transition(
 
 def to_contract(session: Session, req: CareRequestRow) -> CareRequest:
     responder = session.get(Person, req.responder_id) if req.responder_id else None
+    requester = session.get(Person, req.requested_by_id) if req.requested_by_id else None
     return CareRequest(
         request_id=req.id,
         parent_id=req.parent_id,
@@ -111,6 +112,8 @@ def to_contract(session: Session, req: CareRequestRow) -> CareRequest:
         estimated_arrival_minutes=req.eta_minutes,
         responder_note=req.responder_note,
         incident_id=req.incident_id,
+        requested_by_id=req.requested_by_id,
+        requested_by_name=requester.display_name if requester else None,
         created_at=req.created_at,
         updated_at=req.updated_at,
     )
@@ -160,7 +163,10 @@ def create_request(
     category: AssistanceCategory,
     details: str = "",
     requested_time: str | None = None,
+    requested_by: Person | None = None,
 ) -> CareRequestRow:
+    """`requested_by` = a family member asking on the parent's behalf. The parent still
+    approves before anyone is contacted."""
     req = CareRequestRow(
         id=new_id("care"),
         parent_id=parent.id,
@@ -169,6 +175,7 @@ def create_request(
         requested_time=(requested_time or "").strip()[:80] or None,
         status=S.created,
         origin=CareRequestOrigin.conversation,
+        requested_by_id=requested_by.id if requested_by else None,
     )
     session.add(req)
     session.flush()
@@ -176,7 +183,12 @@ def create_request(
         session,
         parent.id,
         "care_request.created",
-        f"{parent.display_name} asked for {label(req)}",
+        (
+            f"{requested_by.display_name} asked FarCare to arrange {label(req)} for "
+            f"{parent.display_name}"
+            if requested_by
+            else f"{parent.display_name} asked for {label(req)}"
+        ),
         ref_id=req.id,
         data={"request_type": req.request_type, "requested_time": req.requested_time},
     )
@@ -223,11 +235,12 @@ def propose_next(session: Session, req: CareRequestRow) -> bool:
     return True
 
 
-def approval_prompt(session: Session, req: CareRequestRow) -> str:
+def approval_prompt(session: Session, req: CareRequestRow, mention_task: bool = True) -> str:
     responder = session.get(Person, req.responder_id) if req.responder_id else None
     name = responder.display_name if responder else "someone"
     rel = _relationship(session, req.parent_id, req.responder_id or "")
-    return f"Would you like me to ask {name} (your {rel}) for {label(req)}? Reply YES or NO."
+    task = f" for {label(req)}" if mention_task else ""
+    return f"Would you like me to ask {name} (your {rel}){task}? Reply YES or NO."
 
 
 def pending_approval(session: Session, parent_id: str) -> CareRequestRow | None:
@@ -249,12 +262,33 @@ def cancel(session: Session, req: CareRequestRow, summary: str) -> None:
     transition(session, req, S.cancelled, summary=summary)
 
 
+def notify_requester(session: Session, req: CareRequestRow, render, key: str) -> None:
+    """Tell the family member who asked on the parent's behalf. render(parent_label) -> text."""
+    if not req.requested_by_id:
+        return
+    requester = session.get(Person, req.requested_by_id)
+    if requester is None:
+        return
+    link = session.exec(
+        select(FamilyLink).where(
+            FamilyLink.parent_id == req.parent_id, FamilyLink.member_id == requester.id
+        )
+    ).first()
+    parent = session.get(Person, req.parent_id)
+    who = (link.parent_label if link and link.parent_label else None) or (
+        parent.display_name if parent else "them"
+    )
+    send_to_person(session, requester, render(who), key)
+
+
 def dispatch(session: Session, req: CareRequestRow) -> bool:
     """Send an approved ordinary request to its responder."""
     parent = session.get(Person, req.parent_id)
     responder = session.get(Person, req.responder_id) if req.responder_id else None
     assert parent is not None and responder is not None
-    details = f" Details: {req.details}." if req.details else ""
+    # Skip details that just restate the task (e.g. "groceries" for a grocery request).
+    redundant = req.details.strip(" .").lower() in label(req).lower()
+    details = f" Details: {req.details.strip(' .')}." if req.details and not redundant else ""
     text = (
         f"Hi {responder.display_name}, this is FarCare, helping {parent.display_name}. "
         f"{parent.display_name} is asking for {label(req)}.{details} Can you help? "
@@ -457,7 +491,7 @@ def apply_responder_reply(
             send_to_person(
                 session,
                 parent,
-                f"Good news: {responder.display_name} said yes{when} for {label(req)}.",
+                f"Good news: {responder.display_name} said yes to {label(req)}{when}.",
                 f"{key}:parent",
             )
             notify_family(
