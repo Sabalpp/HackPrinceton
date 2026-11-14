@@ -21,6 +21,7 @@ test('generated configuration never contains database, provider, or Cloudflare c
   assert.equal(config.containers.length, 2);
   assert.deepEqual(config.triggers.crons, ['* * * * *']);
   assert.equal(config.preview_urls, false);
+  assert.deepEqual(config.secrets.required, ['DATABASE_URL', 'INGEST_API_KEY']);
 });
 
 test('custom domain disables alternate workers.dev origin', () => {
@@ -36,6 +37,7 @@ test('production rejects unsafe origins, plaintext database transport, bad sizes
     {PUBLIC_ORIGIN: 'http://farcare.synthetic.workers.dev'},
     {PUBLIC_ORIGIN: 'https://other.synthetic.workers.dev'},
     {PUBLIC_ORIGIN: 'https://farcare.synthetic.workers.dev/path'},
+    {PUBLIC_ORIGIN: 'https://hackprinceton.pages.dev', CUSTOM_DOMAIN: 'true'},
     {DATABASE_URL: 'sqlite:///local.db'},
     {DATABASE_URL: 'postgresql://fixture:fixture@db.invalid/farcare'},
     {API_INSTANCE_TYPE: 'unbounded'}, {SESSION_HOURS: 'NaN'},
@@ -47,6 +49,9 @@ test('Photon cannot silently fall back, sleep through care work, or accept unsig
   assert.ok(validateSettings({...settings, MESSAGING_CHANNEL: 'photon'}).some(x => x.includes('PHOTON_WEBHOOK_SECRET')));
   const live = {...settings, MESSAGING_CHANNEL: 'photon', PHOTON_API_KEY: 'synthetic', PHOTON_PROJECT_ID: 'synthetic', PHOTON_WEBHOOK_SECRET: 'synthetic'};
   assert.deepEqual(validateSettings(live), []);
+  assert.deepEqual(wranglerConfig(live, 'test').secrets.required, [
+    'DATABASE_URL', 'INGEST_API_KEY', 'PHOTON_API_KEY', 'PHOTON_PROJECT_ID', 'PHOTON_WEBHOOK_SECRET',
+  ]);
   assert.ok(validateSettings({...live, CARE_AGENT_MODE: 'on_demand'}).length);
   assert.equal(apiEnvironment(live).PHOTON_DELIVERY, 'webhook');
   assert.equal(apiEnvironment({...live, MESSAGING_CHANNEL: 'console'}).PHOTON_DELIVERY, 'off');
@@ -126,6 +131,13 @@ test('provider failures do not leak error details or retry a mutation', async ()
   assert.equal(called, 1);
 });
 
+test('a provider RangeError is an upstream failure, not a request-size error', async () => {
+  const response = await handlers.fetch(new Request(`${settings.PUBLIC_ORIGIN}/backend/api/me`),
+    routingEnv(async () => {throw new RangeError('Synthetic upstream configuration failure');}));
+  assert.equal(response.status, 503);
+  assert.ok(!(await response.text()).includes('configuration'));
+});
+
 test('web routes use the frontend and scheduled checks wake only the API', async () => {
   let api = 0, web = 0;
   const env = routingEnv(async request => {api++; assert.equal(new URL(request.url).pathname, '/ready'); return new Response('ok');},
@@ -173,6 +185,29 @@ test('concurrent requests share one container startup and readiness check', asyn
   assert.equal(fixture.calls.requests.at(-1).request.headers.get('X-Forwarded-Proto'), 'https');
 });
 
+test('a webhook body survives both gateway and container proxy without replay', async () => {
+  const fixture = containerFixture();
+  const payload = '{ "preserve" : "signature-sensitive bytes" }\n';
+  let deliveries = 0;
+  fixture.container.getTcpPort = () => ({async fetch(input) {
+    const request = input instanceof Request ? input : new Request(input);
+    if (new URL(request.url).pathname === '/ready') return new Response('ready');
+    deliveries++;
+    assert.equal(new URL(request.url).pathname, '/webhooks/photon');
+    assert.equal(request.method, 'POST');
+    assert.equal(await request.text(), payload);
+    assert.equal(request.headers.get('Webhook-Signature'), 'synthetic-signature');
+    return new Response(null, {status: 204});
+  }});
+  const Api = containerClass(Base, 'api');
+  const api = new Api(fixture.ctx, settings);
+  const response = await handlers.fetch(new Request(`${settings.PUBLIC_ORIGIN}/backend/webhooks/photon`, {
+    method: 'POST', body: payload, headers: {'Webhook-Signature': 'synthetic-signature'},
+  }), routingEnv(request => api.fetch(request)));
+  assert.equal(response.status, 204);
+  assert.equal(deliveries, 1);
+});
+
 test('frontend containers receive no backend secrets and cannot use internet egress', async () => {
   const fixture = containerFixture();
   const Web = containerClass(Base, 'web');
@@ -181,6 +216,54 @@ test('frontend containers receive no backend secrets and cannot use internet egr
   assert.equal(fixture.calls.starts[0].env.INGEST_API_KEY, undefined);
   assert.equal(fixture.calls.starts[0].enableInternet, false);
   assert.ok(fixture.calls.requests.every(x => x.port === 3000));
+});
+
+test('containers receive the canonical host and only the edge-supplied client IP', async () => {
+  const fixture = containerFixture();
+  const Api = containerClass(Base, 'api');
+  const api = new Api(fixture.ctx, settings);
+  await api.fetch(new Request(`${settings.PUBLIC_ORIGIN}/api/me`, {headers: {
+    'Host': 'attacker.synthetic.test', 'Forwarded': 'host=attacker.synthetic.test',
+    'X-Forwarded-For': '192.0.2.99', 'X-Real-IP': '192.0.2.99',
+    'X-Forwarded-Proto': 'http', 'X-Forwarded-Host': 'attacker.synthetic.test',
+    'CF-Connecting-IP': '198.51.100.42',
+  }}));
+  const headers = fixture.calls.requests.at(-1).request.headers;
+  assert.equal(headers.get('Host'), new URL(settings.PUBLIC_ORIGIN).host);
+  assert.equal(headers.get('X-Forwarded-Host'), new URL(settings.PUBLIC_ORIGIN).host);
+  assert.equal(headers.get('X-Forwarded-Proto'), 'https');
+  assert.equal(headers.get('X-Forwarded-For'), '198.51.100.42');
+  assert.equal(headers.get('Forwarded'), null);
+  assert.equal(headers.get('X-Real-IP'), null);
+  await api.fetch(new Request(`${settings.PUBLIC_ORIGIN}/api/me`, {headers: {'X-Forwarded-For': '192.0.2.99'}}));
+  assert.equal(fixture.calls.requests.at(-1).request.headers.get('X-Forwarded-For'), null);
+});
+
+test('framework redirects preserve the public origin, API prefix, status and cookies', async () => {
+  for (const [kind, location, expected] of [
+    ['api', 'http://container/api/me?next=1#section', `${settings.PUBLIC_ORIGIN}/backend/api/me?next=1#section`],
+    ['api', '/api/me', `${settings.PUBLIC_ORIGIN}/backend/api/me`],
+    ['api', '/backend/api/me', `${settings.PUBLIC_ORIGIN}/backend/api/me`],
+    ['api', 'me', `${settings.PUBLIC_ORIGIN}/backend/api/me`],
+    ['web', 'http://container:3000/login', `${settings.PUBLIC_ORIGIN}/login`],
+    ['web', '/login', `${settings.PUBLIC_ORIGIN}/login`],
+    ['api', 'https://identity.synthetic.test/authorize', 'https://identity.synthetic.test/authorize'],
+  ]) {
+    const fixture = containerFixture();
+    fixture.container.getTcpPort = () => ({async fetch(input) {
+      const request = input instanceof Request ? input : new Request(input);
+      if (['/ready', '/login'].includes(new URL(request.url).pathname)) return new Response('ready');
+      const headers = new Headers({Location: location});
+      headers.append('Set-Cookie', 'session=synthetic; Secure; HttpOnly; Path=/');
+      headers.append('Set-Cookie', 'csrf=synthetic; Secure; Path=/');
+      return new Response(null, {status: 307, headers});
+    }});
+    const Container = containerClass(Base, kind);
+    const response = await new Container(fixture.ctx, settings).fetch(new Request(`${settings.PUBLIC_ORIGIN}/api/old`));
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get('Location'), expected);
+    assert.equal(response.headers.getSetCookie().length, 2);
+  }
 });
 
 test('a failed startup can recover on the next request without a poisoned promise', async () => {

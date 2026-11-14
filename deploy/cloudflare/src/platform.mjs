@@ -2,10 +2,33 @@ import {apiEnvironment, INSTANCE_TYPES} from '../settings.mjs';
 
 const IDLE_MS = 5 * 60 * 1000;
 const MAX_BODY = 2 * 1024 * 1024;
+class BodyTooLarge extends Error {}
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const unavailable = () => new Response('FarCare is temporarily unavailable. Please try again.', {
   status: 503, headers: {'Cache-Control': 'no-store', 'Retry-After': '10'},
 });
+
+function publicRedirect(response, request, kind) {
+  const location = response.headers.get('Location');
+  if (response.status < 300 || response.status >= 400 || !location) return response;
+  const original = new URL(request.url);
+  let target;
+  try {target = new URL(location, original);} catch {return response;}
+  // Framework redirects are generated after /backend is stripped and the
+  // connection becomes HTTP. Restore the public origin and API prefix, without
+  // changing an intentional redirect to an external provider.
+  if (!['http:', 'https:'].includes(target.protocol) ||
+      (target.hostname !== 'container' && target.host !== original.host)) return response;
+  target.protocol = original.protocol;
+  target.hostname = original.hostname;
+  target.port = original.port;
+  if (kind === 'api' && target.pathname !== '/backend' && !target.pathname.startsWith('/backend/')) {
+    target.pathname = '/backend' + target.pathname;
+  }
+  const result = new Response(response.body, response);
+  result.headers.set('Location', target.href);
+  return result;
+}
 
 export function containerClass(Base, kind) {
   const portNumber = kind === 'api' ? 8000 : 3000;
@@ -74,13 +97,20 @@ export function containerClass(Base, kind) {
       url.protocol = 'http:';
       url.host = 'container';
       const forwarded = new Request(url, request);
-      forwarded.headers.delete('host');
+      forwarded.headers.set('Host', host);
       forwarded.headers.delete('forwarded');
       forwarded.headers.delete('x-forwarded-for');
+      forwarded.headers.delete('x-real-ip');
+      // Cloudflare replaces this header at the public edge. Never trust a
+      // caller's X-Forwarded-For chain; the API uses this address for rate limits.
+      const clientIp = request.headers.get('CF-Connecting-IP');
+      if (clientIp) forwarded.headers.set('X-Forwarded-For', clientIp);
+      forwarded.headers.delete('cf-connecting-ip');
       forwarded.headers.set('X-Forwarded-Proto', 'https');
       forwarded.headers.set('X-Forwarded-Host', host);
       // Stream the response intact, including SSE and multiple Set-Cookie headers.
-      return this.ctx.container.getTcpPort(portNumber).fetch(forwarded);
+      const response = await this.ctx.container.getTcpPort(portNumber).fetch(forwarded);
+      return publicRedirect(response, request, kind);
     }
   };
 }
@@ -95,7 +125,7 @@ async function boundedBody(request) {
       const {value, done} = await reader.read();
       if (done) break;
       bytes += value.byteLength;
-      if (bytes > MAX_BODY) {await reader.cancel(); throw new RangeError('Body too large');}
+      if (bytes > MAX_BODY) {await reader.cancel(); throw new BodyTooLarge('Body too large');}
       parts.push(value);
     }
   } finally {reader.releaseLock();}
@@ -133,7 +163,7 @@ export const handlers = {
       result.headers.set('Strict-Transport-Security', 'max-age=31536000');
       return result;
     } catch (error) {
-      if (error instanceof RangeError) return new Response('Request too large', {status: 413});
+      if (error instanceof BodyTooLarge) return new Response('Request too large', {status: 413});
       return unavailable(); // Never include exceptions containing credentials in public errors.
     }
   },

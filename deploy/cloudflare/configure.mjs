@@ -7,11 +7,23 @@ import {randomBytes} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {createInterface} from 'node:readline/promises';
 import {SECRET_KEYS, validateSettings, wranglerConfig} from './settings.mjs';
+import {assertWorkersTarget} from './target.mjs';
+import {withSecretsFile, verifyDeployment} from './deploy-tools.mjs';
+
+// Check the host before reading private configuration or running any command.
+assertWorkersTarget();
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(directory, '../..');
 const envPath = path.join(directory, '.env');
 const args = new Set(process.argv.slice(2));
+const modes = ['--check', '--build', '--deploy'];
+if ([...args].some(arg => ![...modes, '--import-local', '--non-interactive'].includes(arg)) ||
+    modes.filter(mode => args.has(mode)).length > 1 ||
+    (args.has('--import-local') && modes.some(mode => args.has(mode)))) {
+  throw new Error('Use configure [--import-local] [--non-interactive], check, build, or deploy as separate commands.');
+}
+const configuring = !modes.some(mode => args.has(mode));
 const defaults = parseEnv(await readFile(path.join(directory, '.env.example'), 'utf8'));
 let settings = {...defaults};
 try {Object.assign(settings, parseEnv(await readFile(envPath, 'utf8')));} catch (error) {if (error.code !== 'ENOENT') throw error;}
@@ -43,9 +55,9 @@ if (args.has('--import-local')) {
   }
   console.log('Imported available application credentials into the private deployment file. Values were not printed.');
 }
-if (!settings.INGEST_API_KEY) settings.INGEST_API_KEY = randomBytes(32).toString('hex');
+if (configuring && !settings.INGEST_API_KEY) settings.INGEST_API_KEY = randomBytes(32).toString('hex');
 
-if (!args.has('--check') && !args.has('--deploy') && !args.has('--non-interactive') && process.stdin.isTTY) {
+if (configuring && !args.has('--non-interactive') && process.stdin.isTTY) {
   const rl = createInterface({input: process.stdin, output: process.stdout});
   try {
     console.log('Cloudflare Containers: paid compute. API/worker and frontend run in two containers.');
@@ -77,7 +89,8 @@ if (!args.has('--check') && !args.has('--deploy') && !args.has('--non-interactiv
   } finally {rl.close();}
 }
 
-await saveSettings();
+// Check/build/deploy never persist CI secrets or overwrite the operator's .env.
+if (configuring) await saveSettings();
 const errors = validateSettings(settings);
 console.log(`Settings: ${envPath}`);
 console.log('Secrets: ' + SECRET_KEYS.map(k => `${k}=${settings[k] ? 'set' : 'missing'}`).join(', '));
@@ -86,6 +99,10 @@ if (errors.length) {
   console.error('Finish the private .env, then run npm run check. Cloudflare authentication can use npx wrangler login.');
   process.exitCode = 1;
 } else {
+  if (args.has('--check')) {
+    console.log('Deployment settings validated. No files changed.');
+    process.exit(0);
+  }
   const revision = spawnSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'});
   if (revision.status !== 0) throw new Error('Cannot identify the deployed Git revision');
   const commit = revision.stdout.trim();
@@ -93,37 +110,29 @@ if (errors.length) {
   await writeFile(configPath, JSON.stringify(wranglerConfig(settings, commit), null, 2) + '\n', {mode: 0o600});
   console.log('Deployment settings validated; generated a secret-free Wrangler configuration.');
   console.log(`Photon webhook: ${settings.PUBLIC_ORIGIN}/backend/webhooks/photon`);
-  if (args.has('--deploy')) {
+  if (args.has('--build') || args.has('--deploy')) {
+    const wranglerPath = path.join(directory, 'node_modules/wrangler/bin/wrangler.js');
+    try { await access(wranglerPath); }
+    catch { throw new Error('Wrangler is missing. Run npm install --no-package-lock in deploy/cloudflare first.'); }
+    const wrangler = [wranglerPath];
+    const env = {...process.env, CLOUDFLARE_ACCOUNT_ID: settings.CLOUDFLARE_ACCOUNT_ID,
+      WRANGLER_SEND_METRICS: 'false', CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'};
+    if (settings.CLOUDFLARE_API_TOKEN) env.CLOUDFLARE_API_TOKEN = settings.CLOUDFLARE_API_TOKEN;
+    if (args.has('--build')) {
+      run(process.execPath, [...wrangler, 'deploy', '--config', configPath, '--dry-run', '--outdir', '.wrangler/build'], {env});
+      console.log('Worker bundle verified. Docker images are tested separately in CI; nothing was published.');
+      process.exit(0);
+    }
     const changes = spawnSync('git', ['status', '--porcelain'], {cwd: root, encoding: 'utf8'});
     if (changes.status !== 0 || changes.stdout.trim()) throw new Error('Commit and review the deployment files first; refusing to report a clean Git revision for modified code.');
-    await access(path.join(directory, 'node_modules/wrangler/bin/wrangler.js'));
-    const wrangler = ['node_modules/wrangler/bin/wrangler.js'];
-    const env = {...process.env, CLOUDFLARE_ACCOUNT_ID: settings.CLOUDFLARE_ACCOUNT_ID};
-    if (settings.CLOUDFLARE_API_TOKEN) env.CLOUDFLARE_API_TOKEN = settings.CLOUDFLARE_API_TOKEN;
     run('docker', ['info', '--format', '{{.ServerVersion}}']);
     run(process.execPath, [...wrangler, 'whoami'], {env});
-    // First creates the Worker and digest-pinned images. Until secrets arrive,
-    // the API refuses startup instead of silently using a demo database.
-    run(process.execPath, [...wrangler, 'deploy', '--config', configPath], {env});
-    const secrets = Object.fromEntries(SECRET_KEYS.map(k => [k, settings[k] || '']));
-    run(process.execPath, [...wrangler, 'secret', 'bulk', '--config', configPath], {
-      env, input: JSON.stringify(secrets), stdio: ['pipe', 'inherit', 'inherit'],
+    // Bind secrets to this version at upload time, avoiding a live version with
+    // missing/stale credentials between deploy and a separate secret-bulk call.
+    await withSecretsFile(settings, filename => {
+      run(process.execPath, [...wrangler, 'deploy', '--config', configPath, '--secrets-file', filename], {env});
     });
-    let verified = false;
-    for (let attempt = 0; attempt < 90; attempt++) {
-      try {
-        const response = await fetch(`${settings.PUBLIC_ORIGIN}/backend/health`, {signal: AbortSignal.timeout(10000), redirect: 'manual'});
-        const health = await response.json();
-        if (response.ok && health.database === 'ok' && health.commit === commit) {
-          const web = await fetch(`${settings.PUBLIC_ORIGIN}/login`, {signal: AbortSignal.timeout(10000), redirect: 'manual'});
-          await web.body?.cancel();
-          const ready = await fetch(`${settings.PUBLIC_ORIGIN}/backend/ready`, {signal: AbortSignal.timeout(10000), redirect: 'manual'});
-          const worker = await ready.json();
-          if (web.ok && ready.ok && worker.ready === true) {verified = true; break;}
-        }
-      } catch { /* Cold containers can take several minutes to provision. */ }
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
+    const verified = await verifyDeployment({origin: settings.PUBLIC_ORIGIN, commit});
     if (!verified) throw new Error('Published, but live health/revision verification failed. Inspect Cloudflare Containers before inviting users.');
     console.log(`Verified web + database + worker readiness + deployed revision: ${settings.PUBLIC_ORIGIN}/login`);
     console.log('Verify account setup, role permissions and real messaging separately before inviting users.');

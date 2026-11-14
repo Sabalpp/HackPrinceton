@@ -1,5 +1,33 @@
 # Deploy FarCare on Cloudflare
 
+## Fix a `pages.dev` 404
+
+Create a **Worker** for this repository in **Workers & Pages**, then use Workers
+Builds with the settings below. A `pages.dev` address belongs to Cloudflare Pages;
+this repository's deployment runs two servers and does not produce a static
+`index.html` upload. Its address will be
+`https://<WORKER_NAME>.<your-account-subdomain>.workers.dev` (or your own domain).
+The install, test, build and deploy scripts reject a Pages build with an explicit
+error. Retrying the Pages deployment with `.next` as an output directory will
+not start the API or care worker.
+
+| Dashboard field | Value |
+| --- | --- |
+| Product | Workers, connected to `Sabalpp/HackPrinceton` |
+| Production branch | `main` after this PR is reviewed and merged |
+| Root directory | `/` (repository root) |
+| Build command | `npm --prefix deploy/cloudflare install --no-package-lock && npm --prefix deploy/cloudflare test && npm --prefix deploy/cloudflare run build` |
+| Deploy command | `npm --prefix deploy/cloudflare run deploy` |
+| Build output directory | None; this is a Worker deployment |
+| Build variables | `NODE_VERSION=24`, `SKIP_DEPENDENCY_INSTALL=1`, plus the settings below |
+| Feature branch builds | Disabled for the production Worker |
+
+Use the exact Worker name and `workers.dev` subdomain shown in your Cloudflare
+account when setting `WORKER_NAME` and `PUBLIC_ORIGIN`. The deployment validates
+that they match. An account ID and a public origin must be supplied; they cannot
+be inferred from the old Pages address. Required application secrets must be
+available to the **build/deploy environment**, not only stored on an older Worker.
+
 This configuration hosts the complete app using Cloudflare Workers + Containers.
 The frontend keeps its existing Next.js runtime; the Python API and standalone
 care worker run as separate supervised processes in a second container. Tiger
@@ -56,7 +84,10 @@ No billing plan, domain purchase or resource deployment is performed by configur
 `apps/api/.env` to the private deployment file without printing them. It does not
 upload anything. The file is mode 0600 and ignored by Git. Cloudflare credentials
 stay with the operator and are not forwarded to a container. API credentials
-become Worker secrets via stdin at deploy time and never become Docker build args.
+become Worker secrets in the same upload as the Worker code, through Wrangler's
+`--secrets-file` option. The temporary JSON file is private (0600), contains only
+the six application secrets, and is removed even if deployment fails. JSON
+preserves literal dollar signs in keys. Credentials never become Docker build args.
 
 Do not paste the `.env` into GitHub, a chat, or a frontend environment variable.
 Changing a runtime setting or secret updates a fingerprint; a running container
@@ -74,13 +105,14 @@ npm install --no-package-lock
 npm run configure -- --import-local
 npm run check
 npm test
+npm run build
 npx wrangler login
 ```
 
 Review and commit the deployment files on your feature branch before publishing.
 The deploy script refuses a dirty Git tree so `/backend/health.commit` identifies
-the code actually shipped. It builds/uploads both images, publishes the Worker,
-uploads secrets, then waits for `/login`, the expected API revision and database,
+the code actually shipped. It builds/uploads both images, publishes the Worker
+with its secrets, then waits for real HTML at `/login`, the expected API revision and database,
 and `/backend/ready` (including the care-worker heartbeat) to pass:
 
 ```sh
@@ -99,23 +131,19 @@ test message. Gemini does not decide emergency escalation.
 
 ## Cloudflare dashboard / automatic deploy settings
 
-Use **Workers & Pages → Create → Import repository**, choose
-`Sabalpp/HackPrinceton`, then configure Workers Builds. This is a Workers/Containers
-deployment, not a static Pages upload.
-
-| Dashboard field | Value |
-| --- | --- |
-| Production branch | `main` after the reviewed deployment change is merged |
-| Root directory | Repository root (`/`), since images need both apps |
-| Build command | `npm --prefix deploy/cloudflare install --no-package-lock && npm --prefix deploy/cloudflare test && python3 -m unittest discover -s deploy/cloudflare -p 'test_*.py'` |
-| Deploy command | `npm --prefix deploy/cloudflare run deploy` |
-| Build environment | Node 24; allow Docker image builds |
-| Public build variables | Non-secret settings listed in `.env.example` |
-| Build secrets | The six app secrets above, plus deployment token if using one |
-| Feature-branch deployment | Disable for the production Worker; use a separate staging Worker/database to test |
+Use the dashboard settings at the top of this page. Put non-secret values from
+`.env.example` in build variables and credentials in build secrets. Use the
+Cloudflare build's deployment token or a scoped operator token with permission
+to deploy Workers, Durable Objects, Container applications/images and, if used,
+the selected custom domain. A Pages-only token is insufficient.
 
 The script reads allowlisted environment variables as overrides, so CI needs no
-committed `.env`. Cloudflare's build environment can build the Dockerfiles; see
+committed `.env`. `check`, `build` and `deploy` never save these overrides to disk
+as a private `.env`; only the explicit `configure` command saves local settings.
+`build` compiles and validates the Worker through Wrangler without publishing.
+GitHub CI additionally builds and boots both images against synthetic PostgreSQL,
+checks production authentication and the care-worker heartbeat, and verifies
+recovery after worker failure. Cloudflare's build environment can build the Dockerfiles; see
 [deploying Containers with Workers Builds](https://developers.cloudflare.com/containers/guides/deploy/).
 Do not change a production Worker's feature-branch command to a full deploy.
 
@@ -164,4 +192,5 @@ Google OAuth tokens nor recorded health JSONL files are copied into these images
 
 References: [Container startup and routing](https://developers.cloudflare.com/containers/get-started/),
 [runtime environment and secrets](https://developers.cloudflare.com/containers/examples/env-vars-and-secrets/),
+[upload secrets with code](https://developers.cloudflare.com/workers/configuration/secrets/#upload-secrets-alongside-code),
 [Durable Object Container API](https://developers.cloudflare.com/containers/api/durable-object-container/).

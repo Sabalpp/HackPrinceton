@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "preinstall": "node target.mjs",
+    "pretest": "node target.mjs",
     "configure": "node configure.mjs",
     "check": "node configure.mjs --check",
+    "build": "node configure.mjs --build",
     "test": "node --test test/*.test.mjs",
     "deploy": "node configure.mjs --deploy",
     "logs": "wrangler tail --config wrangler.generated.json"

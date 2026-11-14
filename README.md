@@ -54,6 +54,10 @@ neighbor's help still follow the parent-approval workflow below.
 
 For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
+For Cloudflare, use [the Workers + Containers settings](docs/cloudflare-deployment.md).
+The app needs a running Next.js server and Python backend; it has no static Pages
+output directory. The deployment guide explains how to replace a failing
+`pages.dev` setup with the complete app.
 Blood pressure comes from reported cuff readings. [The health evidence and rules](docs/health-evidence.md)
 separate clinical guidance from the app's unvalidated seven-qualified-day learning heuristic.
 “This is usual for me” is a provisional reference and never disables urgent guidance.

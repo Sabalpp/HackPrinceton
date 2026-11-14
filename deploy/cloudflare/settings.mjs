@@ -27,6 +27,7 @@ export function validateSettings(settings, {secrets = true} = {}) {
   }
   if (origin && s.CUSTOM_DOMAIN === 'false' && (!origin.hostname.endsWith('.workers.dev') || !origin.hostname.startsWith(`${s.WORKER_NAME}.`) || origin.hostname.split('.').length !== 4)) errors.push('The workers.dev address must match WORKER_NAME and your account subdomain.');
   if (origin && s.CUSTOM_DOMAIN === 'true' && origin.hostname.endsWith('.workers.dev')) errors.push('CUSTOM_DOMAIN=true requires your own Cloudflare-managed domain.');
+  if (origin && origin.hostname.endsWith('.pages.dev')) errors.push('This app runs on Workers with Containers, not Pages. Use your workers.dev address or your own domain.');
   for (const key of ['API_INSTANCE_TYPE', 'WEB_INSTANCE_TYPE']) {
     if (!INSTANCE_TYPES.includes(s[key])) errors.push(`${key} must be ${INSTANCE_TYPES.join(', ')}.`);
   }
@@ -77,6 +78,8 @@ export function wranglerConfig(s, commit) {
     // Avoid logging URLs containing auth tokens or health/request identifiers.
     observability: {enabled: false},
     vars: runtimeVariables(s, commit),
+    secrets: {required: ['DATABASE_URL', 'INGEST_API_KEY',
+      ...(s.MESSAGING_CHANNEL === 'photon' ? ['PHOTON_API_KEY', 'PHOTON_PROJECT_ID', 'PHOTON_WEBHOOK_SECRET'] : [])]},
     containers: [
       {class_name: 'FarCareApi', scheduling_policy: 'durable_object',
         images: {base: {dockerfile: './Dockerfile.api', build_context: '../..'}},
