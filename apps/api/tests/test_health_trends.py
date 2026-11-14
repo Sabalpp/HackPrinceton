@@ -1,9 +1,13 @@
 """Calendar windows and provenance guards for daily personal-baseline trends."""
 
 from datetime import UTC, datetime, timedelta, timezone
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
+from app.health import service
+from app.health.tiger import project_daily
 from app.health.trends import compute_trends, metric_trend
 from app.schemas.contracts import DataMode, HealthObservation
 
@@ -215,3 +219,161 @@ def test_empty_input_and_observation_text_stay_non_diagnostic():
                 for word in ("disease", "diagnos", "depress", "illness")
             )
         assert [record.model_dump() for record in records] == before
+
+
+def test_explicit_completed_day_cutoff_excludes_only_current_steps_day():
+    records = [
+        observation(age, steps=None if age == 0 else (2000 if age <= 5 else 4000))
+        for age in range(13)
+    ]
+    cutoff = END.date() - timedelta(days=1)
+    result = metric_trend(records, "steps", completed_steps_through=cutoff)
+    assert result.baseline == 4000
+    assert result.recent == 2000
+    assert result.percent_change == -50 and result.notable
+    assert "5 completed days ending 2026-11-13" in result.observation
+    # An unmarked missing latest date still fails; it is never automatically skipped.
+    assert_insufficient(metric_trend(records, "steps"))
+
+
+@pytest.mark.parametrize("missing_age", [1, 3, 5])
+def test_completed_day_cutoff_does_not_slide_over_missing_recent_dates(missing_age):
+    records = history()
+    records[0] = observation(0, steps=None)
+    records[missing_age] = observation(missing_age, steps=None)
+    result = metric_trend(records, "steps", completed_steps_through=END.date() - timedelta(days=1))
+    assert_insufficient(result)
+
+
+def test_completed_day_cutoff_does_not_slide_back_to_stale_history():
+    # Plenty of historical days, but none reaches the caller's completed-day cutoff.
+    records = [observation(age) for age in range(2, 37)]
+    assert_insufficient(
+        metric_trend(records, "steps", completed_steps_through=END.date() - timedelta(days=1))
+    )
+
+
+def test_completed_day_cutoff_does_not_hide_conflicting_or_mixed_history():
+    cutoff = END.date() - timedelta(days=1)
+    records = history() + [observation(1, observation_id="conflicting_yesterday", steps=9999)]
+    assert_insufficient(metric_trend(records, "steps", completed_steps_through=cutoff))
+    records = history()
+    records[6] = observation(6, source="simulated", data_mode=DataMode.simulated)
+    result = metric_trend(records, "steps", completed_steps_through=cutoff)
+    assert_insufficient(result)
+    assert "sources or data modes" in result.observation
+
+
+def test_completed_day_cutoff_does_not_change_sleep_or_resting_hr_windows():
+    records = history()
+    records[0] = observation(0, steps=None, sleep_minutes=None, resting_heart_rate=None)
+    results = {
+        trend.metric: trend
+        for trend in compute_trends(records, completed_steps_through=END.date() - timedelta(days=1))
+    }
+    assert results["steps"].notable
+    assert_insufficient(results["sleep_minutes"])
+    assert_insufficient(results["resting_heart_rate"])
+
+
+def test_tiger_projection_and_cutoff_share_parent_local_calendar_dates():
+    # UTC has advanced to Nov 14, but the parent's Nov 13 is still incomplete.
+    now = datetime(2026, 11, 14, 2, tzinfo=UTC)
+    zone = ZoneInfo("America/Los_Angeles")
+    today = now.astimezone(zone).date()
+    rows = []
+    for age in range(13):
+        day = today - timedelta(days=age)
+        begin = datetime.combine(day, datetime.min.time(), zone) + timedelta(hours=9)
+        rows.append(
+            {
+                "event_id": f"step_fixture_{age}",
+                "subject_id": "wearer_fixture",
+                "source": "google_health",
+                "source_stream": "watch_fixture",
+                "metric": "steps",
+                "observed_at": begin,
+                "ended_at": begin + timedelta(minutes=1),
+                "local_date": day,
+                "value": 2000 if age <= 5 else 4000,
+                "unit": "count",
+                "kind": "interval",
+                "attributes": {
+                    "start_local_date": day.isoformat(),
+                    "coverage_end_local_date": day.isoformat(),
+                },
+            }
+        )
+    records = project_daily(
+        rows,
+        subject_id="wearer_fixture",
+        parent_id="parent_fixture",
+        start=today - timedelta(days=12),
+        end=today,
+        now=now,
+        timezone="America/Los_Angeles",
+    )
+    assert records[-1].steps is None
+    assert records[-1].timestamp == datetime(2026, 11, 13, tzinfo=UTC)
+    result = metric_trend(records, "steps", completed_steps_through=today - timedelta(days=1))
+    assert result.baseline == 4000 and result.recent == 2000
+    assert result.notable and result.percent_change == -50
+    # A UTC-derived cutoff would retain the incomplete local day and must fail.
+    assert_insufficient(
+        metric_trend(records, "steps", completed_steps_through=now.date() - timedelta(days=1))
+    )
+
+
+@pytest.mark.parametrize("parent_timezone", ["America/Los_Angeles", "Asia/Kathmandu"])
+def test_summary_wires_completed_steps_cutoff_from_parent_timezone(monkeypatch, parent_timezone):
+    now = datetime(2026, 11, 14, 2, tzinfo=UTC)
+    today = now.astimezone(ZoneInfo(parent_timezone)).date()
+    local_day_label = datetime.combine(today, datetime.min.time(), UTC)
+    records = [
+        observation(
+            age,
+            timestamp=local_day_label - timedelta(days=age),
+            steps=None if age == 0 else (2000 if age <= 5 else 4000),
+        )
+        for age in range(13)
+    ]
+    monkeypatch.setattr(service, "recent", lambda *_: records)
+    monkeypatch.setattr(service, "utcnow", lambda: now)
+    parent = SimpleNamespace(role="parent", timezone=parent_timezone)
+    session = SimpleNamespace(get=lambda *_: parent)
+    result = service.summary(session, "parent_fixture")
+    steps = next(trend for trend in result.trends if trend.metric == "steps")
+    assert result.data_mode == "live" and result.suggest_checkin
+    assert steps.baseline == 4000 and steps.recent == 2000
+    assert (today - timedelta(days=1)).isoformat() in steps.observation
+    assert result.observations == records
+
+
+@pytest.mark.parametrize("parent_timezone", [None, "", "Not/AZone"])
+def test_summary_invalid_timezone_leaves_steps_unavailable(monkeypatch, parent_timezone):
+    monkeypatch.setattr(service, "recent", lambda *_: history())
+    parent = SimpleNamespace(role="parent", timezone=parent_timezone)
+    session = SimpleNamespace(get=lambda *_: parent)
+    result = service.summary(session, "parent_fixture")
+    by_metric = {trend.metric: trend for trend in result.trends}
+    assert_insufficient(by_metric["steps"])
+    assert "time zone is missing or invalid" in by_metric["steps"].observation
+    assert by_metric["sleep_minutes"].direction == "stable"
+    assert by_metric["resting_heart_rate"].direction == "stable"
+    assert not result.suggest_checkin
+
+
+def test_summary_missing_parent_cannot_guess_completed_steps_date(monkeypatch):
+    monkeypatch.setattr(service, "recent", lambda *_: history())
+    result = service.summary(SimpleNamespace(get=lambda *_: None), "parent_fixture")
+    assert_insufficient(next(trend for trend in result.trends if trend.metric == "steps"))
+
+
+def test_summary_simulated_history_keeps_existing_calendar_comparison(monkeypatch):
+    records = [row.model_copy(update={"data_mode": DataMode.simulated}) for row in history()]
+    monkeypatch.setattr(service, "recent", lambda *_: records)
+    session = SimpleNamespace(get=lambda *_: pytest.fail("Simulated history needs no live cutoff"))
+    result = service.summary(session, "parent_fixture")
+    assert result.data_mode == "simulated"
+    assert result.trends == compute_trends(records)
+    assert result.suggest_checkin

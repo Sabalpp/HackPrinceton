@@ -36,9 +36,10 @@ SEED_HEALTH_DATA=false
 ```
 
 For a controlled local demo, use `MESSAGING_CHANNEL=console`,
-`BACKGROUND_TASKS_ENABLED=false`, `PROACTIVE_CHECKINS_ENABLED=false`, and
-`PHOTON_DELIVERY=off`. These existing settings prevent the verification run from
-contacting anyone. Bind the local API to loopback.
+`BACKGROUND_TASKS_ENABLED=true`, `PROACTIVE_CHECKINS_ENABLED=false`, and
+`PHOTON_DELIVERY=off`. Console delivery keeps messages simulated while the
+background tick processes care/safety timeouts. Isolated automated tests disable
+the loop and invoke a tick directly. Bind the local API to loopback.
 
 ```bash
 cd apps/api
@@ -48,7 +49,7 @@ uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 uv run python -m app.health.sync_tiger \
   --subject-id YOUR_AUTHORIZED_UPSTREAM_SUBJECT \
   --parent-id YOUR_EXISTING_PARENT_ID \
-  --timezone America/New_York --days 8 \
+  --days 35 \
   --api-url http://127.0.0.1:8000 --watch-seconds 60
 ```
 
@@ -57,6 +58,10 @@ does not follow redirects, uses bounded requests, and retries without advancing
 its successful-payload digest on failure. Restart replay uses stable observation
 IDs. It posts through the route so receipts and SSE events retain their current
 behavior. A successful unchanged replay creates no extra health timeline event.
+Daily projection and completed-step comparisons both use the selected parent's
+profile timezone. If supplied, `--timezone` must match that profile; conflicting
+calendars are rejected before reading measurements. A longer lookback does not
+invent missing history.
 
 The sensor collector must already supply `air_health.measurements_current` with
 event identity, subject/source/stream, metric, times/date, value/unit/kind and
@@ -77,6 +82,10 @@ Missing and ambiguous values remain null. Alternative devices are not added
 together. Cross-midnight steps are not allocated proportionally. The trend engine
 uses actual calendar windows, deduplicates identical same-day values, excludes
 conflicts, and refuses to compare across real/simulated sources or a zero baseline.
+Live Fitbit step comparisons end at the parent's local yesterday. Today's null
+steps no longer make every otherwise-complete comparison fail. A missing/stale
+completed day still blocks the comparison; an invalid parent timezone also blocks
+step comparison. Sleep and reported resting HR retain their existing behavior.
 
 The shared API currently has no fields for instantaneous BPM, SpO2, HRV, skin
 temperature, source coverage, or raw sleep stages. Those remain in Tiger. Adding
@@ -92,6 +101,13 @@ in its local verification configuration.
 
 ## Verification and ownership
 
+An authorized family status query now reports the latest dated available steps,
+reported resting HR and main-sleep record, even when no trend is notable. Missing
+values, conflicting same-date records, live/simulated provenance and insufficient
+baseline history remain explicit. This query is read-only and requires no parent
+message or contact with a neighbor. `share_health=false` suppresses these details.
+Ordinary help requests retain their existing parent-approval requirement.
+
 Normalization/projector fixtures are synthetic and offline. Actual canonical
 records were independently queried from Tiger, projected, accepted by the real
 FastAPI route in an isolated temporary SQLite database, replayed idempotently,
@@ -102,14 +118,23 @@ long-running Python API-to-Tiger connection is configured but not claimed as
 verified. The sensor uploader's separate permitted network runtime connected over
 TLS, stored actual data, and verified archive hashes against the local outbox.
 
-Final verification: **191 backend tests passed**; `ruff check .` passed and
-`ruff format --check .` reported 62 formatted files. The TestClient emits one
+Current verification: **219 backend tests passed**; `ruff check .` passed and
+`ruff format --check .` reported 63 formatted files. The TestClient emits one
 upstream timeout-deprecation warning; no check was disabled. The real-data
 handoff produced eight daily records, preserved nulls, labeled them live, replayed
 with zero changed rows, emitted one health sync event and enforced sharing.
+The separate private whole-workflow verifier passed **107 checks**, including
+passive son queries before any parent message, exact dated values from the real
+cached projection, consent, responder acceptance/completion, timeouts and fresh
+sharing checks. It made no external network calls and sent only console messages.
+This does not verify live Photon delivery, browser rendering or revocation during
+an already-open SSE connection.
 
-All implementation changes are in Sabal-owned health modules and tests; no shared
-contract, route, model, messaging service or frontend source was changed. The
+Health changes are in Sabal-owned modules/tests. The user's passive-monitoring
+request also requires a narrowly scoped read-only change to `family.status_lines`,
+included for the core owner's review. No shared contract, route, model, outbound
+messaging or care-request state-machine behavior was changed. Frontend source
+was inspected separately, with no edits. The
 adapter and trend fixes were implemented independently, then integrated with the
 existing backend test suite. This branch includes the latest core branch ancestry;
 review/merge that upstream work before promoting a draft PR into main.

@@ -158,7 +158,9 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--days", type=_days, default=7)
     result.add_argument("--api-url", required=True)
-    result.add_argument("--timezone", help="Override the existing parent's IANA timezone")
+    result.add_argument(
+        "--timezone", help="Require this IANA timezone to match the existing parent profile"
+    )
     mode = result.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true", help="Sync once (the default)")
     mode.add_argument("--watch-seconds", type=_watch)
@@ -174,7 +176,12 @@ def read_projection(args: argparse.Namespace) -> list[HealthObservation]:
             parent = session.get(Person, args.parent_id)
             if parent is None or parent.role != "parent":
                 raise SyncError("The selected parent does not exist in the configured database")
-            timezone = args.timezone or parent.timezone
+            if args.timezone and args.timezone != parent.timezone:
+                raise SyncError(
+                    "Projection timezone must match the parent profile so completed-day "
+                    "comparisons use the same calendar. Omit --timezone to use the profile."
+                )
+            timezone = parent.timezone
             now = utcnow()
             end = now.astimezone(ZoneInfo(timezone)).date()
             return fetch_daily(

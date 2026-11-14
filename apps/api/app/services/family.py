@@ -60,12 +60,66 @@ def status_lines(session: Session, link: FamilyLink, parent: Person) -> list[str
             lines.append(f'Latest check-in ({_ago(latest.created_at)}): "{latest.summary}"')
     if link.share_health:
         summ = health.summary(session, parent.id)
+
+        def provenance(observations) -> str:
+            labels = {
+                "simulated data"
+                if obs.data_mode == "simulated" or obs.source == "simulated"
+                else "live Fitbit data"
+                for obs in observations
+            }
+            if len(labels) > 1:
+                return "mixed live/simulated data"
+            return next(iter(labels), "no recorded data")
+
+        # These are dated daily records, not live measurements. Missing newer
+        # values never replace an older recorded value with an invented zero.
+        dated = [
+            (
+                obs.timestamp.date()
+                if obs.timestamp.tzinfo is None
+                else obs.timestamp.astimezone(UTC).date(),
+                obs,
+            )
+            for obs in summ.observations
+        ]
+        if dated:
+            latest_day = max(day for day, _ in dated)
+            for metric, label, unit in (
+                ("steps", "recorded steps", ""),
+                ("resting_heart_rate", "reported resting heart rate", " bpm"),
+                ("sleep_minutes", "recorded main sleep", " min"),
+            ):
+                available = [(day, obs) for day, obs in dated if getattr(obs, metric) is not None]
+                if not available:
+                    lines.append(f"{label.capitalize()}: no value recorded through {latest_day}.")
+                    continue
+                recorded_day = max(day for day, _ in available)
+                records = [obs for day, obs in available if day == recorded_day]
+                values = {getattr(obs, metric) for obs in records}
+                origin = provenance(records)
+                if len(values) > 1:
+                    line = (
+                        f"{label.capitalize()}: conflicting values for {recorded_day} ({origin})."
+                    )
+                else:
+                    value = next(iter(values))
+                    line = f"Latest {label}: {value:,}{unit} on {recorded_day} ({origin})."
+                if recorded_day < latest_day:
+                    line += f" No value recorded for {latest_day}."
+                lines.append(line)
+        else:
+            lines.append("No health readings recorded yet.")
+
         notable = [t.observation for t in summ.trends if t.notable]
-        if notable:
-            label = " (simulated data)" if summ.data_mode != "live" else ""
-            lines.append(f"Activity: {notable[0]}{label}")
+        insufficient = [t.observation for t in summ.trends if t.direction == "insufficient_data"]
+        featured = notable or insufficient or [t.observation for t in summ.trends]
+        if featured:
+            lines.append(f"Health trend ({provenance(summ.observations)}): {featured[0]}")
+        if notable and insufficient:
+            lines.append(f"Health comparison: {insufficient[0]}")
     if inc is None and not care_requests.open_requests(session, parent.id):
-        lines.append(f"{name}: no active alerts or open help requests.")
+        lines.append(f"{name}: no recorded alerts or open help requests.")
     return lines
 
 

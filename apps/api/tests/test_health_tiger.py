@@ -11,12 +11,33 @@ import pytest
 from app.config import get_settings
 from app.db import session_scope
 from app.health import sync_tiger, tiger
-from app.models import FamilyLink
+from app.models import FamilyLink, Person
 from tests.conftest import ADMIN, CHILD
 
 NOW = datetime(2026, 11, 14, 12, tzinfo=UTC)
 DAY = date(2026, 11, 10)
 KEY = "synthetic-ingest-test"
+
+
+def test_sync_uses_parent_calendar_and_rejects_mismatched_override(client, monkeypatch):
+    # At this instant it is Nov 15 in Kathmandu but still Nov 14 in New York.
+    now = datetime(2026, 11, 14, 22, tzinfo=UTC)
+    with session_scope() as session:
+        parent = session.get(Person, "parent_001")
+        parent.timezone = "Asia/Kathmandu"
+        session.add(parent)
+    fetched = Mock(return_value=[])
+    monkeypatch.setattr(sync_tiger, "fetch_daily", fetched)
+    monkeypatch.setattr(sync_tiger, "utcnow", lambda: now)
+    args = SimpleNamespace(subject_id="wearer", parent_id="parent_001", days=8, timezone=None)
+    assert sync_tiger.read_projection(args) == []
+    assert fetched.call_args.kwargs["timezone"] == "Asia/Kathmandu"
+    assert fetched.call_args.kwargs["end"] == date(2026, 11, 15)
+    fetched.reset_mock()
+    args.timezone = "America/New_York"
+    with pytest.raises(sync_tiger.SyncError, match="must match the parent profile"):
+        sync_tiger.read_projection(args)
+    fetched.assert_not_called()
 
 
 def record(metric="steps", *, day=DAY, value=100, stream="watch_a", **overrides):

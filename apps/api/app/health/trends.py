@@ -2,6 +2,7 @@
 
 Baseline = mean of valid distinct dates in the 30 days before the recent window.
 Recent   = mean of the RECENT_DAYS calendar dates ending on the latest observed date.
+An explicit completed-day cutoff can instead anchor the steps comparison.
 Sources and data modes are never combined into a comparison.
 """
 
@@ -25,7 +26,20 @@ DISCLAIMER = (
 )
 
 
-def metric_trend(observations: list[HealthObservation], metric: str) -> MetricTrend:
+def metric_trend(
+    observations: list[HealthObservation],
+    metric: str,
+    *,
+    completed_steps_through: date | None = None,
+) -> MetricTrend:
+    """Compare daily values, optionally ending steps on an explicit completed day.
+
+    The caller determines this date in the parent's timezone. Source local-date
+    labels are encoded as UTC midnight; the server's UTC date cannot determine
+    whether that parent's current day is complete. An explicit cutoff anchors
+    the window even if its last date is missing, rather than seeking an older
+    date with a value. It has no effect on sleep or resting-heart-rate windows.
+    """
     name, fmt = LABELS[metric]
 
     def insufficient(reason: str) -> MetricTrend:
@@ -52,6 +66,12 @@ def metric_trend(observations: list[HealthObservation], metric: str) -> MetricTr
         for observation in observations
     ]
     latest_day = max(day for day, _ in dated)
+    recent_period = f"the last {RECENT_DAYS} days"
+    if metric == "steps" and completed_steps_through is not None:
+        latest_day = completed_steps_through
+        recent_period = (
+            f"the {RECENT_DAYS} completed days ending {completed_steps_through.isoformat()}"
+        )
     recent_start = latest_day - timedelta(days=RECENT_DAYS - 1)
     baseline_start = recent_start - timedelta(days=30)
     candidates = [
@@ -89,13 +109,11 @@ def metric_trend(observations: list[HealthObservation], metric: str) -> MetricTr
     notable = abs(change) >= NOTABLE[metric]
     direction = "stable" if abs(change) < 0.05 else ("up" if change > 0 else "down")
     if direction == "stable":
-        text = (
-            f"Average {name} over the last {RECENT_DAYS} days ({fmt.format(r)}) is close to usual."
-        )
+        text = f"Average {name} over {recent_period} ({fmt.format(r)}) is close to usual."
     else:
         word = "higher" if change > 0 else "lower"
         text = (
-            f"Average {name} over the last {RECENT_DAYS} days ({fmt.format(r)}) is "
+            f"Average {name} over {recent_period} ({fmt.format(r)}) is "
             f"{abs(change):.0%} {word} than usual ({fmt.format(b)})."
         )
     return MetricTrend(
@@ -109,5 +127,10 @@ def metric_trend(observations: list[HealthObservation], metric: str) -> MetricTr
     )
 
 
-def compute_trends(observations: list[HealthObservation]) -> list[MetricTrend]:
-    return [metric_trend(observations, m) for m in ("steps", "sleep_minutes", "resting_heart_rate")]
+def compute_trends(
+    observations: list[HealthObservation], *, completed_steps_through: date | None = None
+) -> list[MetricTrend]:
+    return [
+        metric_trend(observations, metric, completed_steps_through=completed_steps_through)
+        for metric in ("steps", "sleep_minutes", "resting_heart_rate")
+    ]
