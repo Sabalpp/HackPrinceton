@@ -7,6 +7,7 @@ from app.auth import require_ingest_key
 from app.db import get_session
 from app.health import service as health
 from app.models import HealthObservationRow, Person
+from app.mutations import action_session
 from app.schemas.contracts import (
     FallIngestResult,
     FallSuspectedEvent,
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api", tags=["ingestion"], dependencies=[Depends(requ
 
 
 @router.post("/events/fall", response_model=FallIngestResult)
-def ingest_fall(event: FallSuspectedEvent, session: Session = Depends(get_session)):
+def ingest_fall(event: FallSuspectedEvent, session: Session = Depends(action_session)):
     try:
         return safety.ingest_fall_event(session, event)
     except LookupError:

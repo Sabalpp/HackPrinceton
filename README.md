@@ -3,15 +3,17 @@
 **Far away. Always there.** ❤️
 
 FarCare is an AI care-coordination platform for aging parents whose children live far away.
-Parents text FarCare over iMessage. Gemini handles the conversation. When the parent needs help,
-FarCare asks their pre-approved nearby Care Circle (a neighbor, a family friend) and keeps the
-distant child informed in real time. Possible-fall events start a deterministic safety check
-and escalation.
+Parents can use a simple check-in screen or message FarCare through a configured Photon
+channel. Family members see consented health trends; trusted nearby helpers see only their
+assigned tasks. Gemini supports conversation. Deterministic code handles consent, safety
+checks, and escalation. A supervised worker processes messages and retries across restarts.
 
 > A notification tells you something may be wrong. FarCare helps connect your parent with
 > someone who can actually be there.
 
-Built at HackPrinceton Fall 2026. **Hackathon prototype: not a medical device.** The default
+Built at HackPrinceton Fall 2026. **Prepared for an invited pilot; public production launch
+requires the deployment and validation steps below.** This is not a medical device or an
+emergency response service. The default
 demo uses synthetic people and health readings labeled `simulated`. The authenticated
 Tiger adapter also supports real Fitbit steps, reported resting heart rate, and main
 sleep with original dates, missing values, and family sharing permissions.
@@ -37,13 +39,24 @@ npm ci
 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
 
-Open **http://localhost:3000** for the dashboard, **http://localhost:8000/console**
+Open **http://localhost:3000/login** and choose **Parent**, **Family**, or **Helper** to
+explore separate demo accounts. Use separate browser profiles for simultaneous roles.
+The real routes are `/parent`, `/family`, and `/respond`; `/setup` creates private
+invitations. No browser bundle contains a shared family access token.
+
+Open **http://localhost:8000/console**
 for the workflow console, or **http://localhost:8000/docs** for API documentation.
 Fonts are included locally, so startup does not need Google Fonts. If the API's
 private `.env` already selects Tiger, it requires network access to that database.
 
 The child's status question works without a parent message first. Requests for a
 neighbor's help still follow the parent-approval workflow below.
+
+For individual accounts, production deployment, and device mapping, follow
+[the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
+Blood pressure comes from reported cuff readings. [The health evidence and rules](docs/health-evidence.md)
+separate clinical guidance from the app's unvalidated seven-qualified-day learning heuristic.
+“This is usual for me” is a provisional reference and never disables urgent guidance.
 
 Try the whole Care Circle flow without phones:
 

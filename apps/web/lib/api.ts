@@ -42,14 +42,10 @@ export type DemoFallResult = {
 };
 export type FallTrace = Schemas["FallDemoIn"]["trace"];
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
-
-/**
- * Viewer token for the family dashboard. Defaults to the documented dev token, which the
- * backend refuses in production; deployments set NEXT_PUBLIC_VIEWER_TOKEN.
- */
-export const VIEWER_TOKEN = process.env.NEXT_PUBLIC_VIEWER_TOKEN ?? "dev-child-token";
+let csrfToken: string | null = null;
+export function setSessionCsrf(token: string | null) { csrfToken = token; }
 
 export class ApiError extends Error {
   constructor(
@@ -60,7 +56,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
@@ -68,14 +64,27 @@ async function request<T>(path: string, token: string | null, init?: RequestInit
       headers: {
         ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.method && init.method !== "GET" && csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       },
       cache: "no-store",
+      credentials: "include",
     });
   } catch {
     // fetch() rejects only on network failure (API down, CORS, offline).
     throw new ApiError(0, "Can't reach FarCare right now.");
   }
-  if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText} for ${path}`);
+  if (!res.ok) {
+    if (res.status === 401 && !token && !path.startsWith("/api/auth/") && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("farcare:session-expired"));
+    }
+    let detail = "The request could not be completed. Please try again.";
+    try {
+      const body = await res.json() as { detail?: unknown };
+      if (typeof body.detail === "string") detail = body.detail;
+    } catch {}
+    throw new ApiError(res.status, detail);
+  }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -140,8 +149,8 @@ export function subscribeTimeline(
       off();
     };
   }
-  const url = `${API_URL}${p(parentId)}/stream?access_token=${encodeURIComponent(token)}`;
-  const source = new EventSource(url);
+  const url = `${API_URL}${p(parentId)}/stream${token ? `?access_token=${encodeURIComponent(token)}` : ""}`;
+  const source = new EventSource(url, { withCredentials: true });
   source.onopen = () => onStatus?.("live");
   source.onerror = () => onStatus?.("reconnecting");
   source.addEventListener("timeline", (e) => onEvent(JSON.parse((e as MessageEvent).data)));

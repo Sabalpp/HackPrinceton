@@ -38,7 +38,11 @@ def get_client() -> Photon:
     with _lock:
         if _client is None:
             settings = get_settings()
-            _client = Photon(headers={"Authorization": f"Bearer {settings.photon_api_key}"})
+            _client = Photon(
+                headers={"Authorization": f"Bearer {settings.photon_api_key}"},
+                timeout=10,
+                max_attempts=1,
+            )
         return _client
 
 

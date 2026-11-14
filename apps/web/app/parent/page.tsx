@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ParentMode } from "@/components/farcare/parent-mode";
+import { ParentScreen } from "@/components/portal/parent";
 
-export const metadata: Metadata = { title: "FarCare · आमा" };
+export const metadata: Metadata = { title: "FarCare · My day" };
 
 export default function ParentPage() {
-  return <ParentMode />;
+  return <ParentScreen />;
 }

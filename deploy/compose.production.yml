@@ -1,0 +1,80 @@
+# Private deployment template. No container service binds a public host port.
+# A separately configured HTTPS ingress must forward to 127.0.0.1:8080.
+name: farcare
+
+x-api: &api
+  build:
+    context: ../apps/api
+  env_file: .env.production
+  environment:
+    APP_ENV: production
+    DATABASE_URL: ${DATABASE_URL:?Set the shared PostgreSQL URL}
+    INGEST_API_KEY: ${INGEST_API_KEY:?Set a strong ingest key}
+    CORS_ORIGINS: ${PUBLIC_ORIGIN:?Set the real HTTPS frontend origin}
+    DEMO_MODE: "false"
+    SEED_DEMO_DATA: "false"
+    SEED_HEALTH_DATA: "false"
+    BACKGROUND_TASKS_ENABLED: "false"
+    REGISTRATION_ENABLED: "false"
+    PHOTON_DELIVERY: webhook
+    MESSAGING_CHANNEL: photon
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 120s
+  security_opt:
+    - no-new-privileges:true
+  networks: [private]
+
+services:
+  api:
+    <<: *api
+    expose: ["8000"]
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import json,urllib.request; d=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3)); assert d['database']=='ok'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *api
+    command: ["/app/.venv/bin/python", "-m", "app.worker"]
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-m", "app.worker", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: ../../deploy/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: /backend
+    restart: unless-stopped
+    init: true
+    expose: ["3000"]
+    security_opt:
+      - no-new-privileges:true
+    networks: [private]
+
+  gateway:
+    image: caddy:2
+    ports: ["127.0.0.1:8080:80"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks: [private]
+    depends_on: [api, web]
+
+networks:
+  private:
+    # Outbound access is required for PostgreSQL, Photon and Gemini. Services
+    # remain unreachable from the host unless explicitly published above.
+    driver: bridge

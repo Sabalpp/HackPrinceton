@@ -128,6 +128,11 @@ def _relationship(session: Session, parent_id: str, responder_id: str) -> str:
     return member.relationship if member else "contact"
 
 
+def parent_first_name(parent: Person) -> str:
+    parts = parent.display_name.split()
+    return parts[0] if parts else "the parent"
+
+
 def eligible_responders(
     session: Session, parent_id: str, category: str, *, emergency: bool, exclude: set[str]
 ) -> list[tuple[CareCircleMember, Person]]:
@@ -148,7 +153,7 @@ def eligible_responders(
             continue
         if not emergency and category not in member.categories:
             continue
-        if not is_reachable(person):
+        if not is_reachable(person, session):
             continue
         out.append((member, person))
     return out
@@ -198,6 +203,10 @@ def create_request(
 
 def propose_next(session: Session, req: CareRequestRow) -> bool:
     """Pick the next authorized responder and ask the parent for approval."""
+    if req.origin != CareRequestOrigin.emergency:
+        # Consent to ask the previous responder does not transfer to a new one.
+        req.parent_approved = False
+        req.approval_basis = None
     parent = session.get(Person, req.parent_id)
     assert parent is not None
     candidates = eligible_responders(
@@ -278,7 +287,9 @@ def notify_requester(session: Session, req: CareRequestRow, render, key: str) ->
     who = (link.parent_label if link and link.parent_label else None) or (
         parent.display_name if parent else "them"
     )
-    send_to_person(session, requester, render(who), key)
+    send_to_person(
+        session, requester, render(who), key, parent_id=req.parent_id, visibility="family"
+    )
 
 
 def dispatch(session: Session, req: CareRequestRow) -> bool:
@@ -286,16 +297,28 @@ def dispatch(session: Session, req: CareRequestRow) -> bool:
     parent = session.get(Person, req.parent_id)
     responder = session.get(Person, req.responder_id) if req.responder_id else None
     assert parent is not None and responder is not None
+    parent_name = parent_first_name(parent)
     # Skip details that just restate the task (e.g. "groceries" for a grocery request).
     redundant = req.details.strip(" .").lower() in label(req).lower()
     details = f" Details: {req.details.strip(' .')}." if req.details and not redundant else ""
     text = (
-        f"Hi {responder.display_name}, this is FarCare, helping {parent.display_name}. "
-        f"{parent.display_name} is asking for {label(req)}.{details} Can you help? "
+        f"Hi {responder.display_name}, this is FarCare, helping {parent_name}. "
+        f"{parent_name} is asking for {label(req)}.{details} Can you help? "
         "Reply YES (you can add a time, like 'YES 4pm' or 'YES 20 min') or NO."
     )
     req.attempted_responder_ids = [*req.attempted_responder_ids, responder.id]
-    msg = send_to_person(session, responder, text, f"care:{req.id}:ask:{responder.id}")
+    msg = send_to_person(
+        session,
+        responder,
+        text,
+        f"care:{req.id}:ask:{responder.id}",
+        parent_id=req.parent_id,
+        visibility="responder_emergency"
+        if req.origin == CareRequestOrigin.emergency
+        else "responder",
+        request_id=req.id,
+        offer_only=True,
+    )
     if delivered(msg):
         transition(
             session,
@@ -317,6 +340,8 @@ def dispatch(session: Session, req: CareRequestRow) -> bool:
         parent,
         f"I'm sorry, I couldn't reach {responder.display_name}. I've let your family know.",
         f"care:{req.id}:unreachable:parent",
+        parent_id=req.parent_id,
+        visibility="direct",
     )
     notify_family(
         session,
@@ -365,6 +390,7 @@ def dispatch_emergency_next(session: Session, req: CareRequestRow, initial: bool
 
     parent = session.get(Person, req.parent_id)
     assert parent is not None
+    parent_name = parent_first_name(parent)
     num = f" ({parent.emergency_number})" if parent.emergency_number else ""
     candidates = eligible_responders(
         session,
@@ -384,12 +410,23 @@ def dispatch_emergency_next(session: Session, req: CareRequestRow, initial: bool
         req.responder_id = person.id
         req.attempted_responder_ids = [*req.attempted_responder_ids, person.id]
         text = (
-            f"URGENT from FarCare: {parent.display_name} {req.details}. "
-            f"Can you check on {parent.display_name} now? Reply YES with how many minutes "
+            f"URGENT from FarCare: {parent_name} {req.details}. "
+            f"Can you check on {parent_name} now? Reply YES with how many minutes "
             f"you need (e.g. 'YES 10'), or NO if you can't. If it looks serious, call local "
             f"emergency services{num}."
         )
-        msg = send_to_person(session, person, text, f"care:{req.id}:ask:{person.id}")
+        msg = send_to_person(
+            session,
+            person,
+            text,
+            f"care:{req.id}:ask:{person.id}",
+            parent_id=req.parent_id,
+            visibility="responder_emergency"
+            if req.origin == CareRequestOrigin.emergency
+            else "responder",
+            request_id=req.id,
+            offer_only=True,
+        )
         if delivered(msg):
             transition(
                 session,
@@ -458,16 +495,23 @@ def apply_responder_reply(
             send_to_person(
                 session,
                 responder,
-                f"Thank you! I've told {parent.display_name}'s family you're on the "
+                f"Thank you! I've told {parent_first_name(parent)}'s family you're on the "
                 "way. Reply DONE once you're with them and they're okay, or NEED "
                 "HELP if more help is needed.",
                 f"{key}:ack",
+                parent_id=req.parent_id,
+                visibility="responder_emergency"
+                if req.origin == CareRequestOrigin.emergency
+                else "responder",
+                request_id=req.id,
             )
             send_to_person(
                 session,
                 parent,
                 f"{responder.display_name} is on the way{when}. Help is coming.",
                 f"{key}:parent",
+                parent_id=req.parent_id,
+                visibility="direct",
             )
             notify_family(
                 session,
@@ -485,14 +529,21 @@ def apply_responder_reply(
             send_to_person(
                 session,
                 responder,
-                f"Thank you! I've let {parent.display_name} know. Reply DONE when you've finished.",
+                f"Thank you! I've let {parent_first_name(parent)} know. Reply DONE when you've finished.",
                 f"{key}:ack",
+                parent_id=req.parent_id,
+                visibility="responder_emergency"
+                if req.origin == CareRequestOrigin.emergency
+                else "responder",
+                request_id=req.id,
             )
             send_to_person(
                 session,
                 parent,
                 f"Good news: {responder.display_name} said yes to {label(req)}{when}.",
                 f"{key}:parent",
+                parent_id=req.parent_id,
+                visibility="direct",
             )
             notify_family(
                 session,
@@ -508,7 +559,17 @@ def apply_responder_reply(
         transition(
             session, req, S.declined, summary=f"{responder.display_name} can't help this time"
         )
-        send_to_person(session, responder, "No problem, thanks for letting us know.", f"{key}:ack")
+        send_to_person(
+            session,
+            responder,
+            "No problem, thanks for letting us know.",
+            f"{key}:ack",
+            parent_id=req.parent_id,
+            visibility="responder_emergency"
+            if req.origin == CareRequestOrigin.emergency
+            else "responder",
+            request_id=req.id,
+        )
         if emergency:
             dispatch_emergency_next(session, req)
         elif propose_next(session, req):
@@ -518,6 +579,8 @@ def apply_responder_reply(
                 f"{responder.display_name} can't make it this time. "
                 + approval_prompt(session, req),
                 f"{key}:parent",
+                parent_id=req.parent_id,
+                visibility="direct",
             )
         else:
             send_to_person(
@@ -526,6 +589,8 @@ def apply_responder_reply(
                 f"{responder.display_name} can't make it, and no one else in your "
                 "Care Circle is available for this. I've let your family know.",
                 f"{key}:parent",
+                parent_id=req.parent_id,
+                visibility="direct",
             )
 
     elif intent == "completed":
@@ -535,7 +600,17 @@ def apply_responder_reply(
             S.completed,
             summary=f"{responder.display_name} marked the request complete",
         )
-        send_to_person(session, responder, "Thank you for helping! 💛", f"{key}:ack")
+        send_to_person(
+            session,
+            responder,
+            "Thank you for helping! 💛",
+            f"{key}:ack",
+            parent_id=req.parent_id,
+            visibility="responder_emergency"
+            if req.origin == CareRequestOrigin.emergency
+            else "responder",
+            request_id=req.id,
+        )
         if emergency and req.incident_id:
             safety.resolve_by_id(
                 session, req.incident_id, "responder_confirmed", actor=responder.display_name
@@ -546,6 +621,8 @@ def apply_responder_reply(
                 parent,
                 f"{responder.display_name} let me know they're done. I hope that helped!",
                 f"{key}:parent",
+                parent_id=req.parent_id,
+                visibility="direct",
             )
             notify_family(
                 session,
@@ -580,9 +657,14 @@ def apply_responder_reply(
         send_to_person(
             session,
             responder,
-            f"I've alerted {parent.display_name}'s family. If this is a medical "
+            f"I've alerted {parent_first_name(parent)}'s family. If this is a medical "
             f"emergency, call local emergency services{num} now.",
             f"{key}:{utcnow().timestamp():.0f}:ack",
+            parent_id=req.parent_id,
+            visibility="responder_emergency"
+            if req.origin == CareRequestOrigin.emergency
+            else "responder",
+            request_id=req.id,
         )
 
 
@@ -618,6 +700,8 @@ def expire_overdue(session: Session) -> int:
                     parent,
                     "I haven't heard back yet. " + approval_prompt(session, req),
                     f"care:{req.id}:expired:{len(req.attempted_responder_ids)}",
+                    parent_id=req.parent_id,
+                    visibility="direct",
                 )
             count += 1
     return count

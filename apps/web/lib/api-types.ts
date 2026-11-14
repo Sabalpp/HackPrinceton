@@ -4,6 +4,108 @@
  */
 
 export interface paths {
+    "/api/auth/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demo Session */
+        post: operations["demo_session_api_auth_demo_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Describe Invitation */
+        post: operations["describe_invitation_api_auth_invitation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register */
+        post: operations["register_api_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Auth Session */
+        get: operations["get_auth_session_api_auth_session_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/checkin": {
         parameters: {
             query?: never;
@@ -224,6 +326,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/onboarding/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Invite */
+        post: operations["create_invite_api_onboarding_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/onboarding/parents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Parent */
+        post: operations["create_parent_api_onboarding_parents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/blood-pressure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Bp */
+        post: operations["save_bp_api_parent_blood_pressure_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check In */
+        post: operations["check_in_api_parent_check_in_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Parent Home */
+        get: operations["get_parent_home_api_parent_home_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Help */
+        post: operations["request_help_api_parent_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/requests/{request_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Decision */
+        post: operations["request_decision_api_parent_requests__request_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/responders/{responder_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Responder */
+        post: operations["approve_responder_api_parent_responders__responder_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parent/sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Sharing */
+        post: operations["set_sharing_api_parent_sharing_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/parents/{parent_id}/care-circle": {
         parameters: {
             query?: never;
@@ -326,6 +581,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/parents/{parent_id}/personal-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personal Health */
+        get: operations["get_personal_health_api_parents__parent_id__personal_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parents/{parent_id}/reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Declare Reference */
+        post: operations["declare_reference_api_parents__parent_id__reference_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/parents/{parent_id}/stream": {
         parameters: {
             query?: never;
@@ -337,8 +626,8 @@ export interface paths {
          * Stream
          * @description Server-Sent Events. Each event: `event: timeline` + JSON TimelineEvent.
          *
-         *     EventSource can't set headers, so pass ?access_token=... . Reconnects resume via
-         *     the standard Last-Event-ID header.
+         *     Uses the HttpOnly session cookie. Each batch rechecks the live session and sharing
+         *     permissions. Reconnects resume via the standard Last-Event-ID header.
          */
         get: operations["stream_api_parents__parent_id__stream_get"];
         put?: never;
@@ -360,6 +649,40 @@ export interface paths {
         get: operations["get_timeline_api_parents__parent_id__timeline_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/responder/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Tasks */
+        get: operations["get_tasks_api_responder_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/responder/tasks/{request_id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply To Task */
+        post: operations["reply_to_task_api_responder_tasks__request_id__reply_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -404,11 +727,104 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentStatus */
+        AgentStatus: {
+            /** Detail */
+            detail: string;
+            /** Last Heartbeat At */
+            last_heartbeat_at?: string | null;
+            /**
+             * Messaging
+             * @enum {string}
+             */
+            messaging: "console" | "photon";
+            /** Messaging Ready */
+            messaging_ready: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "healthy" | "starting" | "stale" | "offline";
+        };
         /**
          * AssistanceCategory
          * @enum {string}
          */
         AssistanceCategory: "grocery_assistance" | "transportation" | "meal_assistance" | "medication_pickup" | "household_help" | "companionship" | "urgent_check_in" | "other";
+        /** BPAssessment */
+        BPAssessment: {
+            /** Action */
+            action: string;
+            /** Level */
+            level: string;
+            /** Message */
+            message: string;
+            /**
+             * Override Allowed
+             * @default false
+             */
+            override_allowed: boolean;
+            /**
+             * Source
+             * @default manual_cuff
+             */
+            source: string;
+            /** Title */
+            title: string;
+        };
+        /** BPReadingIn */
+        BPReadingIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Adult Nonpregnant
+             * @default false
+             */
+            adult_nonpregnant: boolean;
+            /** Device Validated */
+            device_validated?: boolean | null;
+            /** Diastolic */
+            diastolic: number;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            /** Symptoms */
+            symptoms?: ("chest_pain" | "shortness_of_breath" | "new_weakness" | "new_numbness" | "vision_change" | "difficulty_speaking" | "sudden_severe_headache")[];
+            /**
+             * Symptoms Checked
+             * @default false
+             */
+            symptoms_checked: boolean;
+            /** Systolic */
+            systolic: number;
+        };
+        /** BPReadingInfo */
+        BPReadingInfo: {
+            assessment: components["schemas"]["BPAssessment"];
+            /** Data Mode */
+            data_mode: string;
+            /** Device Validated */
+            device_validated: boolean | null;
+            /** Diastolic */
+            diastolic: number;
+            /**
+             * Measured At
+             * Format: date-time
+             */
+            measured_at: string;
+            /** Reading Id */
+            reading_id: string;
+            /** Source */
+            source: string;
+            /** Symptoms */
+            symptoms: ("chest_pain" | "shortness_of_breath" | "new_weakness" | "new_numbness" | "vision_change" | "difficulty_speaking" | "sudden_severe_headache")[];
+            /** Symptoms Checked */
+            symptoms_checked: boolean;
+            /** Systolic */
+            systolic: number;
+        };
         /** CareCircleMember */
         CareCircleMember: {
             /** Categories */
@@ -508,21 +924,92 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** CheckInIn */
+        CheckInIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Response
+             * @enum {string}
+             */
+            response: "okay" | "help";
+        };
         /** CheckinDemoIn */
         CheckinDemoIn: {
             /** Parent Id */
             parent_id: string;
+        };
+        /** CreateInviteIn */
+        CreateInviteIn: {
+            /** Action Id */
+            action_id: string;
+            /** Categories */
+            categories?: components["schemas"]["AssistanceCategory"][];
+            /** Display Name */
+            display_name?: string | null;
+            /**
+             * Emergency Contact
+             * @default false
+             */
+            emergency_contact: boolean;
+            /** Parent Id */
+            parent_id: string;
+            /**
+             * Relationship
+             * @default neighbor
+             */
+            relationship: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "parent" | "responder";
+        };
+        /** CreateParentIn */
+        CreateParentIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Country Code
+             * @default OTHER
+             * @enum {string}
+             */
+            country_code: "US" | "NP" | "OTHER";
+            /** Display Name */
+            display_name: string;
+            /** Timezone */
+            timezone: string;
         };
         /**
          * DataMode
          * @enum {string}
          */
         DataMode: "live" | "simulated";
+        /** DemoLoginIn */
+        DemoLoginIn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "child" | "parent" | "responder";
+        };
         /**
          * EscalationReason
          * @enum {string}
          */
         EscalationReason: "help_requested" | "no_response" | "parent_reported_emergency";
+        /** EvidenceSource */
+        EvidenceSource: {
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
         /** FallDemoIn */
         FallDemoIn: {
             /** Parent Id */
@@ -688,6 +1175,16 @@ export interface components {
              */
             scenario: "decline" | "normal" | "recovering";
         };
+        /** HelpIn */
+        HelpIn: {
+            /** Action Id */
+            action_id: string;
+            /** Details */
+            details: string;
+            request_type: components["schemas"]["AssistanceCategory"];
+            /** Requested Time */
+            requested_time?: string | null;
+        };
         /** InboundDemoIn */
         InboundDemoIn: {
             /**
@@ -711,6 +1208,54 @@ export interface components {
          * @enum {string}
          */
         IncidentStatus: "checking" | "escalated" | "responder_en_route" | "resolved";
+        /** InvitationInfo */
+        InvitationInfo: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Invited By */
+            invited_by: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "parent" | "responder";
+        };
+        /** InvitationLookup */
+        InvitationLookup: {
+            /** Token */
+            token: string;
+        };
+        /** InviteIssued */
+        InviteIssued: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Invitation Token */
+            invitation_token: string;
+            /** Parent Id */
+            parent_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "parent" | "responder";
+        };
+        /** LoginIn */
+        LoginIn: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** Me */
         Me: {
             /** Parent Ids */
@@ -742,6 +1287,20 @@ export interface components {
             percent_change: number | null;
             /** Recent */
             recent: number | null;
+        };
+        /** ParentHome */
+        ParentHome: {
+            active_incident?: components["schemas"]["SafetyIncident"] | null;
+            agent: components["schemas"]["AgentStatus"];
+            health?: components["schemas"]["HealthSummary"] | null;
+            latest_checkin?: components["schemas"]["CheckIn"] | null;
+            parent: components["schemas"]["ParentProfile"];
+            /** Requests */
+            requests: components["schemas"]["CareRequest"][];
+            /** Responders */
+            responders: components["schemas"]["ResponderMember"][];
+            /** Sharing */
+            sharing: components["schemas"]["SharingMember"][];
         };
         /** ParentOverview */
         ParentOverview: {
@@ -789,6 +1348,206 @@ export interface components {
             reachable: boolean;
             role: components["schemas"]["PersonRole"];
         };
+        /** PersonalComparison */
+        PersonalComparison: {
+            /** Band High */
+            band_high?: number | null;
+            /** Band Low */
+            band_low?: number | null;
+            /** Basis */
+            basis?: string | null;
+            /** Delta */
+            delta?: number | null;
+            /** Message */
+            message: string;
+            /** Status */
+            status: string;
+        };
+        /** PersonalHealthReport */
+        PersonalHealthReport: {
+            agent: components["schemas"]["AgentStatus"];
+            /** Blood Pressure */
+            blood_pressure: components["schemas"]["BPReadingInfo"][];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceSource"][];
+            /** Explanation */
+            explanation: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Metrics */
+            metrics: components["schemas"]["PersonalMetric"][];
+            /** Parent Id */
+            parent_id: string;
+            /** References */
+            references: components["schemas"]["ReferenceInfo"][];
+        };
+        /** PersonalMetric */
+        PersonalMetric: {
+            comparison?: components["schemas"]["PersonalComparison"] | null;
+            /** Declared Reference */
+            declared_reference?: number | null;
+            /** Eligible Days */
+            eligible_days: number;
+            /** Eligible Readings */
+            eligible_readings: number;
+            /** Excluded Counts */
+            excluded_counts?: {
+                [key: string]: number;
+            };
+            /** Explanation */
+            explanation: string;
+            /** Mad */
+            mad?: number | null;
+            /** Median */
+            median?: number | null;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "steps" | "resting_heart_rate" | "sleep_minutes" | "systolic" | "diastolic";
+            /** Min Readings Per Day */
+            min_readings_per_day: number;
+            /** Required Days */
+            required_days: number;
+            /** Status */
+            status: string;
+            /** Window Days */
+            window_days: number;
+        };
+        /** ReferenceIn */
+        ReferenceIn: {
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "steps" | "resting_heart_rate" | "sleep_minutes" | "systolic" | "diastolic";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Value */
+            value: number;
+        };
+        /** ReferenceInfo */
+        ReferenceInfo: {
+            /**
+             * Declared At
+             * Format: date-time
+             */
+            declared_at: string;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "steps" | "resting_heart_rate" | "sleep_minutes" | "systolic" | "diastolic";
+            /** Note */
+            note: string;
+            /**
+             * Provisional
+             * @default true
+             */
+            provisional: boolean;
+            /** Value */
+            value: number;
+        };
+        /** RegisterIn */
+        RegisterIn: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /** Invitation Token */
+            invitation_token?: string | null;
+            /** Password */
+            password: string;
+            /**
+             * Share Checkins
+             * @default false
+             */
+            share_checkins: boolean;
+            /**
+             * Share Health
+             * @default false
+             */
+            share_health: boolean;
+        };
+        /** RequestDecisionIn */
+        RequestDecisionIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approve" | "cancel";
+        };
+        /** ResponderApprovalIn */
+        ResponderApprovalIn: {
+            /** Active */
+            active: boolean;
+            /** Emergency Contact */
+            emergency_contact: boolean;
+        };
+        /** ResponderMember */
+        ResponderMember: {
+            /** Active */
+            active: boolean;
+            /** Display Name */
+            display_name: string;
+            /** Emergency Contact */
+            emergency_contact: boolean;
+            /** Relationship */
+            relationship: string;
+            /** Responder Id */
+            responder_id: string;
+        };
+        /** ResponderReplyIn */
+        ResponderReplyIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "decline" | "complete";
+            /** Eta Minutes */
+            eta_minutes?: number | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** ResponderTask */
+        ResponderTask: {
+            /** Details */
+            details: string;
+            /** Estimated Arrival Minutes */
+            estimated_arrival_minutes?: number | null;
+            /** Parent First Name */
+            parent_first_name: string;
+            /** Request Id */
+            request_id: string;
+            request_type: components["schemas"]["AssistanceCategory"];
+            /** Requested Time */
+            requested_time?: string | null;
+            status: components["schemas"]["CareRequestStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ResponderTasks */
+        ResponderTasks: {
+            agent: components["schemas"]["AgentStatus"];
+            /** Tasks */
+            tasks: components["schemas"]["ResponderTask"][];
+        };
         /** SafetyIncident */
         SafetyIncident: {
             /** Check Deadline */
@@ -824,6 +1583,55 @@ export interface components {
              * @enum {string}
              */
             trigger: "fall.suspected" | "parent_message" | "family_concern";
+        };
+        /** SessionInfo */
+        SessionInfo: {
+            /** Authenticated */
+            authenticated: boolean;
+            /** Csrf Token */
+            csrf_token?: string | null;
+            /**
+             * Demo Available
+             * @default false
+             */
+            demo_available: boolean;
+            /**
+             * Demo Session
+             * @default false
+             */
+            demo_session: boolean;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Parent Ids */
+            parent_ids?: string[];
+            person?: components["schemas"]["PersonSummary"] | null;
+            /**
+             * Registration Available
+             * @default false
+             */
+            registration_available: boolean;
+        };
+        /** SharingIn */
+        SharingIn: {
+            /** Member Id */
+            member_id: string;
+            /** Share Checkins */
+            share_checkins: boolean;
+            /** Share Health */
+            share_health: boolean;
+        };
+        /** SharingMember */
+        SharingMember: {
+            /** Display Name */
+            display_name: string;
+            /** Member Id */
+            member_id: string;
+            /** Relationship */
+            relationship: string;
+            /** Share Checkins */
+            share_checkins: boolean;
+            /** Share Health */
+            share_health: boolean;
         };
         /** SystemHealth */
         SystemHealth: {
@@ -926,6 +1734,176 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    demo_session_api_auth_demo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    describe_invitation_api_auth_invitation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationLookup"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    register_api_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_auth_session_api_auth_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
     demo_checkin_api_demo_checkin_post: {
         parameters: {
             query?: never;
@@ -1332,6 +2310,321 @@ export interface operations {
             };
         };
     };
+    create_invite_api_onboarding_invites_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_parent_api_onboarding_parents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateParentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_bp_api_parent_blood_pressure_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BPReadingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BPReadingInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_in_api_parent_check_in_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckInIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentHome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_parent_home_api_parent_home_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParentHome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_help_api_parent_requests_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HelpIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_decision_api_parent_requests__request_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareRequest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_responder_api_parent_responders__responder_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                responder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResponderApprovalIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_sharing_api_parent_sharing_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharingMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     care_circle_api_parents__parent_id__care_circle_get: {
         parameters: {
             query?: never;
@@ -1537,11 +2830,81 @@ export interface operations {
             };
         };
     };
+    get_personal_health_api_parents__parent_id__personal_health_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalHealthReport"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    declare_reference_api_parents__parent_id__reference_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReferenceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stream_api_parents__parent_id__stream_get: {
         parameters: {
             query?: {
                 after?: number | null;
-                /** @description EventSource can't send headers */
+                /** @description Legacy development/test only */
                 access_token?: string | null;
             };
             header?: {
@@ -1597,6 +2960,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimelineEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tasks_api_responder_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResponderTasks"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reply_to_task_api_responder_tasks__request_id__reply_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResponderReplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResponderTask"];
                 };
             };
             /** @description Validation Error */

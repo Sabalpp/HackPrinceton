@@ -153,6 +153,8 @@ def request_help(
         f"{care_requests.label(req)} for you. "
         + care_requests.approval_prompt(session, req, mention_task=False),
         f"care:{req.id}:consent",
+        parent_id=parent.id,
+        visibility="direct",
     )
     if not delivered(msg):
         care_requests.cancel(session, req, summary=f"Couldn't reach {parent.display_name} to ask")

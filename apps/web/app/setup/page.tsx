@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { SetupWizard } from "@/components/farcare/setup-wizard";
+import { SetupScreen } from "@/components/portal/setup";
 
 export const metadata: Metadata = { title: "FarCare · Setup" };
 
 export default function SetupPage() {
-  return <SetupWizard />;
+  return <SetupScreen />;
 }

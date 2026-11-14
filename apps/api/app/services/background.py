@@ -1,51 +1,24 @@
-"""Background loops started in the app lifespan.
+"""Development-only in-process loops. Production uses ``python -m app.worker``.
 
-- tick:  deadlines (safety-check timeout -> escalate; responder/approval timeouts) and
-         retry of inbound messages that failed or were interrupted. State lives in the DB,
-         so a restart loses nothing.
-- poll:  only when PHOTON_DELIVERY=poll — pulls received messages from Photon.
-
-Run exactly ONE backend instance (single worker) for the hackathon.
+Both paths share the durable worker mutex/outbox. Polling remains a local demo
+convenience; its in-memory cursor is not a production replay checkpoint.
 """
 
 import asyncio
 import logging
 from datetime import timedelta
 
-from sqlmodel import select
-
 from app.config import get_settings
-from app.db import session_scope, utcnow
-from app.models import InboundMessageRow
-from app.services import care_requests, conversation, proactive, safety
+from app.db import utcnow
+from app.services import conversation
 
 log = logging.getLogger(__name__)
 
 
 def run_tick() -> None:
-    with session_scope() as s:
-        safety.check_overdue(s)
-    with session_scope() as s:
-        care_requests.expire_overdue(s)
-    with session_scope() as s:
-        proactive.run(s)
-    # Retry stuck inbound work.
-    now = utcnow()
-    with session_scope() as s:
-        stale = s.exec(
-            select(InboundMessageRow).where(
-                InboundMessageRow.status.in_(["pending", "processing"]),  # type: ignore[attr-defined]
-                InboundMessageRow.received_at < now - timedelta(seconds=30),  # type: ignore[operator]
-            )
-        ).all()
-        for row in stale:
-            if row.status == "processing" and row.received_at > now - timedelta(seconds=120):
-                continue
-            row.status = "pending" if row.attempts < 3 else "failed"
-            s.add(row)
-        retry = [r.id for r in stale if r.status == "pending"]
-    for message_id in retry:
-        conversation.process(message_id)
+    from app.worker import run_cycle
+
+    run_cycle()
 
 
 async def tick_loop() -> None:
@@ -73,7 +46,7 @@ async def poll_loop() -> None:
             for raw in messages:
                 msg = from_message(raw)
                 if msg is not None:
-                    await asyncio.to_thread(conversation.receive, msg)
+                    await asyncio.to_thread(conversation.enqueue, msg)
             cursor = started
         except Exception:
             log.exception("Photon poll failed")

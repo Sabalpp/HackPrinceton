@@ -1,6 +1,56 @@
 {
   "components": {
     "schemas": {
+      "AgentStatus": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "messaging": {
+            "enum": [
+              "console",
+              "photon"
+            ],
+            "title": "Messaging",
+            "type": "string"
+          },
+          "messaging_ready": {
+            "title": "Messaging Ready",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "healthy",
+              "starting",
+              "stale",
+              "offline"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "messaging",
+          "messaging_ready",
+          "detail"
+        ],
+        "title": "AgentStatus",
+        "type": "object"
+      },
       "AssistanceCategory": {
         "enum": [
           "grocery_assistance",
@@ -14,6 +64,196 @@
         ],
         "title": "AssistanceCategory",
         "type": "string"
+      },
+      "BPAssessment": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "override_allowed": {
+            "default": false,
+            "title": "Override Allowed",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "manual_cuff",
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "title",
+          "message",
+          "action"
+        ],
+        "title": "BPAssessment",
+        "type": "object"
+      },
+      "BPReadingIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "adult_nonpregnant": {
+            "default": false,
+            "title": "Adult Nonpregnant",
+            "type": "boolean"
+          },
+          "device_validated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Validated"
+          },
+          "diastolic": {
+            "maximum": 200.0,
+            "minimum": 20.0,
+            "title": "Diastolic",
+            "type": "integer"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "symptoms": {
+            "items": {
+              "enum": [
+                "chest_pain",
+                "shortness_of_breath",
+                "new_weakness",
+                "new_numbness",
+                "vision_change",
+                "difficulty_speaking",
+                "sudden_severe_headache"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "title": "Symptoms",
+            "type": "array"
+          },
+          "symptoms_checked": {
+            "default": false,
+            "title": "Symptoms Checked",
+            "type": "boolean"
+          },
+          "systolic": {
+            "maximum": 300.0,
+            "minimum": 50.0,
+            "title": "Systolic",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action_id",
+          "systolic",
+          "diastolic",
+          "measured_at"
+        ],
+        "title": "BPReadingIn",
+        "type": "object"
+      },
+      "BPReadingInfo": {
+        "properties": {
+          "assessment": {
+            "$ref": "#/components/schemas/BPAssessment"
+          },
+          "data_mode": {
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "device_validated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Validated"
+          },
+          "diastolic": {
+            "title": "Diastolic",
+            "type": "integer"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "reading_id": {
+            "title": "Reading Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "symptoms": {
+            "items": {
+              "enum": [
+                "chest_pain",
+                "shortness_of_breath",
+                "new_weakness",
+                "new_numbness",
+                "vision_change",
+                "difficulty_speaking",
+                "sudden_severe_headache"
+              ],
+              "type": "string"
+            },
+            "title": "Symptoms",
+            "type": "array"
+          },
+          "symptoms_checked": {
+            "title": "Symptoms Checked",
+            "type": "boolean"
+          },
+          "systolic": {
+            "title": "Systolic",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reading_id",
+          "systolic",
+          "diastolic",
+          "measured_at",
+          "source",
+          "data_mode",
+          "device_validated",
+          "symptoms_checked",
+          "symptoms",
+          "assessment"
+        ],
+        "title": "BPReadingInfo",
+        "type": "object"
       },
       "CareCircleMember": {
         "additionalProperties": false,
@@ -296,6 +536,38 @@
         "title": "CheckIn",
         "type": "object"
       },
+      "CheckInIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "response": {
+            "enum": [
+              "okay",
+              "help"
+            ],
+            "title": "Response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "response"
+        ],
+        "title": "CheckInIn",
+        "type": "object"
+      },
       "CheckinDemoIn": {
         "properties": {
           "parent_id": {
@@ -309,6 +581,112 @@
         "title": "CheckinDemoIn",
         "type": "object"
       },
+      "CreateInviteIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/AssistanceCategory"
+            },
+            "maxItems": 8,
+            "title": "Categories",
+            "type": "array"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "emergency_contact": {
+            "default": false,
+            "title": "Emergency Contact",
+            "type": "boolean"
+          },
+          "parent_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "relationship": {
+            "default": "neighbor",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Relationship",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "parent",
+              "responder"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "parent_id",
+          "role"
+        ],
+        "title": "CreateInviteIn",
+        "type": "object"
+      },
+      "CreateParentIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "country_code": {
+            "default": "OTHER",
+            "enum": [
+              "US",
+              "NP",
+              "OTHER"
+            ],
+            "title": "Country Code",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "timezone": {
+            "maxLength": 64,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "display_name",
+          "timezone"
+        ],
+        "title": "CreateParentIn",
+        "type": "object"
+      },
       "DataMode": {
         "enum": [
           "live",
@@ -316,6 +694,25 @@
         ],
         "title": "DataMode",
         "type": "string"
+      },
+      "DemoLoginIn": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "child",
+              "parent",
+              "responder"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "DemoLoginIn",
+        "type": "object"
       },
       "EscalationReason": {
         "enum": [
@@ -325,6 +722,24 @@
         ],
         "title": "EscalationReason",
         "type": "string"
+      },
+      "EvidenceSource": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "EvidenceSource",
+        "type": "object"
       },
       "FallDemoIn": {
         "properties": {
@@ -690,6 +1105,46 @@
         "title": "HealthSyncDemoIn",
         "type": "object"
       },
+      "HelpIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "details": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Details",
+            "type": "string"
+          },
+          "request_type": {
+            "$ref": "#/components/schemas/AssistanceCategory"
+          },
+          "requested_time": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Time"
+          }
+        },
+        "required": [
+          "action_id",
+          "request_type",
+          "details"
+        ],
+        "title": "HelpIn",
+        "type": "object"
+      },
       "InboundDemoIn": {
         "properties": {
           "channel": {
@@ -737,6 +1192,116 @@
         ],
         "title": "IncidentStatus",
         "type": "string"
+      },
+      "InvitationInfo": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invited_by": {
+            "title": "Invited By",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "parent",
+              "responder"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "display_name",
+          "invited_by",
+          "expires_at"
+        ],
+        "title": "InvitationInfo",
+        "type": "object"
+      },
+      "InvitationLookup": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "InvitationLookup",
+        "type": "object"
+      },
+      "InviteIssued": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "invitation_token": {
+            "title": "Invitation Token",
+            "type": "string"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "parent",
+              "responder"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "invitation_token",
+          "expires_at",
+          "role",
+          "display_name"
+        ],
+        "title": "InviteIssued",
+        "type": "object"
+      },
+      "LoginIn": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn",
+        "type": "object"
       },
       "Me": {
         "additionalProperties": false,
@@ -834,6 +1399,76 @@
           "observation"
         ],
         "title": "MetricTrend",
+        "type": "object"
+      },
+      "ParentHome": {
+        "properties": {
+          "active_incident": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SafetyIncident"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentStatus"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_checkin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent": {
+            "$ref": "#/components/schemas/ParentProfile"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/CareRequest"
+            },
+            "title": "Requests",
+            "type": "array"
+          },
+          "responders": {
+            "items": {
+              "$ref": "#/components/schemas/ResponderMember"
+            },
+            "title": "Responders",
+            "type": "array"
+          },
+          "sharing": {
+            "items": {
+              "$ref": "#/components/schemas/SharingMember"
+            },
+            "title": "Sharing",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parent",
+          "requests",
+          "sharing",
+          "responders",
+          "agent"
+        ],
+        "title": "ParentHome",
         "type": "object"
       },
       "ParentOverview": {
@@ -982,6 +1617,564 @@
         "title": "PersonSummary",
         "type": "object"
       },
+      "PersonalComparison": {
+        "properties": {
+          "band_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band High"
+          },
+          "band_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Band Low"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "PersonalComparison",
+        "type": "object"
+      },
+      "PersonalHealthReport": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentStatus"
+          },
+          "blood_pressure": {
+            "items": {
+              "$ref": "#/components/schemas/BPReadingInfo"
+            },
+            "title": "Blood Pressure",
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceSource"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalMetric"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceInfo"
+            },
+            "title": "References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parent_id",
+          "metrics",
+          "references",
+          "blood_pressure",
+          "agent",
+          "generated_at",
+          "evidence",
+          "explanation"
+        ],
+        "title": "PersonalHealthReport",
+        "type": "object"
+      },
+      "PersonalMetric": {
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonalComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "declared_reference": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Reference"
+          },
+          "eligible_days": {
+            "title": "Eligible Days",
+            "type": "integer"
+          },
+          "eligible_readings": {
+            "title": "Eligible Readings",
+            "type": "integer"
+          },
+          "excluded_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Excluded Counts",
+            "type": "object"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "mad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mad"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "metric": {
+            "enum": [
+              "steps",
+              "resting_heart_rate",
+              "sleep_minutes",
+              "systolic",
+              "diastolic"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "min_readings_per_day": {
+            "title": "Min Readings Per Day",
+            "type": "integer"
+          },
+          "required_days": {
+            "title": "Required Days",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metric",
+          "status",
+          "eligible_days",
+          "required_days",
+          "window_days",
+          "min_readings_per_day",
+          "eligible_readings",
+          "explanation"
+        ],
+        "title": "PersonalMetric",
+        "type": "object"
+      },
+      "ReferenceIn": {
+        "additionalProperties": false,
+        "properties": {
+          "metric": {
+            "enum": [
+              "steps",
+              "resting_heart_rate",
+              "sleep_minutes",
+              "systolic",
+              "diastolic"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "value": {
+            "maximum": 200000.0,
+            "minimum": 0.0,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "value"
+        ],
+        "title": "ReferenceIn",
+        "type": "object"
+      },
+      "ReferenceInfo": {
+        "properties": {
+          "declared_at": {
+            "format": "date-time",
+            "title": "Declared At",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "steps",
+              "resting_heart_rate",
+              "sleep_minutes",
+              "systolic",
+              "diastolic"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "provisional": {
+            "default": true,
+            "title": "Provisional",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "value",
+          "note",
+          "declared_at"
+        ],
+        "title": "ReferenceInfo",
+        "type": "object"
+      },
+      "RegisterIn": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "invitation_token": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Token"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "share_checkins": {
+            "default": false,
+            "title": "Share Checkins",
+            "type": "boolean"
+          },
+          "share_health": {
+            "default": false,
+            "title": "Share Health",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "display_name"
+        ],
+        "title": "RegisterIn",
+        "type": "object"
+      },
+      "RequestDecisionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "cancel"
+            ],
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "decision"
+        ],
+        "title": "RequestDecisionIn",
+        "type": "object"
+      },
+      "ResponderApprovalIn": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "emergency_contact": {
+            "title": "Emergency Contact",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active",
+          "emergency_contact"
+        ],
+        "title": "ResponderApprovalIn",
+        "type": "object"
+      },
+      "ResponderMember": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "emergency_contact": {
+            "title": "Emergency Contact",
+            "type": "boolean"
+          },
+          "relationship": {
+            "title": "Relationship",
+            "type": "string"
+          },
+          "responder_id": {
+            "title": "Responder Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "responder_id",
+          "display_name",
+          "relationship",
+          "active",
+          "emergency_contact"
+        ],
+        "title": "ResponderMember",
+        "type": "object"
+      },
+      "ResponderReplyIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "decline",
+              "complete"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "eta_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Minutes"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action_id",
+          "decision"
+        ],
+        "title": "ResponderReplyIn",
+        "type": "object"
+      },
+      "ResponderTask": {
+        "properties": {
+          "details": {
+            "title": "Details",
+            "type": "string"
+          },
+          "estimated_arrival_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Arrival Minutes"
+          },
+          "parent_first_name": {
+            "title": "Parent First Name",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "request_type": {
+            "$ref": "#/components/schemas/AssistanceCategory"
+          },
+          "requested_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CareRequestStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "parent_first_name",
+          "request_type",
+          "details",
+          "status",
+          "updated_at"
+        ],
+        "title": "ResponderTask",
+        "type": "object"
+      },
+      "ResponderTasks": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentStatus"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/ResponderTask"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tasks",
+          "agent"
+        ],
+        "title": "ResponderTasks",
+        "type": "object"
+      },
       "SafetyIncident": {
         "additionalProperties": false,
         "properties": {
@@ -1106,6 +2299,133 @@
           "resolved_at"
         ],
         "title": "SafetyIncident",
+        "type": "object"
+      },
+      "SessionInfo": {
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "csrf_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
+          },
+          "demo_available": {
+            "default": false,
+            "title": "Demo Available",
+            "type": "boolean"
+          },
+          "demo_session": {
+            "default": false,
+            "title": "Demo Session",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "parent_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parent Ids",
+            "type": "array"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registration_available": {
+            "default": false,
+            "title": "Registration Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      },
+      "SharingIn": {
+        "additionalProperties": false,
+        "properties": {
+          "member_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Member Id",
+            "type": "string"
+          },
+          "share_checkins": {
+            "title": "Share Checkins",
+            "type": "boolean"
+          },
+          "share_health": {
+            "title": "Share Health",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "member_id",
+          "share_health",
+          "share_checkins"
+        ],
+        "title": "SharingIn",
+        "type": "object"
+      },
+      "SharingMember": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "member_id": {
+            "title": "Member Id",
+            "type": "string"
+          },
+          "relationship": {
+            "title": "Relationship",
+            "type": "string"
+          },
+          "share_checkins": {
+            "title": "Share Checkins",
+            "type": "boolean"
+          },
+          "share_health": {
+            "title": "Share Health",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "member_id",
+          "display_name",
+          "relationship",
+          "share_health",
+          "share_checkins"
+        ],
+        "title": "SharingMember",
         "type": "object"
       },
       "SystemHealth": {
@@ -1306,12 +2626,211 @@
     }
   },
   "info": {
-    "description": "Care coordination for aging parents and their distant families. Hackathon prototype \u2014 not a medical device.",
+    "description": "Care coordination for aging parents and their distant families. Invite-first pilot with role-specific accounts, personal learning and a durable messaging worker. Not a diagnostic service or emergency response service.",
     "title": "FarCare API",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/auth/demo": {
+      "post": {
+        "operationId": "demo_session_api_auth_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Session",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/auth/invitation": {
+      "post": {
+        "operationId": "describe_invitation_api_auth_invitation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationLookup"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Describe Invitation",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "operationId": "register_api_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "get_auth_session_api_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Auth Session",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
     "/api/demo/checkin": {
       "post": {
         "description": "Send the proactive wellness check-in now (skips the daily time window).",
@@ -1991,6 +3510,543 @@
         ]
       }
     },
+    "/api/onboarding/invites": {
+      "post": {
+        "operationId": "create_invite_api_onboarding_invites_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteIssued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Invite",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/onboarding/parents": {
+      "post": {
+        "operationId": "create_parent_api_onboarding_parents_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateParentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteIssued"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Parent",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/blood-pressure": {
+      "post": {
+        "operationId": "save_bp_api_parent_blood_pressure_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BPReadingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BPReadingInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Bp",
+        "tags": [
+          "personal health"
+        ]
+      }
+    },
+    "/api/parent/check-in": {
+      "post": {
+        "operationId": "check_in_api_parent_check_in_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckInIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentHome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check In",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/home": {
+      "get": {
+        "operationId": "get_parent_home_api_parent_home_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParentHome"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Parent Home",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/requests": {
+      "post": {
+        "operationId": "request_help_api_parent_requests_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HelpIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareRequest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Help",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/requests/{request_id}/decision": {
+      "post": {
+        "operationId": "request_decision_api_parent_requests__request_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareRequest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Decision",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/responders/{responder_id}/approve": {
+      "post": {
+        "operationId": "approve_responder_api_parent_responders__responder_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "responder_id",
+            "required": true,
+            "schema": {
+              "title": "Responder Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderApprovalIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Responder",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/parent/sharing": {
+      "post": {
+        "operationId": "set_sharing_api_parent_sharing_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharingMember"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Sharing",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
     "/api/parents/{parent_id}/care-circle": {
       "get": {
         "operationId": "care_circle_api_parents__parent_id__care_circle_get",
@@ -2402,9 +4458,143 @@
         ]
       }
     },
+    "/api/parents/{parent_id}/personal-health": {
+      "get": {
+        "operationId": "get_personal_health_api_parents__parent_id__personal_health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PersonalHealthReport"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Personal Health Api Parents  Parent Id  Personal Health Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Personal Health",
+        "tags": [
+          "personal health"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/reference": {
+      "post": {
+        "operationId": "declare_reference_api_parents__parent_id__reference_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Declare Reference",
+        "tags": [
+          "personal health"
+        ]
+      }
+    },
     "/api/parents/{parent_id}/stream": {
       "get": {
-        "description": "Server-Sent Events. Each event: `event: timeline` + JSON TimelineEvent.\n\nEventSource can't set headers, so pass ?access_token=... . Reconnects resume via\nthe standard Last-Event-ID header.",
+        "description": "Server-Sent Events. Each event: `event: timeline` + JSON TimelineEvent.\n\nUses the HttpOnly session cookie. Each batch rechecks the live session and sharing\npermissions. Reconnects resume via the standard Last-Event-ID header.",
         "operationId": "stream_api_parents__parent_id__stream_get",
         "parameters": [
           {
@@ -2433,7 +4623,7 @@
             }
           },
           {
-            "description": "EventSource can't send headers",
+            "description": "Legacy development/test only",
             "in": "query",
             "name": "access_token",
             "required": false,
@@ -2446,7 +4636,7 @@
                   "type": "null"
                 }
               ],
-              "description": "EventSource can't send headers",
+              "description": "Legacy development/test only",
               "title": "Access Token"
             }
           },
@@ -2572,6 +4762,123 @@
         "summary": "Get Timeline",
         "tags": [
           "family dashboard"
+        ]
+      }
+    },
+    "/api/responder/tasks": {
+      "get": {
+        "operationId": "get_tasks_api_responder_tasks_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponderTasks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tasks",
+        "tags": [
+          "care experiences"
+        ]
+      }
+    },
+    "/api/responder/tasks/{request_id}/reply": {
+      "post": {
+        "operationId": "reply_to_task_api_responder_tasks__request_id__reply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "title": "Request Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResponderReplyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponderTask"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reply To Task",
+        "tags": [
+          "care experiences"
         ]
       }
     },

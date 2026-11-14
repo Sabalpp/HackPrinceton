@@ -31,5 +31,14 @@ def notify_family(
     sent = []
     for link, member in family_members(session, parent.id, emergency_only=emergency):
         label = link.parent_label or parent.display_name
-        sent.append(send_to_person(session, member, render(label), f"{key}:{member.id}"))
+        sent.append(
+            send_to_person(
+                session,
+                member,
+                render(label),
+                f"{key}:{member.id}",
+                parent_id=parent.id,
+                visibility="emergency" if emergency else "family",
+            )
+        )
     return sent

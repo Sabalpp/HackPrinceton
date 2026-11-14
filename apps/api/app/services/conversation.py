@@ -92,10 +92,28 @@ def _as_turn(msg: InboundText) -> str:
     return (VOICE_MARK + msg.text) if msg.channel == "voice" else msg.text
 
 
-def _reply(s: Session, person: Person, msg: InboundText, text: str, suffix: str = "") -> None:
+def _reply(
+    s: Session,
+    person: Person,
+    msg: InboundText,
+    text: str,
+    suffix: str = "",
+    *,
+    parent_id: str | None = None,
+    visibility: str = "direct",
+    request_id: str | None = None,
+) -> None:
     if not text:
         return
-    send_to_person(s, person, text, f"reply:{msg.message_id}{suffix}")
+    send_to_person(
+        s,
+        person,
+        text,
+        f"reply:{msg.message_id}{suffix}",
+        parent_id=parent_id,
+        visibility=visibility,
+        request_id=request_id,
+    )
     _turn(s, person, "assistant", text)
 
 
@@ -233,7 +251,15 @@ def _handle_responder(s: Session, responder: Person, msg: InboundText, first_con
             if req.status == "sent"
             else "Reply DONE when you've finished, or NEED HELP if more help is needed."
         )
-        _reply(s, responder, msg, f"Sorry, I didn't catch that. {hint}")
+        _reply(
+            s,
+            responder,
+            msg,
+            f"Sorry, I didn't catch that. {hint}",
+            parent_id=req.parent_id,
+            visibility="responder_emergency" if req.origin == "emergency" else "responder",
+            request_id=req.id,
+        )
         return
     care_requests.apply_responder_reply(s, req, responder, intent, msg.text)
 
@@ -267,4 +293,4 @@ def _handle_child(s: Session, child: Person, msg: InboundText, first_contact: bo
         data={"ai_mode": mode, "to": child.id},
         visibility=timeline.PARENT_ONLY,
     )
-    _reply(s, child, msg, intro + reply)
+    _reply(s, child, msg, intro + reply, parent_id=parent.id, visibility="family_context")

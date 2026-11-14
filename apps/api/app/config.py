@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./farcare.db"
     cors_origins: str = "http://localhost:3000"
     background_tasks_enabled: bool = True
+    session_hours: int = Field(default=24, ge=1, le=168)
+    registration_enabled: bool = False
+    worker_interval_seconds: float = Field(default=2.0, gt=0)
+    worker_batch_size: int = Field(default=25, ge=1, le=100)
+    worker_max_delivery_attempts: int = Field(default=5, ge=1, le=10)
+    worker_retry_base_seconds: float = Field(default=5.0, gt=0)
+    worker_retry_max_seconds: float = Field(default=300.0, gt=0)
+    worker_heartbeat_stale_seconds: int = Field(default=120, gt=0)
     # Deployed commit (hosts set one of these automatically); shown on /health for deploy checks.
     git_commit: str = Field(
         default="",
@@ -101,13 +109,23 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _production_guards(self) -> "Settings":
         if self.app_env == "production":
-            dev_tokens = [
-                t
-                for t in (self.demo_child_token, self.demo_parent_token, self.demo_admin_token)
-                if t.startswith("dev-")
-            ]
-            if dev_tokens:
-                raise ValueError("Production refuses default dev-* tokens; set DEMO_*_TOKEN.")
+            if self.messaging_channel == "photon" and not self.photon_enabled:
+                raise ValueError(
+                    "Photon mode requires a project ID and API key; no silent console fallback."
+                )
+            if self.demo_mode or self.seed_demo_data or self.seed_health_data:
+                raise ValueError("Production requires demo mode and demo data seeding disabled.")
+            if self.background_tasks_enabled:
+                raise ValueError(
+                    "Production runs app.worker separately; disable API background tasks."
+                )
+            if self.database_url.startswith("sqlite"):
+                raise ValueError("Production requires PostgreSQL for durable worker coordination.")
+            if not self.cors_origin_list or any(
+                not origin.startswith("https://") or "*" in origin
+                for origin in self.cors_origin_list
+            ):
+                raise ValueError("Production requires explicit HTTPS origins for browser sessions.")
             if not self.ingest_api_key:
                 raise ValueError("Production requires INGEST_API_KEY.")
             if self.photon_delivery == "webhook" and self.photon_enabled:

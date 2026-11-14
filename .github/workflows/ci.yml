@@ -115,7 +115,6 @@ jobs:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:18000
           NEXT_PUBLIC_USE_MOCKS: 'false'
           NEXT_PUBLIC_LOCAL_PREVIEW: 'false'
-          NEXT_PUBLIC_VIEWER_TOKEN: dev-child-token
           NEXT_TELEMETRY_DISABLED: '1'
       - uses: astral-sh/setup-uv@v10.3.3
         with:

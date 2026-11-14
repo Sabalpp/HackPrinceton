@@ -12,7 +12,6 @@ import {
   ApiError,
   subscribeTimeline,
   USE_MOCKS,
-  VIEWER_TOKEN,
   type Me,
   type ParentOverview,
   type StreamStatus,
@@ -59,7 +58,7 @@ async function loadAll(token: string) {
 }
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const token = VIEWER_TOKEN;
+  const token = ""; // Per-user HttpOnly session cookie; never a public shared family token.
   const [state, setState] = useState<Phase>({ phase: "loading" });
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [connection, setConnection] = useState<Connection>(USE_MOCKS ? "mock" : "connecting");
@@ -81,13 +80,18 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const d = describe(err);
         if (d.status === 0 && !USE_MOCKS) setConnection("offline");
         // Keep the last good data on screen if a background refetch fails.
-        setState((prev) => (prev.phase === "ready" ? prev : { phase: "error", ...d }));
+        if (d.status === 401 || d.status === 403) {
+          setTimeline([]);
+          setState({ phase: "error", ...d });
+        } else setState((prev) => (prev.phase === "ready" ? prev : { phase: "error", ...d }));
       },
     );
   }, [token]);
 
   useEffect(() => {
     void load();
+    const poll = setInterval(() => { if (!document.hidden) void load(); }, 30000);
+    return () => clearInterval(poll);
   }, [load]);
 
   const parentId = state.phase === "ready" ? state.parentId : null;

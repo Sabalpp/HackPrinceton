@@ -18,7 +18,6 @@ from app.integrations.gemini.agent import (
     WHEN_RE,
     _decl,
     _get_client,
-    history,
 )
 from app.models import FamilyLink, Person
 from app.schemas.contracts import AssistanceCategory
@@ -123,14 +122,11 @@ def _gemini(
 ) -> str:
     from google.genai import types
 
-    contents: list[Any] = [
-        types.Content(
-            role="user" if t.role == "user" else "model", parts=[types.Part.from_text(text=t.text)]
-        )
-        for t in history(session, member.id)
-    ]
-    if not contents or contents[-1].role != "user":
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=text)]))
+    # Stored turns have no parent/grant version. They may contain facts from a
+    # revoked or deleted link, even when another current link grants access.
+    # Use this request plus freshly permission-filtered tools until history has
+    # consent-scoped storage. This cannot erase data sent before revocation.
+    contents: list[Any] = [types.Content(role="user", parts=[types.Part.from_text(text=text)])]
     config = types.GenerateContentConfig(
         system_instruction=PROMPT.format(
             name=member.display_name, who=family.who(link, parent), parent_name=parent.display_name

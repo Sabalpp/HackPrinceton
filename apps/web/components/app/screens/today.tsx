@@ -133,7 +133,8 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
           action={
             o.health && (
               <span className="flex items-center gap-3">
-                {o.health.data_mode !== "live" && <SimulatedPill />}
+                {o.health.data_mode === "simulated" && <SimulatedPill />}
+                {o.health.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 text-sm font-semibold text-watch-heading">Mixed sources</span>}
                 <Link href="/health" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
                   Health trends <ArrowRight size={15} aria-hidden="true" />
                 </Link>
@@ -151,7 +152,7 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
           </ul>
         ) : (
           <EmptyBlock title={`${name} hasn't shared health data`} icon={HeartPulse}>
-            That&apos;s {name}&apos;s choice. Sharing can be turned on by texting FarCare.
+            That&apos;s {name}&apos;s choice. They can manage it from the parent screen&apos;s sharing settings.
           </EmptyBlock>
         )}
       </section>

@@ -1,0 +1,22 @@
+{
+    auto_https off
+}
+
+# This listener is published only on host loopback. A trusted HTTPS ingress
+# terminates TLS in front of it; do not expose this HTTP listener publicly.
+:80 {
+    request_body {
+        max_size 2MB
+    }
+    handle_path /backend/* {
+        reverse_proxy api:8000 {
+            header_up X-Forwarded-Proto https
+            flush_interval -1
+        }
+    }
+    handle {
+        reverse_proxy web:3000 {
+            header_up X-Forwarded-Proto https
+        }
+    }
+}
