@@ -1,0 +1,109 @@
+{
+  "today": "2026-11-14",
+  "status": "watch",
+  "status_headline": "Knee pain is improving, but she slept poorly last night",
+  "parent": {
+    "name": "Sita Sharma",
+    "nickname": "Ama",
+    "city": "Kathmandu",
+    "tz": "Asia/Kathmandu",
+    "call_time": "19:00",
+    "emergency_number": "102"
+  },
+  "family": [
+    { "name": "Saksham", "role": "admin", "city": "New York", "tz": "America/New_York", "last_called": "2026-11-08" },
+    { "name": "Priya", "role": "member", "city": "London", "tz": "Europe/London", "last_called": "2026-11-12" }
+  ],
+  "helpers": [{ "name": "Kamala Didi", "relationship": "neighbor", "confirmed": true }],
+  "band": { "name": "Fitbit Air", "synced_min_ago": 12 },
+  "threads": [
+    {
+      "id": 1,
+      "topic": "Right knee pain",
+      "kind": "health",
+      "status": "open",
+      "last_status": "improving",
+      "first_seen": "2026-11-12",
+      "next_followup": "2026-11-16",
+      "created_by": "ai",
+      "flag_for_child": false,
+      "history": [
+        {
+          "day": "2026-11-12",
+          "source": "call",
+          "status": "new",
+          "note": "Said her right knee hurts when walking",
+          "quote_ne": "दाहिने घुँडा हिँड्दा दुख्छ।"
+        },
+        {
+          "day": "2026-11-13",
+          "source": "band",
+          "status": "same",
+          "note": "Steps were close to her normal (3,350). She is still walking around."
+        },
+        {
+          "day": "2026-11-13",
+          "source": "call",
+          "status": "improving",
+          "ask_en": "Is your knee any better since yesterday?",
+          "ask_ne": "हिजोभन्दा घुँडा अलि सन्चो छ?",
+          "note": "Better. I put oil on it.",
+          "quote_ne": "सन्चो छ। तेल लगाएँ।"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "topic": "Poor sleep",
+      "kind": "health",
+      "status": "open",
+      "last_status": "new",
+      "first_seen": "2026-11-14",
+      "next_followup": "2026-11-14",
+      "created_by": "band",
+      "history": [
+        {
+          "day": "2026-11-14",
+          "source": "band",
+          "status": "new",
+          "note": "Slept 4h 50m (her normal is 6h 40m). She said: 'It was cold.'"
+        }
+      ]
+    },
+    { "id": 3, "topic": "Did she see Dr. Sharma?", "kind": "child_question", "created_by": "Priya", "history": [] },
+    { "id": 4, "topic": "Riya visiting on Sunday", "kind": "personal", "history": [] }
+  ],
+  "vitals": [
+    { "metric": "sleep_min", "label": "Sleep", "value": 290, "normal": 400, "level": "watch" },
+    { "metric": "steps", "label": "Steps", "value": 3280, "normal": 3400, "level": "good" },
+    { "metric": "resting_hr", "label": "Resting heart rate", "value": 69, "normal": 68, "unit": "bpm", "level": "good" },
+    { "metric": "spo2", "label": "Blood oxygen", "value": 96, "normal": 96.5, "unit": "%", "level": "good" },
+    { "metric": "bp", "label": "Blood pressure", "value": "142/90", "normal": "134/85", "level": "watch" }
+  ],
+  "meds_last7": [true, true, true, false, true, true, true],
+  "latest_call": {
+    "status": "completed",
+    "transcript": [
+      { "role": "ai", "ne": "नमस्ते आमा! आज कस्तो हुनुहुन्छ?", "en": "Namaste Ama! How are you today?" },
+      { "role": "ama", "ne": "सन्चै छु, अलि थकाइ लागेको छ।", "en": "I'm fine, a bit tired." },
+      { "role": "ai", "ne": "हिजो घुँडा दुखेको थियो। आज कस्तो छ?", "en": "Your knee was hurting yesterday. How is it today?" },
+      { "role": "ama", "ne": "अलि सन्चो छ। तेल लगाएँ।", "en": "A little better. I put oil on it." },
+      { "role": "ai", "ne": "हिजो राति राम्रोसँग निदाउनुभयो?", "en": "Did you sleep well last night?" }
+    ],
+    "learned": [
+      { "label": "Mood", "value": "tired" },
+      { "label": "Knee", "value": "improving" }
+    ]
+  },
+  "agenda": [
+    { "label": "Greeting and mood", "done": true },
+    { "label": "Knee pain follow-up", "done": true },
+    { "label": "Poor sleep (from band)", "current": true },
+    { "label": "BP medicine" },
+    { "label": "BP reading" },
+    { "label": "Priya's question: Dr. Sharma?" },
+    { "label": "Riya's visit" }
+  ],
+  "digest": "Ama, Sat Nov 14\nKnee pain: improving (day 3). She put oil on it.\nSleep: 4h 50m last night, below her normal of 6h 40m. She said it was cold.\nBP medicine: taken 6 of the last 7 days (missed Wednesday).\nTonight's call (7:00 pm her time) will ask about sleep and Priya's question about Dr. Sharma.",
+  "events": []
+}
