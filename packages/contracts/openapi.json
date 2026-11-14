@@ -662,6 +662,34 @@
         "title": "HealthSummary",
         "type": "object"
       },
+      "HealthSyncDemoIn": {
+        "properties": {
+          "days": {
+            "default": 35,
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          },
+          "parent_id": {
+            "default": "parent_001",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "scenario": {
+            "default": "decline",
+            "enum": [
+              "decline",
+              "normal",
+              "recovering"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          }
+        },
+        "title": "HealthSyncDemoIn",
+        "type": "object"
+      },
       "InboundDemoIn": {
         "properties": {
           "person_id": {
@@ -1363,6 +1391,64 @@
         ]
       }
     },
+    "/api/demo/health-sync": {
+      "post": {
+        "description": "Run the mock Fitbit sender (Sabal's stand-in) server-side through the real ingest path.",
+        "operationId": "demo_health_sync_api_demo_health_sync_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HealthSyncDemoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Health Sync",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/api/demo/inbound": {
       "post": {
         "operationId": "demo_inbound_api_demo_inbound_post",
@@ -1415,6 +1501,64 @@
           }
         },
         "summary": "Demo Inbound",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/messages": {
+      "get": {
+        "description": "Every conversation in both directions, oldest first (for the demo console's phones).",
+        "operationId": "messages_api_demo_messages_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 300,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Messages",
         "tags": [
           "demo"
         ]

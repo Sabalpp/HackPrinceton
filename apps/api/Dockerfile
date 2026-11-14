@@ -13,10 +13,13 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
+COPY scripts ./scripts
 
 RUN useradd --create-home --uid 10001 farcare
 USER farcare
 
 ENV PATH="/app/.venv/bin:$PATH" APP_ENV=production
 EXPOSE 8000
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# --timeout-graceful-shutdown: live dashboard streams (SSE) never close on their own, so
+# without it a restart/redeploy waits forever for them.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 5"]

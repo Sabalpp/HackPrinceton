@@ -23,6 +23,11 @@ npm install && npm run dev
 - Real backend: run `apps/api` (see CLAUDE.md), set `NEXT_PUBLIC_USE_MOCKS=false`, and use token
   `dev-child-token`.
 
+**Reference:** the backend serves a plain Demo Console at `http://localhost:8000/console`
+(`apps/api/app/static/console.html`). It's a dev tool, not the product UI, but it shows every
+API call your dashboard needs (overview, timeline + SSE, incidents, requests, health) working
+live. Borrow freely.
+
 ## Screens (priority order)
 
 1. **Parent Overview** (single page is fine): from `GET /overview`

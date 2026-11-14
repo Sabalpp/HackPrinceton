@@ -137,6 +137,70 @@ def outbox(limit: int = 50, session: Session = Depends(get_session)):
     return [_out(session, m) for m in rows]
 
 
+@router.get("/messages")
+def messages(limit: int = 300, session: Session = Depends(get_session)):
+    """Every conversation in both directions, oldest first (for the demo console's phones)."""
+    from app.integrations.photon.inbound import normalize_handle
+
+    by_handle = {p.handle: p for p in session.exec(select(Person)).all() if p.handle}
+    items: list[dict] = []
+    for row in session.exec(select(InboundMessageRow)).all():
+        person = by_handle.get(normalize_handle(row.payload.get("sender_handle", "")))
+        if person is None:
+            continue
+        items.append(
+            {
+                "id": f"in:{row.id}",
+                "person_id": person.id,
+                "direction": "in",
+                "text": row.payload.get("text", ""),
+                "status": row.status,
+                "channel": "simulated" if row.payload.get("simulated") else "photon",
+                "at": row.received_at.isoformat(),
+            }
+        )
+    for m in session.exec(select(OutboundMessage)).all():
+        if m.person_id:
+            items.append(
+                {
+                    "id": f"out:{m.id}",
+                    "person_id": m.person_id,
+                    "direction": "out",
+                    "text": m.text,
+                    "status": m.status,
+                    "channel": m.channel,
+                    "at": m.created_at.isoformat(),
+                }
+            )
+    items.sort(key=lambda i: i["at"])
+    return items[-min(limit, 1000) :]
+
+
+class HealthSyncDemoIn(BaseModel):
+    parent_id: str = "parent_001"
+    scenario: Literal["decline", "normal", "recovering"] = "decline"
+    days: int = Field(default=35, ge=1, le=120)
+
+
+@router.post("/health-sync")
+def demo_health_sync(body: HealthSyncDemoIn, session: Session = Depends(get_session)):
+    """Run the mock Fitbit sender (Sabal's stand-in) server-side through the real ingest path."""
+    import importlib.util
+    from pathlib import Path
+
+    from app.routes.ingest import ingest_health
+    from app.schemas.contracts import HealthObservation
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "mock_fitbit_sender.py"
+    if not path.exists():
+        raise HTTPException(404, "Mock sender not available in this build")
+    spec = importlib.util.spec_from_file_location("mock_fitbit_sender", path)
+    sender = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sender)  # type: ignore[union-attr]
+    payload = sender.backfill(body.parent_id, body.days, body.scenario)
+    return ingest_health([HealthObservation.model_validate(p) for p in payload], session)
+
+
 @router.get("/people")
 def people(session: Session = Depends(get_session)):
     return [

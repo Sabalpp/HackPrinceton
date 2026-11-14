@@ -77,7 +77,7 @@ Aarav.
 
 | Failure | Do this |
 | --- | --- |
-| Photon down / phone has no signal | Use the dashboard's demo controls (or `POST /api/demo/inbound`) to send the same lines as each person. The UI and state machine behave identically. Say so honestly. |
+| Photon down / phone has no signal | Open `https://<api>/console` (Demo Console: a phone per person, live dashboard, demo buttons) and type each person's lines there, or use `POST /api/demo/inbound`. The state machine behaves identically. Say so honestly. |
 | Webhook not arriving | Switch backend to `PHOTON_DELIVERY=poll` and restart. |
 | Gemini quota/latency | Nothing to do. Fallback replies automatically (`/health` → `ai: fallback` after restart without key). |
 | Backend host asleep/crashed | Run locally: `uv run uvicorn app.main:app` + `PHOTON_DELIVERY=poll`. Point the web app at it. |

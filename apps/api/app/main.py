@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import init_db, session_scope
-from app.routes import demo, ingest, parents, system, webhooks
+from app.routes import console, demo, ingest, parents, system, webhooks
 from app.seed import seed
 from app.services.background import poll_loop, tick_loop
 
@@ -56,3 +56,4 @@ app.include_router(parents.router)
 app.include_router(ingest.router)
 app.include_router(webhooks.router)
 app.include_router(demo.router)
+app.include_router(console.router)

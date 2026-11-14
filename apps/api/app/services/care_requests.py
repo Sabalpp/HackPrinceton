@@ -286,7 +286,9 @@ def dispatch(session: Session, req: CareRequestRow) -> bool:
     parent = session.get(Person, req.parent_id)
     responder = session.get(Person, req.responder_id) if req.responder_id else None
     assert parent is not None and responder is not None
-    details = f" Details: {req.details}." if req.details else ""
+    # Skip details that just restate the task (e.g. "groceries" for a grocery request).
+    redundant = req.details.strip(" .").lower() in label(req).lower()
+    details = f" Details: {req.details.strip(' .')}." if req.details and not redundant else ""
     text = (
         f"Hi {responder.display_name}, this is FarCare, helping {parent.display_name}. "
         f"{parent.display_name} is asking for {label(req)}.{details} Can you help? "

@@ -102,3 +102,23 @@ def test_console_override_keeps_messaging_simulated(client, monkeypatch):
     monkeypatch.setattr(s, "messaging_channel", "console")
     assert channel_name() == "console"
     assert client.get("/health").json()["messaging"] == "console"
+
+
+def test_console_page_and_feeds(client, monkeypatch):
+    page = client.get("/console")
+    assert page.status_code == 200 and "FarCare Demo Console" in page.text
+    assert '"dev-admin-token"' in page.text  # pre-filled only for dev tokens outside production
+
+    from tests.conftest import say
+
+    say(client, "parent_001", "hello")
+    msgs = client.get("/api/demo/messages", headers=ADMIN).json()
+    assert [m["direction"] for m in msgs] == ["in", "out"]
+    assert msgs[0]["person_id"] == "parent_001" and msgs[0]["text"] == "hello"
+
+    receipt = client.post("/api/demo/health-sync", json={"scenario": "decline"}, headers=ADMIN)
+    assert receipt.status_code == 200 and receipt.json()["accepted"] == 35
+    assert client.post("/api/demo/health-sync", json={}, headers=CHILD).status_code == 403
+
+    monkeypatch.setattr(get_settings(), "demo_mode", False)
+    assert client.get("/console").status_code == 404

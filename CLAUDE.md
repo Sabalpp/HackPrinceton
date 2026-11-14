@@ -44,7 +44,8 @@ docs/                    architecture, contracts, demo plan, per-developer instr
 
 ```bash
 # Backend (http://localhost:8000, docs at /docs). Works with no keys: console messaging + fallback AI.
-cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload
+cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload --timeout-graceful-shutdown 2
+# Watch everything live (phones + dashboard + demo buttons): http://localhost:8000/console
 uv run pytest                                   # all backend tests (TEST_DATABASE_URL=postgresql://... for Postgres)
 uv run python scripts/export_contracts.py       # after ANY contract change
 

@@ -262,7 +262,10 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
         reply = ""  # safety workflow already messaged the parent
     elif tools.request is not None and tools.request.status == CareRequestStatus.awaiting_approval:
         prompt = care_requests.approval_prompt(session, tools.request)
-        reply = f"{reply}\n\n{prompt}".strip() if reply else prompt
+        # The approval question is ours, asked exactly once. Models sometimes ask their own
+        # ("Shall I send that request?"), so keep only the model's non-question sentences.
+        lead = _without_questions(reply)
+        reply = f"{lead}\n\n{prompt}" if lead else prompt
     return AgentResult(
         reply=reply,
         mode=mode,
@@ -270,6 +273,11 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
         request=tools.request,
         escalated=tools.escalated,
     )
+
+
+def _without_questions(text: str) -> str:
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return " ".join(x for x in sentences if x and not x.endswith("?")).strip()
 
 
 def history(session: Session, person_id: str, limit: int = 12) -> list[ConversationTurn]:

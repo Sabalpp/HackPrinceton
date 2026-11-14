@@ -18,7 +18,8 @@ synthetic and labeled `simulated`.
 
 ```bash
 # API: http://localhost:8000/docs (works with no keys: simulated messaging + AI fallback)
-cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload
+cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload --timeout-graceful-shutdown 2
+# Then open http://localhost:8000/console to watch and drive the whole system
 
 # Web: http://localhost:3000
 cd apps/web && cp .env.example .env.local && npm install && npm run dev

@@ -169,3 +169,25 @@ def test_gemini_failure_falls_back(client, monkeypatch):
 
     out = say(client, "parent_001", "hello")
     assert texts_to(out, "parent") == ["Hi Sita! 😊 How are you feeling today?"]
+
+
+def test_model_question_is_dropped_and_redundant_details_skipped(client, monkeypatch):
+    """Live Gemini asked its own 'Shall I send that request?' on top of ours (seen in a real
+    run) and passed details='groceries'. Parent sees one question; Asha sees no echo."""
+    from app.integrations.gemini import agent
+    from tests.conftest import say, texts_to
+
+    fake = FakeGemini(
+        "request_assistance",
+        {"category": "grocery_assistance", "when": "tomorrow", "details": "groceries"},
+        "I can ask Asha to help you with groceries tomorrow. Shall I send that request?",
+    )
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key")
+    monkeypatch.setattr(agent, "_get_client", lambda: fake)
+    out = say(client, "parent_001", "Can someone help me with groceries tomorrow?")
+    [reply] = texts_to(out, "parent")
+    assert reply.count("?") == 1 and "Shall I" not in reply
+    assert reply.startswith("I can ask Asha to help you with groceries tomorrow.")
+    out = say(client, "parent_001", "yes")
+    [ask] = texts_to(out, "responder")
+    assert "Details:" not in ask
