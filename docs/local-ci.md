@@ -1,6 +1,6 @@
 # CI and dashboard verification
 
-The four required check names remain unchanged. The **Web (lint, typecheck, build)** check now also starts the actual FastAPI app with temporary synthetic SQLite data, starts the production Next.js build, and runs Chromium against both. It checks authenticated `/api/me` and overview responses, the Sita dashboard, a live SSE connection, Health and Care Circle navigation, and browser errors.
+The four required check names remain unchanged. The **Web (lint, typecheck, build)** check runs on Ubuntu 24.04, matching the pinned browser driver's supported OS. It starts the actual FastAPI app with temporary synthetic SQLite data, starts the production Next.js build, and runs Chromium against both. It checks authenticated `/api/me` and overview responses, the Sita dashboard, a live SSE connection, Health and Care Circle navigation, and browser errors.
 
 `NEXT_PUBLIC_USE_MOCKS=false` means this checks the real API integration. All people and health observations used by this CI job are synthetic. Photon, Gemini, proactive messages, and background scheduling are disabled. The test starts and stops only its own processes and never reads the private local health exports or cloud credentials.
 

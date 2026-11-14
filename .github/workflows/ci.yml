@@ -83,7 +83,8 @@ jobs:
 
   web:
     name: Web (lint, typecheck, build)
-    runs-on: ubuntu-latest
+    # Match the pinned browser driver's supported Linux image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
