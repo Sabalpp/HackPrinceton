@@ -67,7 +67,9 @@ export async function request<T>(path: string, token: string | null, init?: Requ
         ...(init?.method && init.method !== "GET" && csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       },
       cache: "no-store",
-      credentials: "include",
+      // Explicit bearer credentials are development tooling only. Do not mix
+      // them with the personal cookie identity, which the API must prioritize.
+      credentials: token ? "omit" : "include",
     });
   } catch {
     // fetch() rejects only on network failure (API down, CORS, offline).

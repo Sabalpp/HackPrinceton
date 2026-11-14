@@ -197,6 +197,11 @@ async function run() {
   check('Parent sees completion and a running standalone worker',home.requests.some(r=>r.request_id===request.request_id && r.status==='completed') && home.agent.status==='healthy');
   const familyRequests = await (await page.context().request.get(`${api}/api/parents/parent_001/care-requests`)).json();
   check('The family account sees the completed task',familyRequests.some(r=>r.request_id===request.request_id && r.status==='completed'));
+  await page.goto(`${web}/demo`,{waitUntil:'domcontentloaded'});
+  const devPeople = page.waitForResponse(r=>new URL(r.url()).pathname==='/api/demo/people' && r.ok());
+  await page.getByLabel('Admin token',{exact:true}).fill('dev-admin-token');
+  const devResult = await devPeople;
+  check('Explicit development controls omit personal session cookies',!(await devResult.request().allHeaders()).cookie);
   check('No browser exceptions, console errors, failed API responses, or external requests',browserErrors.length===0);
   evidence.status='passed';
 }

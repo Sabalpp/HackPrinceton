@@ -19,7 +19,14 @@
 | Frontend lint/types | ESLint, Next route type generation, TypeScript | PASS |
 | Contract generation | OpenAPI export and generated TypeScript refreshed together | PASS |
 | Deployment template | Compose configuration validation; no resources started | PASS |
-| PostgreSQL, build, browser, image, secret scan | Required GitHub CI on this feature revision | PENDING |
+| PostgreSQL | 385 passed, including the real database mutex test, on ed9a64f | PASS |
+| Browser | 19 Chromium checks across family desktop, parent mobile, helper mobile; screenshots uploaded | PASS |
+| Build, image, secret scan | All four required jobs passed on ed9a64f | PASS |
+
+CI evidence: [run 43644958753](https://github.com/Sabalpp/HackPrinceton/actions/runs/43644958753).
+Personal-cookie isolation remains enforced, including expired cookies. Explicit development
+controls omit cookies; the final browser run additionally verifies that path. Required PR
+checks run again on the final head before merge.
 
 ## Issues found and fixed
 
@@ -40,4 +47,6 @@ the previous API process and needs a normal-terminal restart after this update.
 
 ## Final status
 
-PARTIAL — local code checks pass; hosted CI and real deployment gates remain.
+VERIFIED for the synthetic application workflow and tested code revision. PARTIAL for
+real-world production use: public deployment, live provider delivery, operator identity
+procedures and clinical validation remain unverified.
