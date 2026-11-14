@@ -42,6 +42,7 @@ the demo admin. Otherwise the API returns 404.
 | POST | `/webhooks/photon` | signature | 204 (`message.received` handled, other events acknowledged) |
 | POST | `/api/demo/fall` | admin + DEMO_MODE | detector result (+ ingest result if `possible_fall`) |
 | POST | `/api/demo/inbound` | admin + DEMO_MODE | simulate a person texting FarCare; returns FarCare's outbound messages |
+| POST | `/api/demo/checkin` | admin + DEMO_MODE | send the proactive wellness check-in now (skips the daily window) |
 | GET | `/api/demo/outbox` · `/api/demo/people` | admin + DEMO_MODE | recent outbound messages / people + reachability |
 | POST | `/api/demo/reset` | admin + DEMO_MODE | clears workflow state (keeps people + health data) |
 
@@ -89,6 +90,8 @@ the demo admin. Otherwise the API returns 404.
 - `approval_basis`: `parent_reply` (ordinary) | `emergency_policy` (escalation; pre-approved).
 - `origin`: `conversation` | `emergency`.
 - `responder_note`: clock time the responder gave, e.g. `"4 PM"`.
+- `requested_by_id` / `requested_by_name`: set when a family member asked on the parent's
+  behalf. The parent still approved it (`parent_approved`). The UI can show "Requested by Aarav".
 
 ### ResponderReply (parsed from responder texts)
 
@@ -104,7 +107,8 @@ the demo admin. Otherwise the API returns 404.
 `status`: `checking` → `escalated` → `responder_en_route` → `resolved`.
 `escalation_reason`: `help_requested` | `no_response` | `parent_reported_emergency`.
 `resolution`: `parent_ok` | `responder_confirmed` | `family_resolved`.
-`trigger`: `fall.suspected` | `parent_message`. Also includes `no_responder_available`,
+`trigger`: `fall.suspected` | `parent_message` | `family_concern` (a family member asked
+FarCare to check on the parent, e.g. "Mom isn't answering"). Also includes `no_responder_available`,
 `check_deadline`, `opened_at`, `escalated_at`, `resolved_at`, `confidence`, `data_mode`.
 
 ### TimelineEvent (REST + SSE)
@@ -120,6 +124,7 @@ the demo admin. Otherwise the API returns 404.
 `care_request.more_help_needed`, `incident.opened`, `incident.escalated`,
 `incident.check_undeliverable`, `incident.responder_en_route`, `incident.no_responder`,
 `incident.resolved`, `fall.duplicate_suppressed`, `checkin.recorded` (needs `share_checkins`),
+`checkin.prompted` (FarCare reached out proactively; needs `share_health`),
 `agent.replied` (parent-only). The UI should show `summary` and use `kind` + `ref_id` to refresh
 the related card. Treat unknown kinds as generic.
 

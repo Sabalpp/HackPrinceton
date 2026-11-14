@@ -57,6 +57,18 @@ the other. Photon treats them as different senders.
 | 9 | Asha | *"Done, she's okay"* | Incident `resolved`. Dashboard shows the full incident timeline. |
 | 10 | Presenter | closing line over the dashboard | — |
 
+**Photon-track extras (show "context across people and time"):**
+
+- **Son asks for Mom:** Aarav texts *"Can someone help Mom with groceries tomorrow?"* FarCare
+  asks **Sita for consent first** (*"Aarav asked me to arrange…"*), and only after her YES
+  contacts Asha. Aarav is told at each step.
+- **"Mom isn't answering":** Aarav texts *"I haven't heard from Mom all day, I'm worried."*
+  FarCare checks in with Sita. If there's no answer (`FAMILY_CHECK_TIMEOUT_SECONDS`), the same
+  deterministic escalation as a fall runs.
+- **Proactive check-in:** demo control `POST /api/demo/checkin`. Sita gets a gentle *"Good
+  morning, Sita 🌼 Just checking in…"* that mentions her lower activity. In real use this
+  happens at most once a day, in her daytime, and never while she's mid-conversation.
+
 Optional extras if time allows: Asha replies *"Sorry, I can't"* in step 5 to show FarCare
 proposing Ram. Or Sita replies *"OK"* in step 7 to show a false alarm resolving with an FYI to
 Aarav.

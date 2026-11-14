@@ -11,6 +11,7 @@ os.environ.update(
     INGEST_API_KEY="",
     DEMO_MODE="true",
     SEED_DEMO_DATA="true",
+    PROACTIVE_CHECKINS_ENABLED="false",
     DEMO_EMERGENCY_NUMBER="102",
 )
 

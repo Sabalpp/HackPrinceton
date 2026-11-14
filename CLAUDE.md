@@ -12,7 +12,7 @@ optional Tiger Data / Photon Voice).
 1. This file, then [AGENTS.md](AGENTS.md) (rules you must follow).
 2. Your developer file: [Sumit](docs/agents/SUMIT.md) · [Saksham](docs/agents/SAKSHAM.md) ·
    [Sabal](docs/agents/SABAL.md). Work only on your branch and owned paths.
-3. Contracts: [docs/api-contracts.md](docs/api-contracts.md). Architecture:
+3. Contracts: [docs/api-contracts.md](docs/api-contracts.md). Photon track: [docs/photon-track.md](docs/photon-track.md). Architecture:
    [docs/architecture.md](docs/architecture.md). Demo: [docs/demo-plan.md](docs/demo-plan.md).
 
 ## The one workflow that must always work
@@ -31,7 +31,7 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
   app/health/                Sabal: simulated provider, trends/baseline, Google Health stub
   app/fall_detection/        synthetic IMU traces + explainable detector
-  tests/                     105 tests incl. end-to-end workflows (SQLite + Postgres)
+  tests/                     113 tests incl. end-to-end workflows (SQLite + Postgres)
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
@@ -70,6 +70,9 @@ Kathmandu), child `child_001` (Aarav), responders `responder_001` (Asha, neighbo
   each responder) must be assigned and must text FarCare once before we can message them. We
   store their `space.id` + agent user id from that first message (= opt-in).
 - Beta iMessage supports text + images only (no tapbacks/polls/effects/voice notes).
+  **Group chats and calls need a dedicated iMessage line**, so FarCare coordinates people
+  through separate 1:1 threads. Voice must run on a Photon **SMS** number. The beta is free.
+  Track rules and judging map: [docs/photon-track.md](docs/photon-track.md).
 - Inbound: webhook (Standard Webhooks signature; dedupe on message id) or polling
   `list_messages`. Outbound: `send_message` with an `idempotency-key`; 202 = accepted, not delivered.
 - Full schema: `https://api.photon.codes/openapi.json`.

@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/demo/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Checkin
+         * @description Send the proactive wellness check-in now (skips the daily time window).
+         */
+        post: operations["demo_checkin_api_demo_checkin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/fall": {
         parameters: {
             query?: never;
@@ -368,6 +388,13 @@ export interface components {
             /** Request Id */
             request_id: string;
             request_type: components["schemas"]["AssistanceCategory"];
+            /**
+             * Requested By Id
+             * @description Family member who asked on the parent's behalf (parent consented)
+             */
+            requested_by_id?: string | null;
+            /** Requested By Name */
+            requested_by_name?: string | null;
             /** Requested Time */
             requested_time?: string | null;
             /** Responder Id */
@@ -416,6 +443,11 @@ export interface components {
             parent_id: string;
             /** Summary */
             summary: string;
+        };
+        /** CheckinDemoIn */
+        CheckinDemoIn: {
+            /** Parent Id */
+            parent_id: string;
         };
         /**
          * DataMode
@@ -673,7 +705,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "fall.suspected" | "parent_message";
+            trigger: "fall.suspected" | "parent_message" | "family_concern";
         };
         /** SystemHealth */
         SystemHealth: {
@@ -761,6 +793,41 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    demo_checkin_api_demo_checkin_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinDemoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     demo_fall_api_demo_fall_post: {
         parameters: {
             query?: never;

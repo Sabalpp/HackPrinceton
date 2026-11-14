@@ -130,6 +130,29 @@
           "request_type": {
             "$ref": "#/components/schemas/AssistanceCategory"
           },
+          "requested_by_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Family member who asked on the parent's behalf (parent consented)",
+            "title": "Requested By Id"
+          },
+          "requested_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By Name"
+          },
           "requested_time": {
             "anyOf": [
               {
@@ -271,6 +294,19 @@
           "created_at"
         ],
         "title": "CheckIn",
+        "type": "object"
+      },
+      "CheckinDemoIn": {
+        "properties": {
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id"
+        ],
+        "title": "CheckinDemoIn",
         "type": "object"
       },
       "DataMode": {
@@ -969,7 +1005,8 @@
           "trigger": {
             "enum": [
               "fall.suspected",
-              "parent_message"
+              "parent_message",
+              "family_concern"
             ],
             "title": "Trigger",
             "type": "string"
@@ -1170,6 +1207,64 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/demo/checkin": {
+      "post": {
+        "description": "Send the proactive wellness check-in now (skips the daily time window).",
+        "operationId": "demo_checkin_api_demo_checkin_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckinDemoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demo Checkin",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/api/demo/fall": {
       "post": {
         "operationId": "demo_fall_api_demo_fall_post",

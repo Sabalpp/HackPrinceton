@@ -177,6 +177,11 @@ class CareRequest(Contract):
     estimated_arrival_minutes: int | None = None
     responder_note: str | None = None
     incident_id: str | None = None
+    requested_by_id: str | None = Field(
+        default=None,
+        description="Family member who asked on the parent's behalf (parent consented)",
+    )
+    requested_by_name: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -184,7 +189,7 @@ class CareRequest(Contract):
 class SafetyIncident(Contract):
     incident_id: str
     parent_id: str
-    trigger: Literal["fall.suspected", "parent_message"]
+    trigger: Literal["fall.suspected", "parent_message", "family_concern"]
     source: str
     data_mode: DataMode
     confidence: float | None = Field(

@@ -69,6 +69,7 @@ class CareRequestRow(SQLModel, table=True):
     approval_basis: str | None = None
     origin: str = "conversation"
     incident_id: str | None = Field(default=None, index=True)
+    requested_by_id: str | None = Field(default=None, foreign_key="people.id")
     eta_minutes: int | None = None
     responder_note: str | None = None
     attempted_responder_ids: list[str] = Field(

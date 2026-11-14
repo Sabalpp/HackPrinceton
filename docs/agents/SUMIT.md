@@ -14,7 +14,9 @@
   - `scripts/check_gemini.py` (finds a model that completes a real tool call)
   - Photon typing indicator while the agent thinks
   - Test suite runs on SQLite **and Postgres 16**, in CI and locally via `TEST_DATABASE_URL`
-    (105 tests)
+  - From the Photon judging criteria ([docs/photon-track.md](../photon-track.md)): proactive
+    once-a-day check-in, son-initiated help with Mom's consent, and a "Mom isn't answering"
+    safety check (113 tests)
 
 ## Go-live checklist (needs your accounts; ~30 min)
 

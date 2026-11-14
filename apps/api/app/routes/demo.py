@@ -31,7 +31,7 @@ from app.models import (
     TimelineEventRow,
 )
 from app.schemas.contracts import DataMode, FallSuspectedEvent
-from app.services import conversation, safety
+from app.services import conversation, proactive, safety
 
 router = APIRouter(prefix="/api/demo", tags=["demo"], dependencies=[Depends(require_demo_admin)])
 
@@ -66,6 +66,24 @@ def demo_fall(body: FallDemoIn, session: Session = Depends(get_session)):
         "detection": detection.to_dict(),
         "ingest": result,
     }
+
+
+class CheckinDemoIn(BaseModel):
+    parent_id: str
+
+
+@router.post("/checkin")
+def demo_checkin(body: CheckinDemoIn, session: Session = Depends(get_session)):
+    """Send the proactive wellness check-in now (skips the daily time window)."""
+    parent = session.get(Person, body.parent_id)
+    if parent is None or parent.role != "parent":
+        raise HTTPException(404, "Unknown parent_id")
+    msg = proactive.maybe_checkin(
+        session, parent, force=True, key=f"proactive:{parent.id}:demo:{secrets.token_hex(4)}"
+    )
+    if msg is None:
+        return {"sent": False, "detail": "Skipped: unreachable, open incident, or pending approval"}
+    return {"sent": msg.status in ("sent", "simulated"), "status": msg.status, "text": msg.text}
 
 
 class InboundDemoIn(BaseModel):

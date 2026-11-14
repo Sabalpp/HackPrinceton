@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     request_reply_timeout_seconds: int = 3600
     approval_timeout_seconds: int = 7200
     fall_dedupe_window_seconds: int = 600
+    family_check_timeout_seconds: int = 300  # "Mom isn't answering" safety check window
+
+    # --- Proactive wellness check-ins (at most once per parent per local day) ---
+    proactive_checkins_enabled: bool = True
+    proactive_checkin_hours: str = "9-19"  # parent's local hours [start, end)
+    proactive_quiet_after_chat_hours: int = 6  # don't interrupt an active conversation
     tick_interval_seconds: float = 5.0
 
     @property
