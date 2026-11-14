@@ -65,6 +65,8 @@ def wait_ready(origin, commit, timeout=90):
                 and health["environment"] == "production"
                 and health["demo_mode"] is False
                 and health["messaging"] == "console"
+                and health["photon_delivery"] == "off"
+                and health["ai"] == "fallback"
                 and ready_status == 200
                 and json.loads(ready_body)["ready"] is True
             ):
@@ -91,7 +93,10 @@ def main():
     containers = []
     network_created = False
     try:
-        command("docker", "network", "create", "--internal", network)
+        # A private test bridge supports host-port publication. Docker's internal
+        # network mode can omit these mappings; every published port below is
+        # bound only to loopback. No provider credentials enter the containers.
+        command("docker", "network", "create", network)
         network_created = True
         containers.append(pg)
         command(
@@ -121,6 +126,8 @@ def main():
                 "exec",
                 pg,
                 "pg_isready",
+                "-h",
+                "127.0.0.1",
                 "-U",
                 "farcare",
                 "-d",
@@ -133,7 +140,7 @@ def main():
         else:
             raise RuntimeError("Synthetic PostgreSQL did not start")
 
-        # TLS is deliberately off only inside this isolated CI network. The
+        # TLS is deliberately off only inside this disposable CI bridge. The
         # deployment configurator independently requires TLS for a hosted DB.
         env = {
             "APP_ENV": "production",

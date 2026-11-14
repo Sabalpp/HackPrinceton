@@ -177,15 +177,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: deploy/cloudflare/package-lock.json
       - name: Install pinned deployment CLI
         working-directory: deploy/cloudflare
-        run: npm install --no-audit --no-fund
-      - name: Save resolved CLI dependency lock for review
-        uses: actions/upload-artifact@v5
-        with:
-          name: cloudflare-lockfile
-          path: deploy/cloudflare/package-lock.json
-          retention-days: 7
+        run: npm ci --no-audit --no-fund
       - name: Deployment and routing regression tests
         working-directory: deploy/cloudflare
         run: npm test

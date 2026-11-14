@@ -113,7 +113,7 @@ if (errors.length) {
   if (args.has('--build') || args.has('--deploy')) {
     const wranglerPath = path.join(directory, 'node_modules/wrangler/bin/wrangler.js');
     try { await access(wranglerPath); }
-    catch { throw new Error('Wrangler is missing. Run npm install --no-package-lock in deploy/cloudflare first.'); }
+    catch { throw new Error('Wrangler is missing. Run npm ci in deploy/cloudflare first.'); }
     const wrangler = [wranglerPath];
     const env = {...process.env, CLOUDFLARE_ACCOUNT_ID: settings.CLOUDFLARE_ACCOUNT_ID,
       WRANGLER_SEND_METRICS: 'false', CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false'};

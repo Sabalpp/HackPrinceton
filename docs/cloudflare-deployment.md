@@ -16,7 +16,7 @@ not start the API or care worker.
 | Product | Workers, connected to `Sabalpp/HackPrinceton` |
 | Production branch | `main` after this PR is reviewed and merged |
 | Root directory | `/` (repository root) |
-| Build command | `npm --prefix deploy/cloudflare install --no-package-lock && npm --prefix deploy/cloudflare test && npm --prefix deploy/cloudflare run build` |
+| Build command | `npm --prefix deploy/cloudflare ci && npm --prefix deploy/cloudflare test && npm --prefix deploy/cloudflare run build` |
 | Deploy command | `npm --prefix deploy/cloudflare run deploy` |
 | Build output directory | None; this is a Worker deployment |
 | Build variables | `NODE_VERSION=24`, `SKIP_DEPENDENCY_INSTALL=1`, plus the settings below |
@@ -101,7 +101,7 @@ service. An expired Tiger trial can pause the database independently of hosting.
 
 ```sh
 cd deploy/cloudflare
-npm install --no-package-lock
+npm ci
 npm run configure -- --import-local
 npm run check
 npm test
@@ -140,7 +140,9 @@ the selected custom domain. A Pages-only token is insufficient.
 The script reads allowlisted environment variables as overrides, so CI needs no
 committed `.env`. `check`, `build` and `deploy` never save these overrides to disk
 as a private `.env`; only the explicit `configure` command saves local settings.
-`build` compiles and validates the Worker through Wrangler without publishing.
+`build` compiles and validates the Worker and prepares its container images through
+Wrangler without publishing. It requires Docker, including for a local dry run.
+The committed lockfile pins the tested deployment CLI and its dependencies.
 GitHub CI additionally builds and boots both images against synthetic PostgreSQL,
 checks production authentication and the care-worker heartbeat, and verifies
 recovery after worker failure. Cloudflare's build environment can build the Dockerfiles; see

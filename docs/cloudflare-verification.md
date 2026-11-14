@@ -20,11 +20,11 @@ clinical rules, contracts and database schema were not changed.
 | Publication verification | Requires matching API commit, healthy DB/worker and an HTML login page; rejects stale revisions, redirects and empty/404 output | PASS (synthetic) |
 | Deployment revisions | Config derives API revision from Git; deploy refuses modified/untracked code | PASS (code/tests; live revision unverified) |
 | Python lint/format | Ruff on supervisor, its tests, and synthetic Docker smoke runner | PASS |
-| Dependency installation | This shell could not resolve the npm registry during npm install; Wrangler metadata/schema were fetched through the available network tool | BLOCKED |
-| Docker build/start | Docker socket access returned permission denied in this session | BLOCKED |
+| Dependency installation | GitHub installed Wrangler 4.162.0; its resolved dependency lock was downloaded, SHA-256 checked against the artifact metadata, reviewed and committed for `npm ci` | PASS (CI) |
+| Worker and Docker builds | GitHub compiled the Worker and built both deployment images. Local Docker socket access is unavailable | PASS (CI) |
 | Cloudflare publication | No Cloudflare login/token/account ID or selected public origin available | NOT RUN |
 | Live accounts/messages/health | No live deployment or provider message was created by this task | NOT RUN |
-| GitHub deployment checks | Added actual Wrangler bundle plus Docker builds and production smoke tests; first run pending | PENDING |
+| Production container acceptance | CI boots disposable PostgreSQL/API/web, verifies secure login and worker crash recovery. See the current [PR checks](https://github.com/Sabalpp/HackPrinceton/pull/6/checks) for execution results | CI gate |
 
 ## Issues found and fixed
 
@@ -43,6 +43,9 @@ clinical rules, contracts and database schema were not changed.
 - Rate limiting receives the client IP supplied by the Cloudflare edge instead of a shared proxy address.
 - A provider `RangeError` is reported as temporary unavailability, not a false request-size error.
 - Pages builds fail explicitly rather than succeeding with no usable static application.
+- CI's first container acceptance run exposed Docker's internal-network port behavior;
+  the test uses a disposable bridge with host ports bound only to loopback. PostgreSQL
+  readiness now waits for the final TCP listener, not its temporary initialization server.
 
 ## Parallel review
 
@@ -51,12 +54,13 @@ CLI, secret handling, documentation and integration; the runtime reviewer owns
 gateway/lifecycle/settings tests; the CI reviewer owns image verification and
 process supervision checks. Both reviews finished, with no overlapping edits.
 The supervisor already trusts the isolated container proxy; the new gateway
-sanitizes its forwarding headers. The remaining verification step is the real
-Wrangler/container build on GitHub, since Docker is unavailable in this session.
+sanitizes its forwarding headers. Real Wrangler and Docker image builds run on
+GitHub, since Docker is unavailable in this session. Production startup,
+authentication and recovery checks also run there.
 
 ## Remaining unverified areas
 
-Docker images, Cloudflare resource creation, actual deployment, live worker recovery,
+Cloudflare resource creation, actual deployment, live worker recovery,
 domain/TLS provisioning, authenticated browser flows on Cloudflare, and real Photon delivery.
 The original local collector and database were not restarted or changed for this deployment task.
 
