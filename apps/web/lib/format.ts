@@ -36,9 +36,9 @@ export const INCIDENT_STATUS: Record<IncidentStatus, { label: string; tone: Tone
 };
 
 export function incidentHeadline(incident: SafetyIncident, name: string): string {
-  return incident.trigger === "fall.suspected"
-    ? "Possible fall"
-    : `${name} sent a message that needs attention`;
+  if (incident.trigger === "fall.suspected") return "Possible fall";
+  if (incident.trigger === "family_concern") return `Family asked FarCare to check on ${name}`;
+  return `${name} sent a message that needs attention`;
 }
 
 export function escalationText(incident: SafetyIncident, name: string): string | null {

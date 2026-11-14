@@ -31,7 +31,7 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
   app/health/                Sabal: simulated provider, trends/baseline, Google Health stub
   app/fall_detection/        synthetic IMU traces + explainable detector
-  tests/                     120 tests incl. end-to-end workflows (SQLite + Postgres)
+  tests/                     219 tests incl. end-to-end workflows (SQLite + Postgres)
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
@@ -104,6 +104,18 @@ Don't send `temperature` (deprecated for Gemini 3+).
 | DB-backed timeline + SSE that tails it | Real-time dashboard that survives restarts; no extra infra |
 | Background tick in-process (single instance) | Timeouts/escalations without a queue service |
 | Synthetic IMU traces + threshold detector | Fitbit exposes no raw IMU; pipeline is real, data is labeled simulated |
+
+## Known gaps after the first integration (Nov 14)
+
+- Saksham's "daily-call" pages (`/parent`, `/call`, `/emergency`, `/threads/*`, `/phone/digest`,
+  `/setup`) read a **proposed** `GET /api/state` plus `POST /api/call/answer`,
+  `/api/parent/ok`, `/api/parent/help`. None exist in the backend yet, so those pages run on mock
+  data only. The family dashboard pages (`/`, `/health`, `/requests`, `/safety`, `/circle`,
+  `/activity`, `/demo`) use the real API. Any implementation of the write endpoints **must
+  require the parent's token** (the proposal sends none).
+- `deploy.yml` passes only when the live API's `/health.commit` equals the deployed SHA, so the
+  host must set `GIT_COMMIT` (or `RENDER_GIT_COMMIT` / `RAILWAY_GIT_COMMIT_SHA`).
+- Tiger Data health sync is Sabal's (`apps/api/app/health/tiger.py`, `docs/tiger-health-pipeline.md`).
 
 ## Non-negotiable product rules
 
