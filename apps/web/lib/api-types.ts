@@ -41,6 +41,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/health-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Health Sync
+         * @description Run the mock Fitbit sender (Sabal's stand-in) server-side through the real ingest path.
+         */
+        post: operations["demo_health_sync_api_demo_health_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/inbound": {
         parameters: {
             query?: never;
@@ -52,6 +72,26 @@ export interface paths {
         put?: never;
         /** Demo Inbound */
         post: operations["demo_inbound_api_demo_inbound_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Messages
+         * @description Every conversation in both directions, oldest first (for the demo console's phones).
+         */
+        get: operations["messages_api_demo_messages_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -608,6 +648,25 @@ export interface components {
             /** Trends */
             trends: components["schemas"]["MetricTrend"][];
         };
+        /** HealthSyncDemoIn */
+        HealthSyncDemoIn: {
+            /**
+             * Days
+             * @default 35
+             */
+            days: number;
+            /**
+             * Parent Id
+             * @default parent_001
+             */
+            parent_id: string;
+            /**
+             * Scenario
+             * @default decline
+             * @enum {string}
+             */
+            scenario: "decline" | "normal" | "recovering";
+        };
         /** InboundDemoIn */
         InboundDemoIn: {
             /** Person Id */
@@ -895,6 +954,41 @@ export interface operations {
             };
         };
     };
+    demo_health_sync_api_demo_health_sync_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HealthSyncDemoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     demo_inbound_api_demo_inbound_post: {
         parameters: {
             query?: never;
@@ -909,6 +1003,39 @@ export interface operations {
                 "application/json": components["schemas"]["InboundDemoIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    messages_api_demo_messages_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
