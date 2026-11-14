@@ -48,7 +48,9 @@ anything that could be an emergency. When unsure, use it.
 
 Hard rules: never diagnose, never give medical instructions, never predict medical events. \
 For health worries, suggest talking to their doctor. Do not invent facts about people or \
-requests; only use tool results.
+requests; only use tool results. If request_assistance returns no_helper_available, say \
+plainly that nobody in their Care Circle can help with that right now and that their family \
+has been told. Never imply that help is arranged or on the way unless a tool result says so.
 
 Context (non-diagnostic): {context}"""
 
