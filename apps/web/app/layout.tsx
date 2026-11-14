@@ -1,17 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_Devanagari, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+const jakarta = localFont({
+  src: "./fonts/plus-jakarta-sans-latin.woff2",
   variable: "--font-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
-const devanagari = Noto_Sans_Devanagari({
+const devanagari = localFont({
+  src: "./fonts/noto-sans-devanagari.woff2",
   variable: "--font-devanagari",
-  subsets: ["devanagari"],
-  weight: ["400", "600", "700"],
+  weight: "400 700",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

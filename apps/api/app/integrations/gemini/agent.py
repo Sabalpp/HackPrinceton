@@ -46,9 +46,15 @@ neutrally in their words.
 - report_urgent_help: if they describe a fall, injury, chest pain, trouble breathing, or \
 anything that could be an emergency. When unsure, use it.
 
+Turns starting with "(by voice call)" were spoken on a phone call. If the latest message is \
+spoken, reply in plain, speakable sentences without emoji or lists. In later text messages you \
+may refer back to what was said on the call.
+
 Hard rules: never diagnose, never give medical instructions, never predict medical events. \
 For health worries, suggest talking to their doctor. Do not invent facts about people or \
-requests; only use tool results.
+requests; only use tool results. If request_assistance returns no_helper_available, say \
+plainly that nobody in their Care Circle can help with that right now and that their family \
+has been told. Never imply that help is arranged or on the way unless a tool result says so.
 
 Context (non-diagnostic): {context}"""
 
@@ -260,7 +266,10 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
         reply = ""  # safety workflow already messaged the parent
     elif tools.request is not None and tools.request.status == CareRequestStatus.awaiting_approval:
         prompt = care_requests.approval_prompt(session, tools.request)
-        reply = f"{reply}\n\n{prompt}".strip() if reply else prompt
+        # The approval question is ours, asked exactly once. Models sometimes ask their own
+        # ("Shall I send that request?"), so keep only the model's non-question sentences.
+        lead = _without_questions(reply)
+        reply = f"{lead}\n\n{prompt}" if lead else prompt
     return AgentResult(
         reply=reply,
         mode=mode,
@@ -268,6 +277,11 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
         request=tools.request,
         escalated=tools.escalated,
     )
+
+
+def _without_questions(text: str) -> str:
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    return " ".join(x for x in sentences if x and not x.endswith("?")).strip()
 
 
 def history(session: Session, person_id: str, limit: int = 12) -> list[ConversationTurn]:

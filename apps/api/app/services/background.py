@@ -17,7 +17,7 @@ from sqlmodel import select
 from app.config import get_settings
 from app.db import session_scope, utcnow
 from app.models import InboundMessageRow
-from app.services import care_requests, conversation, safety
+from app.services import care_requests, conversation, proactive, safety
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +27,8 @@ def run_tick() -> None:
         safety.check_overdue(s)
     with session_scope() as s:
         care_requests.expire_overdue(s)
+    with session_scope() as s:
+        proactive.run(s)
     # Retry stuck inbound work.
     now = utcnow()
     with session_scope() as s:

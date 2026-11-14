@@ -22,6 +22,7 @@ class InboundText:
     space_id: str | None = None
     agent_user_id: str | None = None
     simulated: bool = False  # True for /api/demo/inbound (never overwrites Photon routing)
+    channel: str = "text"  # "voice" when spoken on a (browser) voice call
 
     def to_dict(self) -> dict:
         return asdict(self)

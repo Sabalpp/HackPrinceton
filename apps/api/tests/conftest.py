@@ -11,6 +11,7 @@ os.environ.update(
     INGEST_API_KEY="",
     DEMO_MODE="true",
     SEED_DEMO_DATA="true",
+    PROACTIVE_CHECKINS_ENABLED="false",
     DEMO_EMERGENCY_NUMBER="102",
 )
 
@@ -27,9 +28,18 @@ ADMIN = {"Authorization": "Bearer dev-admin-token"}
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    # TEST_DATABASE_URL (e.g. postgresql://...) runs the suite against real Postgres,
+    # which is what production uses; otherwise each test gets a fresh SQLite file.
+    pg_url = os.environ.get("TEST_DATABASE_URL")
+    monkeypatch.setenv("DATABASE_URL", pg_url or f"sqlite:///{tmp_path / 'test.db'}")
     get_settings.cache_clear()
     db.reset_engine()
+    if pg_url:
+        from sqlmodel import SQLModel
+
+        from app import models  # noqa: F401
+
+        SQLModel.metadata.drop_all(db.get_engine())
     from app.main import app
 
     with TestClient(app) as c:

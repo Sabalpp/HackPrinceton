@@ -132,6 +132,31 @@
         "request_type": {
           "$ref": "#/$defs/AssistanceCategory"
         },
+        "requested_by_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Family member who asked on the parent's behalf (parent consented)",
+          "title": "Requested By Id"
+        },
+        "requested_by_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested By Name"
+        },
         "requested_time": {
           "anyOf": [
             {
@@ -682,7 +707,8 @@
         "trigger": {
           "enum": [
             "fall.suspected",
-            "parent_message"
+            "parent_message",
+            "family_concern"
           ],
           "title": "Trigger",
           "type": "string"

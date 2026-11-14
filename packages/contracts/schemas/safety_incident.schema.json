@@ -138,7 +138,8 @@
     "trigger": {
       "enum": [
         "fall.suspected",
-        "parent_message"
+        "parent_message",
+        "family_concern"
       ],
       "title": "Trigger",
       "type": "string"

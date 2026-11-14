@@ -46,6 +46,16 @@ REASON_PHRASES = {
     EscalationReason.no_response: "did not answer a safety check after a possible fall",
     EscalationReason.parent_reported_emergency: "sent a message that may be an emergency",
 }
+FAMILY_CONCERN_PHRASES = {
+    EscalationReason.help_requested: "asked for help when FarCare checked in",
+    EscalationReason.no_response: "did not answer a check-in that family asked for",
+}
+
+
+def _phrase(inc: SafetyIncidentRow, reason: EscalationReason) -> str:
+    if inc.trigger == "family_concern" and reason in FAMILY_CONCERN_PHRASES:
+        return FAMILY_CONCERN_PHRASES[reason]
+    return REASON_PHRASES[reason]
 
 
 def _demo_suffix(inc: SafetyIncidentRow) -> str:
@@ -213,6 +223,58 @@ def ingest_fall_event(session: Session, event: FallSuspectedEvent) -> FallIngest
     )
 
 
+def open_family_concern(
+    session: Session, parent: Person, requester: Person, note: str = ""
+) -> SafetyIncidentRow:
+    """A family member is worried (e.g. "Mom isn't answering"). Run the same deterministic
+    safety check as a fall: ask the parent, and escalate on HELP or no reply."""
+    current = active_incident(session, parent.id)
+    if current is not None:
+        return current
+    settings = get_settings()
+    inc = SafetyIncidentRow(
+        id=new_id("inc"),
+        parent_id=parent.id,
+        trigger="family_concern",
+        source="family_request",
+        data_mode=DataMode.live.value,
+        status=I.checking,
+        check_deadline=utcnow() + timedelta(seconds=settings.family_check_timeout_seconds),
+    )
+    session.add(inc)
+    session.flush()
+    timeline.record(
+        session,
+        parent.id,
+        "incident.opened",
+        f"{requester.display_name} asked FarCare to check on {parent.display_name}. Check-in sent.",
+        ref_id=inc.id,
+        data={
+            "requested_by": requester.id,
+            "note": note[:200],
+            "check_deadline": inc.check_deadline.isoformat() if inc.check_deadline else None,
+        },
+    )
+    msg = send_to_person(
+        session,
+        parent,
+        f"Hi {parent.display_name}, {requester.display_name} asked me to check on you. Are you "
+        "okay? Reply OK if you're fine, or HELP if you'd like someone to come.",
+        f"incident:{inc.id}:check",
+    )
+    if not delivered(msg):
+        timeline.record(
+            session,
+            parent.id,
+            "incident.check_undeliverable",
+            "Check-in could not be delivered; escalating immediately.",
+            ref_id=inc.id,
+            data={"error": msg.error},
+        )
+        escalate(session, inc, EscalationReason.no_response)
+    return inc
+
+
 def open_from_message(session: Session, parent: Person, text: str) -> SafetyIncidentRow:
     """Parent wrote something that matches an emergency rule (or the agent escalated)."""
     current = active_incident(session, parent.id)
@@ -258,7 +320,7 @@ def escalate(
     inc.escalation_reason = reason.value
     inc.escalated_at = utcnow()
     session.add(inc)
-    phrase = REASON_PHRASES[reason]
+    phrase = _phrase(inc, reason)
     timeline.record(
         session,
         parent.id,
@@ -417,9 +479,13 @@ def resolve(
             session,
             parent,
             lambda who: (
-                f"FarCare: {who} had a possible-fall alert"
-                + (" that was escalated" if was_escalated else "")
-                + " and has now replied that they're okay."
+                (
+                    f"FarCare: {who} had a possible-fall alert"
+                    + (" that was escalated" if was_escalated else "")
+                    + " and has now replied that they're okay."
+                    if inc.trigger == "fall.suspected"
+                    else f"FarCare: I checked in and {who} replied that they're okay. 💛"
+                )
                 + _demo_suffix(inc)
             ),
             f"incident:{inc.id}:resolved_family",

@@ -23,7 +23,7 @@ import { Logo } from "@/components/farcare/sidebar";
 import { TimeAgo } from "@/components/ui/time";
 
 const CONNECTION: Record<Connection, { label: string; dot: string }> = {
-  live: { label: "Live", dot: "bg-primary animate-pulse" },
+  live: { label: "Connected", dot: "bg-primary animate-pulse" },
   connecting: { label: "Connecting", dot: "bg-sun" },
   reconnecting: { label: "Reconnecting", dot: "bg-sun" },
   offline: { label: "Offline", dot: "bg-muted" },
@@ -186,13 +186,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-32 pt-5 outline-none sm:px-6 md:px-10 md:pb-12 md:pt-8">
+          {process.env.NEXT_PUBLIC_LOCAL_PREVIEW === "true" && (
+            <aside className="mb-6 rounded-2xl border border-border bg-inset px-5 py-4 text-sm text-body" role="status">
+              <strong className="font-semibold text-ink">Local preview.</strong> Saved Fitbit readings with their original dates.
+              Sample family; messages are simulated. Cloud sync is paused.
+            </aside>
+          )}
           <p className="sr-only" aria-live="polite">
             {lastEvent?.summary ?? ""}
           </p>
           {children}
           <footer className="mt-12 border-t border-border pt-5 text-sm text-muted">
             FarCare is a hackathon prototype, not a medical device. It doesn&apos;t diagnose anything and never contacts
-            emergency services itself. People and sensor data in the demo are synthetic and labeled simulated.
+            emergency services itself. Demo people are fictional. Health records show their source and dates;
+            simulated readings are labeled simulated.
           </footer>
         </main>
       </div>
@@ -377,7 +384,7 @@ export function Ready({ children }: { children: (o: NonNullable<ReturnType<typeo
         <p className="text-lg font-semibold text-ink">{offline ? "FarCare is offline" : "Couldn't load the dashboard"}</p>
         <p className="mt-1 text-body">
           {offline
-            ? `We can't reach FarCare at ${API_URL}. Texts between the family and the Care Circle still work. Try again in a moment.`
+            ? `We can't reach FarCare at ${API_URL}. Check that the app server is running, then try again.`
             : state.phase === "error"
               ? state.message
               : ""}

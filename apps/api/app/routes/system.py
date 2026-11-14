@@ -26,7 +26,7 @@ def system_health(session: Session = Depends(get_session)):
         commit=settings.git_commit or None,
         database=db,  # type: ignore[arg-type]
         messaging=channel_name(),  # type: ignore[arg-type]
-        photon_delivery=settings.photon_delivery if settings.photon_enabled else "off",
+        photon_delivery=settings.photon_delivery if settings.use_photon else "off",
         ai="gemini" if settings.gemini_enabled else "fallback",
         demo_mode=settings.demo_mode,
     )

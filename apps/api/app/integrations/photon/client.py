@@ -15,12 +15,14 @@ import threading
 from datetime import datetime
 
 from photon_api import Photon
-from photon_api.generated.models import SendMessageRequest, SendTextContent
+from photon_api.generated.models import SendMessageRequest, SendTextContent, SetSpaceTypingRequest
 from photon_api.rpc_generated import (
     ListMessagesInput,
     SendMessageHeader,
     SendMessageInput,
     SendMessagePath,
+    SetSpaceTypingInput,
+    SetSpaceTypingPath,
 )
 
 from app.config import get_settings
@@ -59,6 +61,20 @@ def send_text(*, space_id: str, sender_id: str, text: str, idempotency_key: str)
     )
     data = sent.model_dump(mode="json", by_alias=True)
     return str(data.get("id", ""))
+
+
+def set_typing(*, space_id: str, sender_id: str, typing: bool = True) -> None:
+    """Show/hide the typing indicator. Transient: Photon expects callers to refresh it during
+    long work; one call covers a short agent turn."""
+    settings = get_settings()
+    get_client().projects.set_space_typing(
+        SetSpaceTypingInput(
+            path=SetSpaceTypingPath.model_validate(
+                {"id": settings.photon_project_id, "spaceId": space_id}
+            ),
+            body=SetSpaceTypingRequest(senderId=sender_id, typing=typing),
+        )
+    )
 
 
 def list_received_since(created_since: datetime) -> list[dict]:

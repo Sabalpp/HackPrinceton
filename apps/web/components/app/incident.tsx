@@ -20,7 +20,9 @@ function steps(i: SafetyIncident, reqs: CareRequest[], name: string, relOf: (id:
       text:
         i.trigger === "fall.suspected"
           ? `Possible fall detected. FarCare texted ${name} to check they're okay.`
-          : `${name} sent a message that may be an emergency.`,
+          : i.trigger === "family_concern"
+            ? `Family asked FarCare to check on ${name}. FarCare texted ${name} to check they're okay.`
+            : `${name} sent a message that may be an emergency.`,
     },
   ];
   const reason = escalationText(i, name);
@@ -86,7 +88,11 @@ export function IncidentPanel({
         <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
           <span className={`inline-flex items-center gap-1.5 ${resolved ? "text-good" : urgent ? "text-danger-ink" : "text-watch-label"}`}>
             {resolved ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldAlert size={18} aria-hidden="true" />}
-            {incident.trigger === "fall.suspected" ? "Possible fall" : "Message alert"}
+            {incident.trigger === "fall.suspected"
+              ? "Possible fall"
+              : incident.trigger === "family_concern"
+                ? "Family check-in"
+                : "Message alert"}
           </span>
           <span className="text-muted" aria-hidden="true">
             ·

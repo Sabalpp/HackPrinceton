@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/demo/checkin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Checkin
+         * @description Send the proactive wellness check-in now (skips the daily time window).
+         */
+        post: operations["demo_checkin_api_demo_checkin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/fall": {
         parameters: {
             query?: never;
@@ -21,6 +41,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/health-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Health Sync
+         * @description Run the mock Fitbit sender (Sabal's stand-in) server-side through the real ingest path.
+         */
+        post: operations["demo_health_sync_api_demo_health_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/inbound": {
         parameters: {
             query?: never;
@@ -32,6 +72,26 @@ export interface paths {
         put?: never;
         /** Demo Inbound */
         post: operations["demo_inbound_api_demo_inbound_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Messages
+         * @description Every conversation in both directions, oldest first (for the demo console's phones).
+         */
+        get: operations["messages_api_demo_messages_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -81,8 +141,32 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset */
+        /**
+         * Reset
+         * @description Clear workflow state. include_health=true also clears health observations.
+         */
         post: operations["reset_api_demo_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/voice-call-ended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Voice Call Ended
+         * @description Browser voice call finished. Spoken turns are already in conversation memory
+         *     (marked as voice), so the next text continues the call; this records that it happened.
+         */
+        post: operations["voice_call_ended_api_demo_voice_call_ended_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -368,6 +452,13 @@ export interface components {
             /** Request Id */
             request_id: string;
             request_type: components["schemas"]["AssistanceCategory"];
+            /**
+             * Requested By Id
+             * @description Family member who asked on the parent's behalf (parent consented)
+             */
+            requested_by_id?: string | null;
+            /** Requested By Name */
+            requested_by_name?: string | null;
             /** Requested Time */
             requested_time?: string | null;
             /** Responder Id */
@@ -416,6 +507,11 @@ export interface components {
             parent_id: string;
             /** Summary */
             summary: string;
+        };
+        /** CheckinDemoIn */
+        CheckinDemoIn: {
+            /** Parent Id */
+            parent_id: string;
         };
         /**
          * DataMode
@@ -493,10 +589,39 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** HealthIngestResult */
+        /**
+         * HealthIngestResult
+         * @description Receipt for a health-data delivery (what the sender learns back from the backend).
+         */
         HealthIngestResult: {
             /** Accepted */
             accepted: number;
+            /**
+             * Changed
+             * @description Observations that were new or had new values
+             * @default 0
+             */
+            changed: number;
+            /**
+             * Data Mode
+             * @default none
+             */
+            data_mode: components["schemas"]["DataMode"] | ("mixed" | "none");
+            /**
+             * Days Received
+             * @default 0
+             */
+            days_received: number;
+            /**
+             * Notable Changes
+             * @description Non-diagnostic observations that are now notable
+             */
+            notable_changes?: string[];
+            /**
+             * Suggest Checkin
+             * @default false
+             */
+            suggest_checkin: boolean;
         };
         /**
          * HealthObservation
@@ -544,8 +669,33 @@ export interface components {
             /** Trends */
             trends: components["schemas"]["MetricTrend"][];
         };
+        /** HealthSyncDemoIn */
+        HealthSyncDemoIn: {
+            /**
+             * Days
+             * @default 35
+             */
+            days: number;
+            /**
+             * Parent Id
+             * @default parent_001
+             */
+            parent_id: string;
+            /**
+             * Scenario
+             * @default decline
+             * @enum {string}
+             */
+            scenario: "decline" | "normal" | "recovering";
+        };
         /** InboundDemoIn */
         InboundDemoIn: {
+            /**
+             * Channel
+             * @default text
+             * @enum {string}
+             */
+            channel: "text" | "voice";
             /** Person Id */
             person_id: string;
             /** Text */
@@ -673,7 +823,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "fall.suspected" | "parent_message";
+            trigger: "fall.suspected" | "parent_message" | "family_concern";
         };
         /** SystemHealth */
         SystemHealth: {
@@ -752,6 +902,21 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VoiceCallEndedIn */
+        VoiceCallEndedIn: {
+            /** Person Id */
+            person_id: string;
+            /**
+             * Seconds
+             * @default 0
+             */
+            seconds: number;
+            /**
+             * Turns
+             * @default 0
+             */
+            turns: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -761,6 +926,41 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    demo_checkin_api_demo_checkin_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckinDemoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     demo_fall_api_demo_fall_post: {
         parameters: {
             query?: never;
@@ -773,6 +973,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FallDemoIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_health_sync_api_demo_health_sync_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HealthSyncDemoIn"];
             };
         };
         responses: {
@@ -810,6 +1045,39 @@ export interface operations {
                 "application/json": components["schemas"]["InboundDemoIn"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    messages_api_demo_messages_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -897,7 +1165,9 @@ export interface operations {
     };
     reset_api_demo_reset_post: {
         parameters: {
-            query?: never;
+            query?: {
+                include_health?: boolean;
+            };
             header?: {
                 authorization?: string | null;
             };
@@ -905,6 +1175,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_call_ended_api_demo_voice_call_ended_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceCallEndedIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

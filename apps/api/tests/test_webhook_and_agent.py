@@ -169,3 +169,72 @@ def test_gemini_failure_falls_back(client, monkeypatch):
 
     out = say(client, "parent_001", "hello")
     assert texts_to(out, "parent") == ["Hi Sita! 😊 How are you feeling today?"]
+
+
+def test_model_question_is_dropped_and_redundant_details_skipped(client, monkeypatch):
+    """Live Gemini asked its own 'Shall I send that request?' on top of ours (seen in a real
+    run) and passed details='groceries'. Parent sees one question; Asha sees no echo."""
+    from app.integrations.gemini import agent
+    from tests.conftest import say, texts_to
+
+    fake = FakeGemini(
+        "request_assistance",
+        {"category": "grocery_assistance", "when": "tomorrow", "details": "groceries"},
+        "I can ask Asha to help you with groceries tomorrow. Shall I send that request?",
+    )
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-key")
+    monkeypatch.setattr(agent, "_get_client", lambda: fake)
+    out = say(client, "parent_001", "Can someone help me with groceries tomorrow?")
+    [reply] = texts_to(out, "parent")
+    assert reply.count("?") == 1 and "Shall I" not in reply
+    assert reply.startswith("I can ask Asha to help you with groceries tomorrow.")
+    out = say(client, "parent_001", "yes")
+    [ask] = texts_to(out, "responder")
+    assert "Details:" not in ask
+
+
+def test_voice_turns_are_remembered_for_later_texts(client):
+    """Browser voice call: spoken turns go through the same backend, are stored as voice
+    turns (so the next text continues the call), and the call end is recorded."""
+    from app.db import session_scope
+    from app.models import ConversationTurn
+    from tests.conftest import ADMIN
+
+    r = client.post(
+        "/api/demo/inbound",
+        headers=ADMIN,
+        json={
+            "person_id": "parent_001",
+            "text": "Can someone help me with groceries tomorrow?",
+            "channel": "voice",
+        },
+    )
+    out = r.json()["outbound"]
+    assert any(m["to_id"] == "parent_001" and "YES or NO" in m["text"] for m in out)
+    with session_scope() as s:
+        turns = [
+            t.text
+            for t in s.query(ConversationTurn)
+            .filter_by(person_id="parent_001")
+            .order_by(ConversationTurn.id)
+        ]
+    assert turns[0] == "(by voice call) Can someone help me with groceries tomorrow?"
+
+    # The approval can then come by text: same conversation, same pending request.
+    r = client.post(
+        "/api/demo/inbound", headers=ADMIN, json={"person_id": "parent_001", "text": "yes"}
+    )
+    assert any(m["to_role"] == "responder" for m in r.json()["outbound"])
+
+    msgs = client.get("/api/demo/messages", headers=ADMIN).json()
+    assert msgs[0]["channel"] == "voice" and msgs[0]["direction"] == "in"
+    ended = client.post(
+        "/api/demo/voice-call-ended",
+        headers=ADMIN,
+        json={"person_id": "parent_001", "turns": 1, "seconds": 42},
+    )
+    assert ended.json() == {"recorded": True}
+    kinds = [
+        e["kind"] for e in client.get("/api/parents/parent_001/timeline", headers=ADMIN).json()
+    ]
+    assert "voice.call_ended" in kinds

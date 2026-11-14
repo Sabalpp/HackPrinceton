@@ -93,7 +93,7 @@ export function summarize(o: ParentOverview): Summary {
     const t = notable[0];
     const what =
       t.metric === "steps"
-        ? `${name} has been walking less than usual`
+        ? `${name} has been walking ${t.direction === "up" ? "more" : "less"} than usual`
         : t.metric === "sleep_minutes"
           ? `${name} has been sleeping ${t.direction === "up" ? "more" : "less"} than usual`
           : `${name}'s resting heart rate is ${t.direction === "up" ? "higher" : "lower"} than usual`;
@@ -107,7 +107,7 @@ export function summarize(o: ParentOverview): Summary {
   const next = open[0];
   return {
     tone: "done",
-    title: "No alerts. Nothing needs you right now.",
+    title: "No recorded alerts right now.",
     detail: next
       ? `${requestSentence(next, name)} (${CATEGORY_LABEL[next.request_type].toLowerCase()}${
           next.requested_time ? `, ${next.requested_time}` : ""

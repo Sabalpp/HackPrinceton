@@ -1,14 +1,15 @@
 """OWNER: Sabal. Storage + summary for health observations."""
 
 from datetime import timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlmodel import Session, select
 
 from app.db import utcnow
 from app.health import simulated
 from app.health.trends import DISCLAIMER, compute_trends
-from app.models import HealthObservationRow
-from app.schemas.contracts import DataMode, HealthObservation, HealthSummary
+from app.models import HealthObservationRow, Person
+from app.schemas.contracts import DataMode, HealthObservation, HealthSummary, MetricTrend
 
 
 def ingest(session: Session, observations: list[HealthObservation]) -> int:
@@ -53,7 +54,40 @@ def summary(session: Session, parent_id: str, days: int = 35) -> HealthSummary:
     obs = recent(session, parent_id, days)
     modes = {o.data_mode.value for o in obs}
     mode = "none" if not modes else (modes.pop() if len(modes) == 1 else "mixed")
-    trends = compute_trends(obs)
+    live_fitbit = bool(obs) and {(o.source, o.data_mode) for o in obs} == {
+        ("fitbit", DataMode.live)
+    }
+    completed_steps_through = None
+    if live_fitbit:
+        parent = session.get(Person, parent_id)
+        try:
+            if parent is None or parent.role != "parent":
+                raise ValueError("Parent timezone unavailable")
+            # Projection encodes local date labels as UTC midnight. Today's
+            # incomplete total is excluded using that same parent's timezone.
+            completed_steps_through = utcnow().astimezone(ZoneInfo(parent.timezone)).date()
+            completed_steps_through -= timedelta(days=1)
+        except (ZoneInfoNotFoundError, ValueError, TypeError):
+            completed_steps_through = None
+    trends = compute_trends(obs, completed_steps_through=completed_steps_through)
+    if live_fitbit and completed_steps_through is None:
+        trends = [
+            MetricTrend(
+                metric="steps",
+                baseline=None,
+                recent=None,
+                percent_change=None,
+                direction="insufficient_data",
+                notable=False,
+                observation=(
+                    "Step comparison is unavailable because the parent's time zone "
+                    "is missing or invalid."
+                ),
+            )
+            if trend.metric == "steps"
+            else trend
+            for trend in trends
+        ]
     return HealthSummary(
         parent_id=parent_id,
         data_mode=mode,  # type: ignore[arg-type]
