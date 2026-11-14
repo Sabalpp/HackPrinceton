@@ -130,8 +130,11 @@ def seed(session: Session) -> None:
                 priority=20,
             )
         )
-    if not session.exec(
-        select(HealthObservationRow).where(HealthObservationRow.parent_id == PARENT_ID)
-    ).first():
+    if (
+        st.seed_health_data
+        and not session.exec(
+            select(HealthObservationRow).where(HealthObservationRow.parent_id == PARENT_ID)
+        ).first()
+    ):
         health.seed_simulated(session, PARENT_ID)
     session.flush()

@@ -38,13 +38,13 @@ the demo admin. Otherwise the API returns 404.
 | GET | `/api/parents/{id}/timeline?after=0&limit=100` | bearer | `TimelineEvent[]` (newest first) |
 | GET | `/api/parents/{id}/stream` | bearer (`?access_token=`) | SSE `event: timeline` with `TimelineEvent` JSON |
 | POST | `/api/events/fall` | ingest key | `FallIngestResult` |
-| POST | `/api/health/observations` | ingest key | `HealthIngestResult` (body: `HealthObservation[]`, max 1000, upsert by id) |
+| POST | `/api/health/observations` | ingest key | `HealthIngestResult` (body: `HealthObservation[]`, max 1000, upsert by id). Receipt: `accepted`, `changed` (new or different values), `days_received`, `data_mode`, `suggest_checkin`, `notable_changes` |
 | POST | `/webhooks/photon` | signature | 204 (`message.received` handled, other events acknowledged) |
 | POST | `/api/demo/fall` | admin + DEMO_MODE | detector result (+ ingest result if `possible_fall`) |
 | POST | `/api/demo/inbound` | admin + DEMO_MODE | simulate a person texting FarCare; returns FarCare's outbound messages |
 | POST | `/api/demo/checkin` | admin + DEMO_MODE | send the proactive wellness check-in now (skips the daily window) |
 | GET | `/api/demo/outbox` · `/api/demo/people` | admin + DEMO_MODE | recent outbound messages / people + reachability |
-| POST | `/api/demo/reset` | admin + DEMO_MODE | clears workflow state (keeps people + health data) |
+| POST | `/api/demo/reset?include_health=false` | admin + DEMO_MODE | clears workflow state (keeps people; health data too unless `include_health=true`) |
 
 ## Core payloads (fixtures in `packages/contracts/fixtures/`)
 
@@ -125,6 +125,7 @@ FarCare to check on the parent, e.g. "Mom isn't answering"). Also includes `no_r
 `incident.check_undeliverable`, `incident.responder_en_route`, `incident.no_responder`,
 `incident.resolved`, `fall.duplicate_suppressed`, `checkin.recorded` (needs `share_checkins`),
 `checkin.prompted` (FarCare reached out proactively; needs `share_health`),
+`health.synced` (a health-data delivery changed something; needs `share_health`),
 `agent.replied` (parent-only). The UI should show `summary` and use `kind` + `ref_id` to refresh
 the related card. Treat unknown kinds as generic.
 

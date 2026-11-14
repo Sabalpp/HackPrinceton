@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 
 
 def channel_name() -> str:
-    return "photon" if get_settings().photon_enabled else "console"
+    return "photon" if get_settings().use_photon else "console"
 
 
 def is_reachable(person: Person) -> bool:

@@ -24,6 +24,7 @@ from app.models import (
     CheckInRow,
     ConversationTurn,
     FallEventRecord,
+    HealthObservationRow,
     InboundMessageRow,
     OutboundMessage,
     Person,
@@ -151,7 +152,10 @@ def people(session: Session = Depends(get_session)):
 
 
 @router.post("/reset")
-def reset(session: Session = Depends(get_session)):
+def reset(include_health: bool = False, session: Session = Depends(get_session)):
+    """Clear workflow state. include_health=true also clears health observations."""
+    if include_health:
+        session.exec(delete(HealthObservationRow))  # type: ignore[call-overload]
     for table in (
         CareRequestRow,
         SafetyIncidentRow,

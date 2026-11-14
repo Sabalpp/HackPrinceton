@@ -132,7 +132,16 @@ class FallIngestResult(Contract):
 
 
 class HealthIngestResult(Contract):
+    """Receipt for a health-data delivery (what the sender learns back from the backend)."""
+
     accepted: int
+    changed: int = Field(default=0, description="Observations that were new or had new values")
+    days_received: int = 0
+    data_mode: DataMode | Literal["mixed", "none"] = "none"
+    suggest_checkin: bool = False
+    notable_changes: list[str] = Field(
+        default_factory=list, description="Non-diagnostic observations that are now notable"
+    )
 
 
 # --------------------------------------------------------------------------- read models

@@ -25,11 +25,11 @@ async def lifespan(app: FastAPI):
     tasks: list[asyncio.Task] = []
     if settings.background_tasks_enabled:
         tasks.append(asyncio.create_task(tick_loop()))
-        if settings.photon_enabled and settings.photon_delivery == "poll":
+        if settings.use_photon and settings.photon_delivery == "poll":
             tasks.append(asyncio.create_task(poll_loop()))
     log.info(
         "FarCare API ready (messaging=%s, ai=%s, demo=%s)",
-        "photon" if settings.photon_enabled else "console",
+        "photon" if settings.use_photon else "console",
         "gemini" if settings.gemini_enabled else "fallback",
         settings.demo_mode,
     )

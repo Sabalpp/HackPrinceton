@@ -101,7 +101,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset */
+        /**
+         * Reset
+         * @description Clear workflow state. include_health=true also clears health observations.
+         */
         post: operations["reset_api_demo_reset_post"];
         delete?: never;
         options?: never;
@@ -525,10 +528,39 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** HealthIngestResult */
+        /**
+         * HealthIngestResult
+         * @description Receipt for a health-data delivery (what the sender learns back from the backend).
+         */
         HealthIngestResult: {
             /** Accepted */
             accepted: number;
+            /**
+             * Changed
+             * @description Observations that were new or had new values
+             * @default 0
+             */
+            changed: number;
+            /**
+             * Data Mode
+             * @default none
+             */
+            data_mode: components["schemas"]["DataMode"] | ("mixed" | "none");
+            /**
+             * Days Received
+             * @default 0
+             */
+            days_received: number;
+            /**
+             * Notable Changes
+             * @description Non-diagnostic observations that are now notable
+             */
+            notable_changes?: string[];
+            /**
+             * Suggest Checkin
+             * @default false
+             */
+            suggest_checkin: boolean;
         };
         /**
          * HealthObservation
@@ -964,7 +996,9 @@ export interface operations {
     };
     reset_api_demo_reset_post: {
         parameters: {
-            query?: never;
+            query?: {
+                include_health?: boolean;
+            };
             header?: {
                 authorization?: string | null;
             };

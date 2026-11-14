@@ -469,10 +469,51 @@
       },
       "HealthIngestResult": {
         "additionalProperties": false,
+        "description": "Receipt for a health-data delivery (what the sender learns back from the backend).",
         "properties": {
           "accepted": {
             "title": "Accepted",
             "type": "integer"
+          },
+          "changed": {
+            "default": 0,
+            "description": "Observations that were new or had new values",
+            "title": "Changed",
+            "type": "integer"
+          },
+          "data_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataMode"
+              },
+              {
+                "enum": [
+                  "mixed",
+                  "none"
+                ],
+                "type": "string"
+              }
+            ],
+            "default": "none",
+            "title": "Data Mode"
+          },
+          "days_received": {
+            "default": 0,
+            "title": "Days Received",
+            "type": "integer"
+          },
+          "notable_changes": {
+            "description": "Non-diagnostic observations that are now notable",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notable Changes",
+            "type": "array"
+          },
+          "suggest_checkin": {
+            "default": false,
+            "title": "Suggest Checkin",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1485,8 +1526,19 @@
     },
     "/api/demo/reset": {
       "post": {
+        "description": "Clear workflow state. include_health=true also clears health observations.",
         "operationId": "reset_api_demo_reset_post",
         "parameters": [
+          {
+            "in": "query",
+            "name": "include_health",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Health",
+              "type": "boolean"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",

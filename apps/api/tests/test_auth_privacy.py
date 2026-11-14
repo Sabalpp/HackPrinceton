@@ -63,7 +63,7 @@ def test_ingest_key_enforced_when_configured(client, monkeypatch):
     ok = client.post(
         "/api/health/observations", json=obs, headers={"X-FarCare-Ingest-Key": "secret-key"}
     )
-    assert ok.status_code == 200 and ok.json() == {"accepted": 1}
+    assert ok.status_code == 200 and ok.json()["accepted"] == 1
 
 
 def test_ingest_rejects_unknown_parent_and_bad_payload(client):

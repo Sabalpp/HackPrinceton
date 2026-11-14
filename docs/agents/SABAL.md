@@ -12,6 +12,29 @@
 3. Optional: add the `AUTOMERGE_TOKEN` secret (fine-grained PAT, this repo only, Contents +
    Pull requests read/write) so auto-merged PRs trigger the Deploy workflow.
 
+## Your handoff to Sumit (already working with mock data)
+
+`apps/api/scripts/mock_fitbit_sender.py` stands in for your sync **today**. It is standalone
+(HTTP only, no backend imports) and sends exactly what your real code must send:
+
+```bash
+cd apps/api && uv run python scripts/mock_fitbit_sender.py            # 35-day backfill
+uv run python scripts/mock_fitbit_sender.py --stream --interval 60    # today's running total
+```
+
+- `POST /api/health/observations` with header `X-FarCare-Ingest-Key: $INGEST_API_KEY`, body a
+  JSON array of `HealthObservation` (one per parent per day, `observation_id` stable per day,
+  for example `fitbit_<parent>_<YYYY-MM-DD>`, so re-sends upsert).
+- The receipt tells you what landed: `accepted`, `changed`, `notable_changes`,
+  `suggest_checkin`. A retry of identical data returns `changed: 0` and adds nothing to the
+  dashboard timeline.
+- **Swap in your real data** by replacing the mock's `observation()` with values from the
+  Google Health API, using `source="fitbit"` and `data_mode="live"`. Nothing on Sumit's side changes.
+- Known gap (your module): if simulated and live rows exist for the **same day** (different
+  `observation_id`s), `health/service.recent()` counts both. Either reset simulated data first
+  (`POST /api/demo/reset?include_health=true`, or `SEED_HEALTH_DATA=false`) or dedupe per day,
+  preferring live.
+
 ## What exists already (working, simulated)
 
 - `health/simulated.py`: 35 days of labeled synthetic data (steps decline over the last 5 days).

@@ -31,7 +31,7 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
   app/health/                Sabal: simulated provider, trends/baseline, Google Health stub
   app/fall_detection/        synthetic IMU traces + explainable detector
-  tests/                     113 tests incl. end-to-end workflows (SQLite + Postgres)
+  tests/                     120 tests incl. end-to-end workflows (SQLite + Postgres)
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
@@ -52,6 +52,11 @@ uv run python scripts/export_contracts.py       # after ANY contract change
 cd apps/web && cp .env.example .env.local && npm install && npm run dev
 npm run gen:api                                 # after contracts change
 ```
+
+**Mock mode** (no phones, no Fitbit yet): in `apps/api/.env` set `MESSAGING_CHANNEL=console`
+(simulated messages even with Photon keys) and `SEED_HEALTH_DATA=false`. Then
+`uv run python scripts/mock_fitbit_sender.py` plays Sabal's sync and sends health data over
+the real ingest API.
 
 Demo tokens (dev only, refused in production): child `dev-child-token`, parent
 `dev-parent-token`, admin `dev-admin-token`. Seed data is synthetic: parent `parent_001` (Sita,
