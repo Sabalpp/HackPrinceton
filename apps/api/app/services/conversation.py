@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 
 from app.db import session_scope, utcnow
 from app.integrations.gemini import agent
-from app.integrations.messaging import send_to_person
+from app.integrations.messaging import send_to_person, show_typing
 from app.integrations.photon.inbound import InboundText, normalize_handle
 from app.models import ConversationTurn, FamilyLink, InboundMessageRow, Person
 from app.services import care_requests, safety, timeline
@@ -164,6 +164,7 @@ def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
             )
             return
 
+    show_typing(parent)
     result = agent.respond(s, parent, text)
     timeline.record(
         s,

@@ -23,16 +23,19 @@ the other. Photon treats them as different senders.
 1. **Photon project** (Beta dashboard `app.beta.photon.codes`): create a server key with
    `project:read`, `project:write` (+ `platforms:write` to assign lines by API). Put
    `PHOTON_API_KEY` and `PHOTON_PROJECT_ID` in the backend env.
-2. **Assign a shared iMessage line for each cast handle** (Dashboard → iMessage → "Add the number
-   you or your user will send from"). Each assignment uses plan capacity. Confirm we have enough
-   seats.
+2. **Assign a shared iMessage line for each cast handle**: set the `DEMO_*_HANDLE` values, then
+   `cd apps/api && uv run python scripts/photon_setup.py assign` (or use the dashboard: iMessage
+   → "Add the number you or your user will send from"). Each assignment uses plan capacity, so
+   confirm we have enough seats. `scripts/photon_setup.py status` shows who maps to which line.
 3. **Every cast member texts their FarCare number once** (e.g. "JOIN"). This is required: a shared
    line can't message anyone who hasn't texted it since assignment. Check with
    `GET /api/demo/people` that all are `reachable: true`.
-4. **Inbound delivery:** deployed backend → add a webhook destination to
-   `https://<api>/webhooks/photon` (events: `message.received`) and set `PHOTON_WEBHOOK_SECRET`.
+4. **Inbound delivery:** deployed backend → `uv run python scripts/photon_setup.py webhook --url
+   https://<api>/webhooks/photon` (subscribes to `message.received` and prints the signing
+   secret once), then set `PHOTON_WEBHOOK_SECRET`.
    Laptop-only backup → `PHOTON_DELIVERY=poll` (no public URL needed).
-5. **Gemini:** set `GEMINI_API_KEY`, `GEMINI_MODEL`. `/health` shows `"ai": "gemini"`. If quota
+5. **Gemini:** set `GEMINI_API_KEY`, run `uv run python scripts/check_gemini.py`, and set the
+   `GEMINI_MODEL` it recommends. `/health` shows `"ai": "gemini"`. If quota
    runs out mid-demo the fallback answers automatically, and the core flow is unchanged.
 6. Set `DEMO_EMERGENCY_NUMBER` to the verified local emergency number for the story's location,
    and `SAFETY_CHECK_TIMEOUT_SECONDS=45` so the no-response path fits in the demo.

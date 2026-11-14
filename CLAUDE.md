@@ -31,7 +31,7 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
   app/health/                Sabal: simulated provider, trends/baseline, Google Health stub
   app/fall_detection/        synthetic IMU traces + explainable detector
-  tests/                     101 tests incl. end-to-end workflows
+  tests/                     105 tests incl. end-to-end workflows (SQLite + Postgres)
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
@@ -45,7 +45,7 @@ docs/                    architecture, contracts, demo plan, per-developer instr
 ```bash
 # Backend (http://localhost:8000, docs at /docs). Works with no keys: console messaging + fallback AI.
 cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload
-uv run pytest                                   # all backend tests
+uv run pytest                                   # all backend tests (TEST_DATABASE_URL=postgresql://... for Postgres)
 uv run python scripts/export_contracts.py       # after ANY contract change
 
 # Frontend (http://localhost:3000)
