@@ -1,0 +1,14 @@
+{
+  "name": "farcare-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "configure": "node configure.mjs",
+    "check": "node configure.mjs --check",
+    "test": "node --test test/*.test.mjs",
+    "deploy": "node configure.mjs --deploy",
+    "logs": "wrangler tail --config wrangler.generated.json"
+  },
+  "engines": { "node": ">=22.12" },
+  "devDependencies": { "wrangler": "4.162.0" }
+}
