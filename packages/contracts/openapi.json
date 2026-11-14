@@ -692,6 +692,15 @@
       },
       "InboundDemoIn": {
         "properties": {
+          "channel": {
+            "default": "text",
+            "enum": [
+              "text",
+              "voice"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
           "person_id": {
             "title": "Person Id",
             "type": "string"
@@ -1266,6 +1275,33 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VoiceCallEndedIn": {
+        "properties": {
+          "person_id": {
+            "title": "Person Id",
+            "type": "string"
+          },
+          "seconds": {
+            "default": 0,
+            "maximum": 7200.0,
+            "minimum": 0.0,
+            "title": "Seconds",
+            "type": "integer"
+          },
+          "turns": {
+            "default": 0,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Turns",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "person_id"
+        ],
+        "title": "VoiceCallEndedIn",
+        "type": "object"
       }
     }
   },
@@ -1721,6 +1757,64 @@
           }
         },
         "summary": "Reset",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/demo/voice-call-ended": {
+      "post": {
+        "description": "Browser voice call finished. Spoken turns are already in conversation memory\n(marked as voice), so the next text continues the call; this records that it happened.",
+        "operationId": "voice_call_ended_api_demo_voice_call_ended_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceCallEndedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Voice Call Ended",
         "tags": [
           "demo"
         ]

@@ -38,7 +38,19 @@ Ask them to confirm this qualifies.
 | Thoughtful safety and fallback behaviors | Deterministic escalation the LLM can't suppress; console channel and demo controls if Photon fails; Gemini fallback. |
 | Voice: remembers the call back in text | Planned: ElevenLabs post-call transcript → conversation memory, so the next iMessage continues the call. |
 
-## Voice plan (optional, after text is live)
+## Voice: what exists now
+
+**Browser voice (free, built):** the Demo Console's **Call** button runs a hands-free spoken
+conversation (browser speech recognition + speech synthesis) through the same backend, the same
+deterministic rules, and real Gemini. Spoken turns are stored as `(by voice call)` turns, so the
+next text continues the call. It **does not qualify** for Best Voice Agent, which needs real
+phone calls on a Photon SMS number.
+
+**Cost of the qualifying path (Photon pricing, checked Nov 14):** a local US number is
+$2/month and voice is $0.013/min on the Free plan. ElevenLabs' free tier reportedly includes
+about 15 agent minutes per month. Check that its free plan allows importing a SIP number.
+
+## Voice plan for real phone calls (optional, after text is live)
 
 1. In the Photon dashboard, add an SMS number and set up its default Voice profile with SIP.
 2. Create an ElevenLabs agent and import the Photon number via **Deploy → Phone Numbers →

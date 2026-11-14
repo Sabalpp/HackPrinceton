@@ -90,6 +90,7 @@ def demo_checkin(body: CheckinDemoIn, session: Session = Depends(get_session)):
 class InboundDemoIn(BaseModel):
     person_id: str
     text: str = Field(min_length=1, max_length=2000)
+    channel: Literal["text", "voice"] = "text"
 
 
 @router.post("/inbound")
@@ -106,6 +107,7 @@ def demo_inbound(body: InboundDemoIn):
             sender_handle=handle,
             text=body.text,
             simulated=True,
+            channel=body.channel,
         )
     )
     with session_scope() as s:
@@ -121,12 +123,51 @@ def _out(s: Session, m: OutboundMessage) -> dict:
     person = s.get(Person, m.person_id) if m.person_id else None
     return {
         "to": person.display_name if person else None,
+        "to_id": person.id if person else None,
         "to_role": person.role if person else None,
         "channel": m.channel,
         "status": m.status,
         "text": m.text,
         "created_at": m.created_at.isoformat(),
     }
+
+
+class VoiceCallEndedIn(BaseModel):
+    person_id: str
+    turns: int = Field(default=0, ge=0, le=500)
+    seconds: int = Field(default=0, ge=0, le=7200)
+
+
+@router.post("/voice-call-ended")
+def voice_call_ended(body: VoiceCallEndedIn, session: Session = Depends(get_session)):
+    """Browser voice call finished. Spoken turns are already in conversation memory
+    (marked as voice), so the next text continues the call; this records that it happened."""
+    from app.services import family, timeline
+
+    person = session.get(Person, body.person_id)
+    if person is None:
+        raise HTTPException(404, "Unknown person")
+    parent_id = person.id if person.role == "parent" else None
+    if person.role == "child":
+        links = family.links_for(session, person)
+        parent_id = links[0][1].id if links else None
+    if parent_id:
+        minutes, secs = divmod(body.seconds, 60)
+        timeline.record(
+            session,
+            parent_id,
+            "voice.call_ended",
+            f"{person.display_name} talked with FarCare by voice "
+            f"({body.turns} turn{'s' if body.turns != 1 else ''}, {minutes}:{secs:02d}).",
+            data={
+                "person_id": person.id,
+                "turns": body.turns,
+                "seconds": body.seconds,
+                "channel": "browser_voice",
+            },
+            visibility=timeline.PARENT_ONLY,
+        )
+    return {"recorded": bool(parent_id)}
 
 
 @router.get("/outbox")
@@ -155,7 +196,13 @@ def messages(limit: int = 300, session: Session = Depends(get_session)):
                 "direction": "in",
                 "text": row.payload.get("text", ""),
                 "status": row.status,
-                "channel": "simulated" if row.payload.get("simulated") else "photon",
+                "channel": (
+                    "voice"
+                    if row.payload.get("channel") == "voice"
+                    else "simulated"
+                    if row.payload.get("simulated")
+                    else "photon"
+                ),
                 "at": row.received_at.isoformat(),
             }
         )

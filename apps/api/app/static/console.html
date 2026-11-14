@@ -68,6 +68,18 @@ svg { width: 100%; height: auto; display: block; }
 .token { display: none; gap: 6px; align-items: center; }
 .token.show { display: flex; }
 .token input { font: 12px var(--mono); padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 180px; }
+.call-btn { font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+.callbar { display: none; margin: 6px 12px 0; padding: 10px 12px; border-radius: 12px; background: var(--ok-bg); color: var(--ink); gap: 6px; }
+.callbar.on { display: grid; }
+.callbar .state { font: 600 12px var(--mono); color: var(--ok); display: flex; justify-content: space-between; gap: 8px; }
+.callbar .caption { font-size: 13.5px; min-height: 1.4em; overflow-wrap: anywhere; }
+.callbar button { justify-self: start; border-color: var(--crit); color: var(--crit); }
+.phone.oncall .quick, .phone.oncall form.compose { display: none; }
+.pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+@media (prefers-reduced-motion: no-preference) { .pulse { animation: blink 1.2s ease-in-out infinite; } }
+@keyframes blink { 50% { opacity: .25; } }
+.voice-pick { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.voice-pick select { font: 12px var(--sans); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
 .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 </style>
@@ -77,6 +89,14 @@ svg { width: 100%; height: auto; display: block; }
   <h1>FarCare Demo Console</h1>
   <div class="chips" id="status"><span class="chip">connecting…</span></div>
   <div class="token" id="tokenBox"><label for="token" class="small">Admin token</label><input id="token" type="password" autocomplete="off"><button id="saveToken">Use</button></div>
+  <label class="voice-pick" for="lang">Voice
+    <select id="lang">
+      <option value="en-US">English (US)</option>
+      <option value="en-IN">English (India)</option>
+      <option value="ne-NP">Nepali</option>
+      <option value="hi-IN">Hindi</option>
+    </select>
+  </label>
   <div class="controls">
     <button class="primary" data-act="sync-decline" title="Mock Fitbit sync: 35 days, activity dropping">Sync Fitbit (dropping)</button>
     <button data-act="sync-normal" title="Mock Fitbit sync: a normal month">Sync Fitbit (normal)</button>
@@ -134,8 +154,17 @@ function buildPhones() {
     const phone = el("article", "phone");
     const head = el("div", "phone-head");
     const name = el("span", "who", c.id); name.id = `name-${c.id}`; name.style.color = `var(--${c.role})`;
-    head.append(name, el("span", "role", c.label));
+    const callBtn = el("button", "call-btn", "Call"); callBtn.type = "button"; callBtn.id = `callbtn-${c.id}`;
+    callBtn.title = "Talk to FarCare by voice (browser speech, free)";
+    callBtn.onclick = () => (call && call.personId === c.id ? endCall() : startCall(c.id));
+    const right = el("span", "role", c.label + " "); right.append(callBtn);
+    head.append(name, right);
     const thread = el("div", "thread"); thread.setAttribute("aria-live", "polite"); threads[c.id] = thread;
+    const bar = el("div", "callbar"); bar.id = `callbar-${c.id}`;
+    const state = el("div", "state"); state.innerHTML = '<span><span class="pulse"></span><span class="st">Connecting…</span></span><span class="clock">0:00</span>';
+    const caption = el("div", "caption"); caption.id = `caption-${c.id}`;
+    const end = el("button", null, "End call"); end.type = "button"; end.onclick = () => endCall();
+    bar.append(state, caption, end);
     thread.append(el("div", "empty", "No messages yet. Type below as this person, or tap a suggestion."));
     const quick = el("div", "quick");
     for (const q of c.quick) { const b = el("button", null, q); b.type = "button"; b.onclick = () => send(c.id, q); quick.append(b); }
@@ -144,7 +173,8 @@ function buildPhones() {
     const btn = el("button", "primary", "Send");
     form.append(input, btn);
     form.onsubmit = (e) => { e.preventDefault(); if (input.value.trim()) { send(c.id, input.value.trim()); input.value = ""; } };
-    phone.append(head, thread, quick, form);
+    phone.id = `phone-${c.id}`;
+    phone.append(head, thread, bar, quick, form);
     wrap.append(phone);
   }
 }
@@ -173,6 +203,108 @@ async function send(personId, text) {
     refresh();
   } catch (e) { toast(e.message); }
 }
+
+/* ---------------- browser voice call (free: Web Speech API) ----------------
+   Hands-free loop: FarCare greets -> listen -> send what was heard to the SAME backend
+   (channel "voice") -> speak the reply -> listen again. "Goodbye" or End call hangs up.
+   Spoken turns are stored as voice turns, so the next text message remembers the call. */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let call = null;
+const lang = () => $("lang").value;
+const GOODBYE = /\b(good ?bye|bye|hang up|that'?s all|end (the )?call)\b/i;
+
+function speakable(text) {
+  return text
+    .replace(/\[Demo:[^\]]*\]/g, "")
+    .replace(/Reply YES or NO\.?/gi, "Just say yes or no.")
+    .replace(/Reply OK if you're fine, or HELP if you'd like someone to come\.?/gi, "Just say okay if you're fine, or help if you'd like someone to come.")
+    .replace(/Reply DONE when you've finished\.?/gi, "Say done when you've finished.")
+    .replace(/\bReply\b/g, "Say")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
+    .replace(/\s+/g, " ").trim();
+}
+function setCallState(text) { if (call) $(`callbar-${call.personId}`).querySelector(".st").textContent = text; }
+function setCaption(text) { if (call) $(`caption-${call.personId}`).textContent = text; }
+
+function speak(text) {
+  return new Promise((resolve) => {
+    const clean = speakable(text);
+    if (!clean || !window.speechSynthesis) return resolve();
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = lang(); u.rate = 0.95;
+    const voice = speechSynthesis.getVoices().find((v) => v.lang === lang()) || speechSynthesis.getVoices().find((v) => v.lang.startsWith(lang().slice(0, 2)));
+    if (voice) u.voice = voice;
+    u.onend = resolve; u.onerror = resolve;
+    setCallState("FarCare is speaking…"); setCaption(clean);
+    speechSynthesis.speak(u);
+  });
+}
+
+function listen() {
+  if (!call) return;
+  const rec = new SR();
+  call.rec = rec; rec.lang = lang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+  let final = "";
+  setCallState("Listening… speak now");
+  rec.onresult = (e) => {
+    let interim = "";
+    for (const r of e.results) (r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript));
+    setCaption("You: " + (final || interim));
+  };
+  rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { toast("Microphone blocked. Allow mic access for localhost and try again."); endCall(false); } };
+  rec.onend = () => {
+    if (!call || call.rec !== rec) return;
+    if (final.trim()) handleUtterance(final.trim());
+    else if (call.active) listen();  // silence: keep the line open
+  };
+  try { rec.start(); } catch { setTimeout(() => call && listen(), 300); }
+}
+
+async function handleUtterance(text) {
+  if (!call) return;
+  call.turns += 1;
+  if (GOODBYE.test(text)) { await speak("Thank you for calling. Take care, goodbye."); return endCall(); }
+  setCallState("FarCare is thinking…");
+  try {
+    const res = await api("/api/demo/inbound", { method: "POST", body: JSON.stringify({ person_id: call.personId, text, channel: "voice" }) });
+    refresh();
+    const mine = res.outbound.filter((m) => m.to_id === call?.personId).map((m) => m.text);
+    await speak(mine.join(" ") || "Okay, I've noted that.");
+  } catch (e) { toast(e.message); await speak("Sorry, I couldn't reach FarCare. Please try again."); }
+  if (call && call.active) listen();
+}
+
+async function startCall(personId) {
+  if (!SR || !window.speechSynthesis) { toast("This browser can't do speech recognition. Use Chrome, Edge or Safari."); return; }
+  if (call) endCall();
+  const name = people[personId]?.display_name || "there";
+  call = { personId, active: true, turns: 0, started: Date.now(), rec: null };
+  $(`phone-${personId}`).classList.add("oncall");
+  $(`callbar-${personId}`).classList.add("on");
+  $(`callbtn-${personId}`).textContent = "Hang up";
+  call.timer = setInterval(() => {
+    if (!call) return; const s = Math.floor((Date.now() - call.started) / 1000);
+    $(`callbar-${call.personId}`).querySelector(".clock").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }, 1000);
+  await speak(`Hi ${name}, this is FarCare. How can I help you today?`);
+  listen();
+}
+
+function endCall(record = true) {
+  if (!call) return;
+  const { personId, turns, started, rec, timer } = call;
+  call = null;
+  try { rec && rec.abort(); } catch {}
+  speechSynthesis.cancel(); clearInterval(timer);
+  $(`phone-${personId}`).classList.remove("oncall");
+  $(`callbar-${personId}`).classList.remove("on");
+  $(`callbtn-${personId}`).textContent = "Call";
+  if (record && turns > 0) {
+    api("/api/demo/voice-call-ended", { method: "POST", body: JSON.stringify({ person_id: personId, turns, seconds: Math.round((Date.now() - started) / 1000) }) })
+      .then(() => { toast("Call ended. FarCare remembers it: try texting a follow-up."); refresh(); }).catch(() => {});
+  }
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
 
 /* ---------------- dashboard side ---------------- */
 const pill = (text, cls) => el("span", "chip " + (cls || ""), text);

@@ -83,6 +83,15 @@ def _turn(s: Session, person: Person, role: str, text: str) -> None:
     s.add(ConversationTurn(person_id=person.id, role=role, text=text[:2000]))
 
 
+VOICE_MARK = "(by voice call) "
+
+
+def _as_turn(msg: InboundText) -> str:
+    """Stored user turn. Voice turns are marked so the agent knows later that something was
+    said on a call, which lets the next text continue it."""
+    return (VOICE_MARK + msg.text) if msg.channel == "voice" else msg.text
+
+
 def _reply(s: Session, person: Person, msg: InboundText, text: str, suffix: str = "") -> None:
     if not text:
         return
@@ -119,7 +128,7 @@ def handle(s: Session, msg: InboundText) -> str:
 
 def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
     text = msg.text
-    _turn(s, parent, "user", text)
+    _turn(s, parent, "user", _as_turn(msg))
 
     incident = safety.active_incident(s, parent.id)
     if incident is not None:
@@ -238,7 +247,7 @@ def _handle_child(s: Session, child: Person, msg: InboundText, first_contact: bo
         _reply(s, child, msg, "Hi! You're not linked to anyone in FarCare yet.")
         return
     link, parent = links[0]  # hackathon scope: one linked parent per family member
-    _turn(s, child, "user", msg.text)
+    _turn(s, child, "user", _as_turn(msg))
     intro = (
         f"Hi {child.display_name}! You're connected to FarCare for {family.who(link, parent)}. "
         "You'll get updates here, and you can ask me anything.\n"

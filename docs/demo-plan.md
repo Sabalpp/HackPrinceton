@@ -69,6 +69,12 @@ the other. Photon treats them as different senders.
   morning, Sita 🌼 Just checking in…"* that mentions her lower activity. In real use this
   happens at most once a day, in her daytime, and never while she's mid-conversation.
 
+**Voice (free, in the Demo Console):** press **Call** on Sita's phone in `/console`, use Chrome,
+and allow the microphone. Say *"Can someone help me with groceries tomorrow?"*, answer *"yes"*,
+then say *"goodbye"*. Then text Sita's next message: FarCare remembers what was said on the call.
+This is browser speech, not a phone call, so it doesn't count for Photon's Best Voice Agent
+prize (see docs/photon-track.md for the phone-number option).
+
 Optional extras if time allows: Asha replies *"Sorry, I can't"* in step 5 to show FarCare
 proposing Ram. Or Sita replies *"OK"* in step 7 to show a false alarm resolving with an FYI to
 Aarav.

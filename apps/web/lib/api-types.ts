@@ -152,6 +152,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/voice-call-ended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Voice Call Ended
+         * @description Browser voice call finished. Spoken turns are already in conversation memory
+         *     (marked as voice), so the next text continues the call; this records that it happened.
+         */
+        post: operations["voice_call_ended_api_demo_voice_call_ended_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events/fall": {
         parameters: {
             query?: never;
@@ -669,6 +690,12 @@ export interface components {
         };
         /** InboundDemoIn */
         InboundDemoIn: {
+            /**
+             * Channel
+             * @default text
+             * @enum {string}
+             */
+            channel: "text" | "voice";
             /** Person Id */
             person_id: string;
             /** Text */
@@ -874,6 +901,21 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VoiceCallEndedIn */
+        VoiceCallEndedIn: {
+            /** Person Id */
+            person_id: string;
+            /**
+             * Seconds
+             * @default 0
+             */
+            seconds: number;
+            /**
+             * Turns
+             * @default 0
+             */
+            turns: number;
         };
     };
     responses: never;
@@ -1133,6 +1175,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    voice_call_ended_api_demo_voice_call_ended_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceCallEndedIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
