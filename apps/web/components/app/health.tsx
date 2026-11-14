@@ -41,6 +41,7 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
   const watch = trend.notable;
   const Arrow = trend.direction === "up" ? TrendingUp : trend.direction === "down" ? TrendingDown : Minus;
   const pct = trend.percent_change;
+  const learning = trend.direction === "insufficient_data";
   return (
     <li className={`flex flex-col gap-2 rounded-2xl border p-5 ${watch ? "border-watch-border bg-watch-bg" : "border-border bg-surface"}`}>
       <p className={`flex items-center gap-2 text-sm font-semibold ${watch ? "text-watch-label" : "text-muted"}`}>
@@ -56,6 +57,7 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
         <p className="text-lg font-semibold text-muted">Not enough data</p>
       )}
       <p className={`flex flex-wrap items-center gap-1.5 text-sm ${watch ? "text-watch-body" : "text-body"}`}>
+        {learning && <span className="rounded-full bg-inset px-2 py-1 font-semibold text-muted">Learning their usual</span>}
         {pct !== null && trend.direction !== "insufficient_data" && (
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${watch ? "bg-surface/70" : "bg-inset"}`}>
             <Arrow size={14} aria-hidden="true" />
@@ -65,7 +67,8 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
         {trend.baseline !== null && <span>usual {m.fmt(trend.baseline)}</span>}
       </p>
       <Sparkline values={vals} highlight={watch} />
-      <p className="sr-only">5-day average compared with the previous weeks. {trend.observation}</p>
+      <p className="text-sm leading-relaxed text-body">{trend.observation}</p>
+      {!learning && <p className="text-xs text-muted">A personal comparison, not a diagnosis.</p>}
     </li>
   );
 }
@@ -80,9 +83,9 @@ export function MetricChart({ obs, metric, baseline }: { obs: HealthObservation[
   const pad = { l: 56, r: 12, t: 16, b: 30 };
   const max = Math.max(...pts.map((p) => p.v), baseline ?? 0) * 1.12;
   const min = metric === "resting_heart_rate" ? Math.min(...pts.map((p) => p.v)) * 0.85 : 0;
-  const y = (v: number) => pad.t + (1 - (v - min) / (max - min)) * (H - pad.t - pad.b);
+  const y = (v: number) => pad.t + (1 - (v - min) / Math.max(max - min, 1)) * (H - pad.t - pad.b);
   const step = (W - pad.l - pad.r) / pts.length;
-  const ticks = [min, min + (max - min) / 2, max].map((v) => Math.round(v));
+  const ticks = [...new Set([min, min + (max - min) / 2, max].map((v) => Math.round(v)))];
   const day = (iso: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(iso));
 
   return (

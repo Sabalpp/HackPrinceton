@@ -1,6 +1,7 @@
 """Authentication + authorization.
 
-- Dashboard users authenticate with a bearer token (stored only as a SHA-256 hash).
+- People authenticate with expiring HttpOnly cookie sessions and mutation CSRF tokens.
+- Legacy bearer tokens work only in development/test, never in production.
 - Access to a parent's data is decided SERVER-SIDE from FamilyLink rows and the parent's
   sharing permissions. A client-supplied parent_id is never trusted on its own.
 - Machine sources (fall detector, health sync) use the X-FarCare-Ingest-Key header.
@@ -11,7 +12,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 
-from fastapi import Depends, Header, HTTPException, Query, status
+from fastapi import Depends, Header, HTTPException, Query, Request, status
 from sqlmodel import Session, select
 
 from app.config import get_settings
@@ -53,6 +54,8 @@ class ParentAccess:
 
 
 def _person_for_token(session: Session, token: str | None) -> Person:
+    if get_settings().app_env == "production":
+        raise HTTPException(401, "Sign in with your personal account")
     if not token:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
@@ -68,9 +71,15 @@ def _person_for_token(session: Session, token: str | None) -> Person:
 
 
 def current_person(
+    request: Request,
     authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
 ) -> Person:
+    from app.accounts import cookie_identity
+
+    identity = cookie_identity(session, request)
+    if identity:
+        return identity[0]
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()
@@ -78,10 +87,16 @@ def current_person(
 
 
 def current_person_sse(
-    access_token: str | None = Query(default=None, description="EventSource can't send headers"),
+    request: Request,
+    access_token: str | None = Query(default=None, description="Legacy development/test only"),
     authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
 ) -> Person:
+    from app.accounts import cookie_identity
+
+    identity = cookie_identity(session, request)
+    if identity:
+        return identity[0]
     token = access_token
     if not token and authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()

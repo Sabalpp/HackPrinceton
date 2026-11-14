@@ -207,6 +207,8 @@ def ingest_fall_event(session: Session, event: FallSuspectedEvent) -> FallIngest
         "Are you okay? Reply OK if you're fine, or HELP if you'd like someone to come."
         + _demo_suffix(inc),
         f"incident:{inc.id}:check",
+        parent_id=parent.id,
+        visibility="direct",
     )
     if not delivered(msg):
         timeline.record(
@@ -261,6 +263,8 @@ def open_family_concern(
         f"Hi {parent.display_name}, {requester.display_name} asked me to check on you. Are you "
         "okay? Reply OK if you're fine, or HELP if you'd like someone to come.",
         f"incident:{inc.id}:check",
+        parent_id=parent.id,
+        visibility="direct",
     )
     if not delivered(msg):
         timeline.record(
@@ -361,6 +365,8 @@ def escalate(
         )
         + f" If you can, call emergency services{num}.",
         f"incident:{inc.id}:parent_escalated",
+        parent_id=parent.id,
+        visibility="direct",
     )
 
 
@@ -463,9 +469,11 @@ def resolve(
             send_to_person(
                 session,
                 responder,
-                f"Update from FarCare: {parent.display_name} is okay "
-                f"({summaries[resolution].rstrip('.')}). No need to go. Thank you!",
+                f"Update from FarCare: the check for {care_requests.parent_first_name(parent)} "
+                "has been marked resolved. No need to go. Thank you!",
                 f"incident:{inc.id}:stand_down:{responder.id}",
+                parent_id=parent.id,
+                visibility="responder_emergency",
             )
 
     if resolution == IncidentResolution.parent_ok:
@@ -474,6 +482,8 @@ def resolve(
             parent,
             "Thank you for letting me know. I'm glad you're okay. 💛",
             f"incident:{inc.id}:parent_ok",
+            parent_id=parent.id,
+            visibility="direct",
         )
         notify_family(
             session,
@@ -516,6 +526,8 @@ def parent_replied(session: Session, inc: SafetyIncidentRow, answer: str) -> Non
                     "Help is already on the way and your family knows. If you can, "
                     "call emergency services.",
                     f"incident:{inc.id}:help_again:{utcnow().timestamp():.0f}",
+                    parent_id=parent.id,
+                    visibility="direct",
                 )
 
 

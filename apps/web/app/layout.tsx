@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { SessionProvider } from "@/lib/session";
 
 const jakarta = localFont({
   src: "./fonts/plus-jakarta-sans-latin.woff2",
@@ -18,7 +19,7 @@ const devanagari = localFont({
 
 export const metadata: Metadata = {
   title: "FarCare",
-  description: "A daily check-in call for Ama, and a shared dashboard for her children abroad.",
+  description: "Private check-ins, personal health patterns, and trusted help for families living apart.",
 };
 
 export const viewport: Viewport = {
@@ -28,7 +29,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${jakarta.variable} ${devanagari.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col"><SessionProvider>{children}</SessionProvider></body>
     </html>
   );
 }

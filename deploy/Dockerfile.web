@@ -1,0 +1,20 @@
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+ARG NEXT_PUBLIC_API_URL=/backend
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_USE_MOCKS=false \
+    NEXT_PUBLIC_LOCAL_PREVIEW=false
+RUN npm run build
+
+FROM node:24-bookworm-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
+# Next's TypeScript config is retained; dependencies include its config loader.
+COPY --from=build --chown=node:node /app /app
+USER node
+EXPOSE 3000
+CMD ["npm", "run", "start", "--", "--hostname", "0.0.0.0"]

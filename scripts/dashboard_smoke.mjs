@@ -89,40 +89,48 @@ async function run() {
   const health = await (await fetch(`${api}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
     health.database === 'ok' && health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
+  launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
+    path.join(root,'apps/api'), apiEnv, 'worker.log');
   const webChild = launch(process.execPath,
     [path.join(root,'apps/web/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
     path.join(root,'apps/web'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
   await ready(web, webChild);
 
   browser = await chromium.launch({headless:true});
-  const context = await browser.newContext({viewport:{width:1440,height:1000}});
-  // A smoke run must never load a hosted API, external fonts, or another service.
-  await context.route('**/*', route => {
-    const origin = new URL(route.request().url()).origin;
-    if (origin === api || origin === web) return route.continue();
-    browserErrors.push(`Unexpected external request: ${origin}`);
-    return route.abort();
-  });
-  page = await context.newPage();
-  page.setDefaultTimeout(15000);
-  page.on('pageerror', error => browserErrors.push(error.message));
-  page.on('console', message => {if(message.type()==='error') browserErrors.push(message.text());});
-  page.on('response', response => {
-    const url = new URL(response.url());
-    if(url.origin===api) responses.push({path:url.pathname,status:response.status()});
-    if(response.status()>=400) browserErrors.push(`HTTP ${response.status()}: ${url.pathname}`);
-  });
-  page.on('requestfailed', request => {
-    if(!closing && !request.failure()?.errorText?.includes('ERR_ABORTED')) browserErrors.push(`Request failed: ${new URL(request.url()).pathname}`);
-  });
+  async function rolePage(viewport={width:1440,height:1000}) {
+    const context = await browser.newContext({viewport});
+    await context.route('**/*', route => {
+      const origin = new URL(route.request().url()).origin;
+      if (origin === api || origin === web) return route.continue();
+      browserErrors.push(`Unexpected external request: ${origin}`);
+      return route.abort();
+    });
+    const tab = await context.newPage();
+    tab.setDefaultTimeout(20000);
+    tab.on('pageerror', error => browserErrors.push(error.message));
+    tab.on('console', message => {if(message.type()==='error') browserErrors.push(message.text());});
+    tab.on('response', response => {
+      const url = new URL(response.url());
+      if(url.origin===api) responses.push({path:url.pathname,status:response.status()});
+      if(response.status()>=400) browserErrors.push(`HTTP ${response.status()}: ${url.pathname}`);
+    });
+    tab.on('requestfailed', request => {
+      if(!closing && !request.failure()?.errorText?.includes('ERR_ABORTED')) browserErrors.push(`Request failed: ${new URL(request.url()).pathname}`);
+    });
+    await tab.goto(`${web}/login`, {waitUntil:'domcontentloaded'});
+    return tab;
+  }
+  const mutation = (tab, path) => tab.waitForResponse(r => new URL(r.url()).pathname===path && r.request().method()==='POST' && r.ok());
+  page = await rolePage();
   const meResponse = page.waitForResponse(response => response.url()===`${api}/api/me` && response.status()===200);
   const overviewResponse = page.waitForResponse(response => response.url()===`${api}/api/parents/parent_001/overview` && response.status()===200);
-  await page.goto(web, {waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Family',exact:true}).click();
   const [meResult,overviewResult] = await Promise.all([meResponse,overviewResponse]);
   const me = await meResult.json(), overview = await overviewResult.json();
   check('Browser authenticates to the actual API as the synthetic child',
     me.person.role==='child' && me.parent_ids.includes('parent_001') &&
-    meResult.request().headers().authorization==='Bearer dev-child-token');
+    !meResult.request().headers().authorization &&
+    (await page.context().cookies()).some(cookie => cookie.name==='farcare_session' && cookie.httpOnly));
   check('Overview comes from the API with explicitly simulated health',
     overview.parent.display_name==='Sita' && overview.health.data_mode==='simulated' && overview.health.observations.length>0);
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
@@ -133,6 +141,7 @@ async function run() {
   await nav.getByRole('link',{name:'Health',exact:true}).click();
   await page.waitForURL(`${web}/health`);
   await page.getByText('simulated demo data',{exact:false}).first().waitFor();
+  await page.getByRole('heading',{name:'Learning what is usual',exact:true}).waitFor();
   check('Health route loads and labels synthetic records',true);
   await page.screenshot({path:path.join(artifacts,'health.png'),fullPage:true});
   await nav.getByRole('link',{name:'Care Circle',exact:true}).click();
@@ -140,6 +149,59 @@ async function run() {
   await page.getByText('Asha',{exact:true}).first().waitFor();
   check('Care Circle route displays the seeded authorized responder',true);
   await page.screenshot({path:path.join(artifacts,'circle.png'),fullPage:true});
+
+  const parent = await rolePage({width:390,height:844});
+  await parent.getByRole('button',{name:'Parent',exact:true}).click();
+  await parent.getByRole('heading',{name:'Hello, Sita.',exact:true}).waitFor();
+  let parentCheckPosts = 0;
+  parent.on('request',r=>{if(r.method()==='POST' && new URL(r.url()).pathname==='/api/parent/check-in')parentCheckPosts++;});
+  await parent.getByRole('button',{name:'I need urgent help',exact:true}).click();
+  await parent.getByRole('button',{name:'Go back without sending',exact:true}).click();
+  check('Cancelling urgent-help confirmation sends no alert',parentCheckPosts===0);
+  const checkedIn = mutation(parent,'/api/parent/check-in');
+  await parent.getByRole('button',{name:/^I'm OK/}).click();
+  const savedCheck = await checkedIn;
+  check('Mobile parent saves an authenticated check-in with CSRF',
+    (await savedCheck.json()).latest_checkin.summary.includes('okay') &&
+    Boolean(savedCheck.request().headers()['x-csrf-token']));
+  await parent.getByText('Your check-in is saved.',{exact:true}).waitFor();
+  check('Parent mobile layout has no horizontal overflow',await parent.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await parent.screenshot({path:path.join(artifacts,'parent-mobile.png'),fullPage:true});
+
+  const helper = await rolePage({width:390,height:844});
+  const helperPaths = [];
+  helper.on('request',request=>{if(new URL(request.url()).origin===api)helperPaths.push(new URL(request.url()).pathname);});
+  await helper.getByRole('button',{name:'Helper',exact:true}).click();
+  await helper.getByRole('heading',{name:'Your care requests',exact:true}).waitFor();
+  await parent.getByRole('button',{name:/^Ask for help/}).click();
+  await parent.getByLabel('A few details',{exact:true}).fill('Synthetic test: bring a bag of groceries.');
+  const created = mutation(parent,'/api/parent/requests');
+  await parent.getByRole('button',{name:'Review my request',exact:true}).click();
+  const request = await (await created).json();
+  check('Ordinary requests wait for parent approval',request.status==='awaiting_approval' && !request.parent_approved);
+  const before = await (await helper.context().request.get(`${api}/api/responder/tasks`)).json();
+  check('Helper cannot see the unapproved request',!before.tasks.some(task=>task.request_id===request.request_id));
+  const approved = mutation(parent,`/api/parent/requests/${request.request_id}/decision`);
+  await parent.getByRole('button',{name:'Yes, ask for help',exact:true}).click();
+  check('Parent approval assigns the intended helper',(await (await approved).json()).status==='sent');
+  const accepted = mutation(helper,`/api/responder/tasks/${request.request_id}/reply`);
+  await helper.getByRole('button',{name:'Yes, I can help',exact:true}).click();
+  check('Helper accepts a real assigned request',(await (await accepted).json()).status==='accepted');
+  check('Helper mobile layout has no horizontal overflow',await helper.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await helper.screenshot({path:path.join(artifacts,'helper-mobile.png'),fullPage:true});
+  const completed = mutation(helper,`/api/responder/tasks/${request.request_id}/reply`);
+  await helper.getByRole('button',{name:'Mark complete',exact:true}).click();
+  check('Helper completes the approved care task',(await (await completed).json()).status==='completed');
+  check('Helper UI never requests private family or health routes',!helperPaths.some(p=>p.startsWith('/api/parents/')));
+  const home = await (await parent.context().request.get(`${api}/api/parent/home`)).json();
+  check('Parent sees completion and a running standalone worker',home.requests.some(r=>r.request_id===request.request_id && r.status==='completed') && home.agent.status==='healthy');
+  const familyRequests = await (await page.context().request.get(`${api}/api/parents/parent_001/care-requests`)).json();
+  check('The family account sees the completed task',familyRequests.some(r=>r.request_id===request.request_id && r.status==='completed'));
+  await page.goto(`${web}/demo`,{waitUntil:'domcontentloaded'});
+  const devPeople = page.waitForResponse(r=>new URL(r.url()).pathname==='/api/demo/people' && r.ok());
+  await page.getByLabel('Admin token',{exact:true}).fill('dev-admin-token');
+  const devResult = await devPeople;
+  check('Explicit development controls omit personal session cookies',!(await devResult.request().allHeaders()).cookie);
   check('No browser exceptions, console errors, failed API responses, or external requests',browserErrors.length===0);
   evidence.status='passed';
 }

@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlmodel import Session
 
 from app.auth import accessible_parent_ids, current_person
 from app.config import get_settings
 from app.db import get_session
+from app.experience_models import Account
 from app.integrations.messaging import channel_name, is_reachable
 from app.models import Person
 from app.schemas.contracts import Me, PersonRole, PersonSummary, SystemHealth
+from app.worker import runtime_status
 
 router = APIRouter(tags=["system"])
 
@@ -39,7 +42,19 @@ def me(viewer: Person = Depends(current_person), session: Session = Depends(get_
             person_id=viewer.id,
             display_name=viewer.display_name,
             role=PersonRole(viewer.role),
-            reachable=is_reachable(viewer),
+            reachable=is_reachable(viewer) or session.get(Account, viewer.id) is not None,
         ),
         parent_ids=accessible_parent_ids(session, viewer),
     )
+
+
+@router.get("/ready", include_in_schema=False)
+def readiness(session: Session = Depends(get_session)):
+    """Load-balancer readiness without exposing queue counts, health data or recipients."""
+    try:
+        session.exec(text("SELECT 1"))
+        runtime = runtime_status(session)
+        healthy = runtime["worker_healthy"] if get_settings().app_env == "production" else True
+    except Exception:
+        healthy = False
+    return JSONResponse({"ready": healthy}, status_code=200 if healthy else 503)

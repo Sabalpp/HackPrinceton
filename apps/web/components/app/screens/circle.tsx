@@ -37,8 +37,8 @@ function Circle({ name }: { name: string }) {
       </ul>
       <p className="flex items-start gap-2 rounded-xl border border-border bg-inset p-4 text-sm text-body">
         <Info size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />
-        Helpers only receive {name}&apos;s first name, the task, and the time. Each person must text FarCare once before we can
-        message them.
+        Helpers only receive {name}&apos;s first name, the task, and the time. They can reply in their own app.
+        Phone messages require a connected messaging account.
       </p>
     </div>
   );

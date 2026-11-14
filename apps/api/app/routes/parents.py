@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
@@ -14,6 +14,7 @@ from app.auth import (
     resolve_parent_access,
 )
 from app.db import get_session, session_scope
+from app.experience_models import Account
 from app.health import service as health
 from app.integrations.messaging import is_reachable
 from app.models import (
@@ -26,6 +27,7 @@ from app.models import (
     SafetyIncidentRow,
     TimelineEventRow,
 )
+from app.mutations import action_session
 from app.schemas.contracts import (
     AssistanceCategory,
     CareCircleMember,
@@ -70,7 +72,7 @@ def _circle(session: Session, parent_id: str) -> list[CareCircleMember]:
             categories=[AssistanceCategory(c) for c in m.categories],
             emergency_contact=m.emergency_contact,
             priority=m.priority,
-            reachable=is_reachable(p),
+            reachable=is_reachable(p) or session.get(Account, p.id) is not None,
         )
         for m, p in rows
     ]
@@ -167,10 +169,10 @@ def list_incidents(
 
 @router.post("/incidents/{incident_id}/resolve", response_model=SafetyIncident)
 def resolve_incident(
-    incident_id: str, acc: ParentAccess = Depends(access), session: Session = Depends(get_session)
+    incident_id: str,
+    acc: ParentAccess = Depends(access),
+    session: Session = Depends(action_session),
 ):
-    from fastapi import HTTPException
-
     inc = session.get(SafetyIncidentRow, incident_id)
     if inc is None or inc.parent_id != acc.parent_id:
         raise HTTPException(404, "Incident not found")
@@ -211,11 +213,11 @@ async def stream(
 ):
     """Server-Sent Events. Each event: `event: timeline` + JSON TimelineEvent.
 
-    EventSource can't set headers, so pass ?access_token=... . Reconnects resume via
-    the standard Last-Event-ID header.
+    Uses the HttpOnly session cookie. Each batch rechecks the live session and sharing
+    permissions. Reconnects resume via the standard Last-Event-ID header.
     """
     with session_scope() as s:
-        acc = resolve_parent_access(s, viewer, parent_id)
+        resolve_parent_access(s, viewer, parent_id)
         last = after
         if last is None:
             header = request.headers.get("last-event-id")
@@ -227,16 +229,24 @@ async def stream(
                 .order_by(TimelineEventRow.id.desc())
             ).first()  # type: ignore[union-attr]
             last = newest or 0
-    kinds = acc.visible_kinds()
 
     def fetch(cursor: int) -> list[TimelineEvent]:
         with session_scope() as s:
+            from app.accounts import cookie_identity
+
+            identity = cookie_identity(s, request, mutation=False)
+            current = identity[0] if identity else s.get(Person, viewer.id)
+            if current is None:
+                raise HTTPException(401, "Session is no longer available")
+            # With a cookie present, cookie_identity raises on expiry or revocation;
+            # it never falls back to the originally captured viewer.
+            permissions = resolve_parent_access(s, current, parent_id)
             rows = s.exec(
                 select(TimelineEventRow)
                 .where(
                     TimelineEventRow.parent_id == parent_id,
                     TimelineEventRow.id > cursor,  # type: ignore[operator]
-                    TimelineEventRow.visibility.in_(kinds),
+                    TimelineEventRow.visibility.in_(permissions.visible_kinds()),
                 )  # type: ignore[attr-defined]
                 .order_by(TimelineEventRow.id)
                 .limit(100)  # type: ignore[arg-type]
@@ -248,7 +258,11 @@ async def stream(
         idle = 0
         yield "retry: 3000\n\n"
         while not await request.is_disconnected():
-            batch = await asyncio.to_thread(fetch, cursor)
+            try:
+                batch = await asyncio.to_thread(fetch, cursor)
+            except HTTPException:
+                yield "event: access-revoked\ndata: {}\n\n"
+                return
             for ev in batch:
                 cursor = ev.id
                 yield f"id: {ev.id}\nevent: timeline\ndata: {json.dumps(ev.model_dump(mode='json'))}\n\n"

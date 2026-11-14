@@ -34,9 +34,20 @@ async def photon_webhook(request: Request, background: BackgroundTasks) -> Respo
         verify_webhook(settings.photon_webhook_secret, raw, dict(request.headers))
     except WebhookVerificationError:
         raise HTTPException(400, "Invalid signature") from None
+    except (ValueError, UnicodeDecodeError):
+        # standardwebhooks also parses verified JSON before it returns.
+        raise HTTPException(400, "Invalid JSON") from None
 
-    event = json.loads(raw)
-    msg = from_webhook_event(event, settings.photon_project_id or None)
+    try:
+        event = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(400, "Invalid JSON") from None
+    if not isinstance(event, dict):
+        raise HTTPException(400, "Invalid event")
+    try:
+        msg = from_webhook_event(event, settings.photon_project_id or None)
+    except (AttributeError, TypeError, ValueError):
+        raise HTTPException(400, "Invalid event structure") from None
     if msg is None:
         return Response(status_code=204)  # other event types are acknowledged and ignored
     try:
@@ -44,6 +55,8 @@ async def photon_webhook(request: Request, background: BackgroundTasks) -> Respo
     except Exception:
         log.exception("Could not persist Photon event")
         raise HTTPException(503, "Temporarily unavailable") from None
-    if is_new:
+    # Production acknowledges only durable intake. A separate worker owns all
+    # processing; a request-local task is not a durable queue.
+    if is_new and settings.app_env != "production":
         background.add_task(conversation.process, msg.message_id)
     return Response(status_code=204)

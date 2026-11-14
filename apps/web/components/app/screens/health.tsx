@@ -8,6 +8,7 @@ import { SimulatedPill } from "@/components/farcare/ui";
 import { Ready } from "../shell";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "../kit";
 import { METRIC, MetricChart, TrendTile, type Metric } from "../health";
+import { PersonalHealthPanel } from "@/components/portal/personal-health";
 
 const RANGES = [14, 35, 60] as const;
 const fetchers = Object.fromEntries(
@@ -15,10 +16,10 @@ const fetchers = Object.fromEntries(
 ) as Record<(typeof RANGES)[number], (t: string, p: string) => Promise<HealthSummary | null>>;
 
 export function HealthScreen() {
-  return <Ready>{(r) => <Health name={r.overview.parent.display_name} />}</Ready>;
+  return <Ready>{(r) => <Health name={r.overview.parent.display_name} parentId={r.parentId} />}</Ready>;
 }
 
-function Health({ name }: { name: string }) {
+function Health({ name, parentId }: { name: string; parentId:string }) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(35);
   const [metric, setMetric] = useState<Metric>("steps");
   const { data, error, loading } = useLiveQuery(fetchers[days]);
@@ -50,17 +51,19 @@ function Health({ name }: { name: string }) {
       {error && !data && <ErrorBlock title="Couldn't load health data" message={error} />}
       {data === null && (
         <EmptyBlock title={`${name} hasn't shared health data`} icon={HeartPulse}>
-          That&apos;s {name}&apos;s choice. Sharing can be turned on by texting FarCare.
+          That&apos;s {name}&apos;s choice. They can change this in their parent screen&apos;s sharing settings.
         </EmptyBlock>
       )}
 
       {data && (
         <>
+          <PersonalHealthPanel parentId={parentId} />
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            {data.data_mode !== "live" && <SimulatedPill />}
+            {data.data_mode === "simulated" && <SimulatedPill />}
+            {data.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 font-semibold text-watch-heading">Mixed sources</span>}
             <span>
-              Source: {data.data_mode === "live" ? "Fitbit (Google Health API)" : "simulated demo data"} · {data.observations.length}{" "}
-              days
+              Source: {data.data_mode === "live" ? "Fitbit (Google Health API)" : data.data_mode === "mixed" ? "mixed live and simulated records" : data.data_mode === "none" ? "no records" : "simulated demo data"} · {data.observations.length}{" "}
+              daily records
             </span>
           </div>
 

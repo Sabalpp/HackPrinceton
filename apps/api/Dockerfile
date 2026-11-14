@@ -1,4 +1,4 @@
-# FarCare API — single-process container (run exactly one instance; background tick lives here).
+# FarCare API image; production runs app.worker in a separate supervised container.
 FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.15 /uv /uvx /bin/

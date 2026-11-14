@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import { Activity, FlaskConical, HandHeart, HeartPulse, House, ShieldAlert, Users, type LucideIcon } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, type ReactNode } from "react";
+import { Activity, FlaskConical, HandHeart, HeartPulse, House, LogOut, Settings2, ShieldAlert, Users, type LucideIcon } from "lucide-react";
 import { useDashboard, type Connection } from "@/lib/dashboard";
+import { useSession } from "@/lib/session";
 import { isRequestOpen } from "@/lib/summary";
 import { Logo, SidebarFrame } from "@/components/farcare/sidebar";
 
@@ -20,6 +21,9 @@ type NavItem = { href: string; label: string; Icon: LucideIcon; badge?: { count:
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { session, logout } = useSession();
+  const [logoutError, setLogoutError] = useState(false);
   const { state, connection, lastEvent } = useDashboard();
   const o = state.phase === "ready" ? state.overview : null;
   const alerts = o?.active_incidents.length ?? 0;
@@ -33,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { href: "/activity", label: "Activity", Icon: Activity },
     { href: "/circle", label: "Care Circle", Icon: Users },
   ];
-  const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const active = (href: string) => (href === "/" ? pathname === "/" || pathname === "/family" : pathname.startsWith(href));
   const c = CONNECTION[connection];
 
   return (
@@ -84,7 +88,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <p className="text-sm text-muted">{o.parent.timezone.split("/").pop()?.replaceAll("_", " ")}</p>
             </div>
           )}
-          <Link
+          <Link href="/setup" className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-primary hover:bg-inset"><Settings2 size={17} aria-hidden="true" />Family setup & invitations</Link>
+          {session?.demo_session && <Link
             href="/demo"
             aria-current={active("/demo") ? "page" : undefined}
             className={`flex min-h-11 items-center gap-2 rounded-[10px] border border-dashed px-3 text-sm font-semibold ${
@@ -93,25 +98,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <FlaskConical size={16} aria-hidden="true" />
             Demo controls
-          </Link>
-          <details className="text-sm text-muted">
-            <summary className="cursor-pointer rounded px-1 py-1 hover:text-ink">Concept screens</summary>
-            <ul className="mt-1 flex flex-col gap-1 pl-2">
-              {[
-                ["/concept", "Daily call dashboard"],
-                ["/call", "Live call"],
-                ["/parent", "Parent phone"],
-                ["/phone/digest", "Morning digest"],
-                ["/setup", "Band setup"],
-              ].map(([href, label]) => (
-                <li key={href}>
-                  <Link href={href} className="hover:text-primary hover:underline">
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </details>
+          </Link>}
+          <div className="border-t border-border pt-3"><p className="px-3 text-sm font-semibold text-ink">{session?.person?.display_name}</p><p className="px-3 text-xs text-muted">Family view{session?.demo_session ? " · demo account" : ""}</p><button type="button" onClick={() => { void logout().then(() => router.replace("/login")).catch(() => setLogoutError(true)); }} className="mt-2 flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted hover:bg-inset"><LogOut size={16} aria-hidden="true" />Sign out</button>{logoutError && <p role="alert" className="px-3 text-sm text-danger">Couldn&apos;t sign out. Try again.</p>}</div>
         </div>
       </SidebarFrame>
 
@@ -129,7 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
         <footer className="mt-12 border-t border-border pt-5 text-sm text-muted">
           FarCare is a hackathon prototype, not a medical device. It doesn&apos;t diagnose anything and never contacts
-          emergency services itself. Demo people are fictional. Health records show their source and dates;
+          emergency services itself. Health records show their source and dates;
           simulated readings are labeled simulated.
         </footer>
       </main>

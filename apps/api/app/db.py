@@ -77,7 +77,11 @@ def reset_engine() -> None:
 
 
 def init_db() -> None:
-    from app import models  # noqa: F401  (register tables)
+    from app import (  # noqa: F401  (register tables)
+        experience_models,
+        models,
+        runtime_models,  # noqa: F401  (register worker tables)
+    )
 
     SQLModel.metadata.create_all(get_engine())
 

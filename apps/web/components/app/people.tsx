@@ -16,7 +16,7 @@ export function MemberCard({ member: m, rank, detailed = false }: { member: Care
           </p>
           {m.reachable ? (
             <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-good">
-              <CircleCheck size={16} aria-hidden="true" /> Reachable by text
+              <CircleCheck size={16} aria-hidden="true" /> Available for requests
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-watch-label">
@@ -24,7 +24,8 @@ export function MemberCard({ member: m, rank, detailed = false }: { member: Care
             </span>
           )}
         </div>
-        {!m.reachable && <p className="text-sm text-body">Needs to text FarCare once before we can message them.</p>}
+        {!m.reachable && <p className="text-sm text-body">This helper still needs an approved app account or connected messaging access.</p>}
+        {m.reachable && detailed && <p className="text-sm text-body">Requests can be handled in the helper&apos;s app. Phone messages require a connected messaging account.</p>}
         <ul className="flex flex-wrap gap-1.5">
           {m.categories.map((c) => {
             const Icon = CATEGORY_ICON[c];
@@ -59,7 +60,7 @@ export function CheckInCard({ checkin, shared, name }: { checkin: CheckIn | null
     return shared ? (
       <EmptyBlock title="No check-in yet">{name}&apos;s next check-in will show up here.</EmptyBlock>
     ) : (
-      <EmptyBlock title={`${name} isn't sharing check-ins`}>That&apos;s {name}&apos;s choice. It can be turned on by texting FarCare.</EmptyBlock>
+      <EmptyBlock title={`${name} isn't sharing check-ins`}>That&apos;s {name}&apos;s choice. They can change it from their parent screen&apos;s sharing settings.</EmptyBlock>
     );
   }
   const low = checkin.mood === "low" || checkin.energy === "low";

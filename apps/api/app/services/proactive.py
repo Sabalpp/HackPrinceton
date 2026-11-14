@@ -65,7 +65,7 @@ def maybe_checkin(
     session: Session, parent: Person, *, force: bool = False, key: str | None = None
 ) -> OutboundMessage | None:
     """force=True (demo) skips the trend, time-window and quiet-period checks."""
-    if not is_reachable(parent):
+    if not is_reachable(parent, session):
         return None
     if safety.active_incident(session, parent.id) or care_requests.pending_approval(
         session, parent.id
@@ -79,7 +79,7 @@ def maybe_checkin(
     if session.get(OutboundMessage, key) is not None:
         return None  # already checked in today
     text = compose(parent, notable, simulated=summ.data_mode != "live")
-    msg = send_to_person(session, parent, text, key)
+    msg = send_to_person(session, parent, text, key, parent_id=parent.id, visibility="health")
     if delivered(msg):
         session.add(ConversationTurn(person_id=parent.id, role="assistant", text=text))
         reason = (

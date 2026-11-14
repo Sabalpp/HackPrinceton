@@ -1,6 +1,6 @@
 # FarCare API & event contracts
 
-**Source of truth:** `apps/api/app/schemas/contracts.py`. Generated artifacts:
+**Source of truth:** `apps/api/app/schemas/contracts.py` and `schemas/experience.py`. Generated artifacts:
 
 - `packages/contracts/schemas/*.schema.json`: JSON Schema per payload
 - `packages/contracts/openapi.json`: full HTTP API
@@ -16,7 +16,8 @@ unknown fields are rejected on input (`extra=forbid`).
 
 | Caller | How |
 | --- | --- |
-| Dashboard (child, parent, admin) | `Authorization: Bearer <token>` (SSE: `?access_token=`) |
+| Individual accounts (child, parent, responder) | HttpOnly session cookie; `X-CSRF-Token` on mutations; SSE uses credentials |
+| Legacy local/demo callers | Bearer tokens allowed only in development/test; rejected in production |
 | Ingestion (fall detector, health sync) | `X-FarCare-Ingest-Key: <INGEST_API_KEY>` |
 | Photon | Standard Webhooks signature headers (`webhook-id`, `webhook-timestamp`, `webhook-signature`) |
 
@@ -28,15 +29,15 @@ the demo admin. Otherwise the API returns 404.
 | Method | Path | Auth | Returns |
 | --- | --- | --- | --- |
 | GET | `/health` | none | `SystemHealth` (status, db, messaging photon/console, ai gemini/fallback, commit) |
-| GET | `/api/me` | bearer | `Me` (person + accessible `parent_ids`) |
-| GET | `/api/parents/{id}/overview` | bearer | `ParentOverview` (one call for the main dashboard) |
-| GET | `/api/parents/{id}/health?days=35` | bearer | `HealthSummary` or `null` if not shared |
-| GET | `/api/parents/{id}/care-circle` | bearer | `CareCircleMember[]` |
-| GET | `/api/parents/{id}/care-requests?limit=50` | bearer | `CareRequest[]` (newest first) |
-| GET | `/api/parents/{id}/incidents?active_only=false` | bearer | `SafetyIncident[]` |
-| POST | `/api/parents/{id}/incidents/{incident_id}/resolve` | bearer | `SafetyIncident` (family marks resolved; stands down responders) |
-| GET | `/api/parents/{id}/timeline?after=0&limit=100` | bearer | `TimelineEvent[]` (newest first) |
-| GET | `/api/parents/{id}/stream` | bearer (`?access_token=`) | SSE `event: timeline` with `TimelineEvent` JSON |
+| GET | `/api/me` | session cookie | `Me` (person + accessible `parent_ids`) |
+| GET | `/api/parents/{id}/overview` | session cookie | `ParentOverview` (one call for the main dashboard) |
+| GET | `/api/parents/{id}/health?days=35` | session cookie | `HealthSummary` or `null` if not shared |
+| GET | `/api/parents/{id}/care-circle` | session cookie | `CareCircleMember[]` |
+| GET | `/api/parents/{id}/care-requests?limit=50` | session cookie | `CareRequest[]` (newest first) |
+| GET | `/api/parents/{id}/incidents?active_only=false` | session cookie | `SafetyIncident[]` |
+| POST | `/api/parents/{id}/incidents/{incident_id}/resolve` | session cookie | `SafetyIncident` (family marks resolved; stands down responders) |
+| GET | `/api/parents/{id}/timeline?after=0&limit=100` | session cookie | `TimelineEvent[]` (newest first) |
+| GET | `/api/parents/{id}/stream` | session cookie | SSE `event: timeline` with `TimelineEvent` JSON |
 | POST | `/api/events/fall` | ingest key | `FallIngestResult` |
 | POST | `/api/health/observations` | ingest key | `HealthIngestResult` (body: `HealthObservation[]`, max 1000, upsert by id). Receipt: `accepted`, `changed` (new or different values), `days_received`, `data_mode`, `suggest_checkin`, `notable_changes` |
 | POST | `/webhooks/photon` | signature | 204 (`message.received` handled, other events acknowledged) |
@@ -152,3 +153,36 @@ RHR ±8%. `suggest_checkin` is true if any trend is notable. Always render `disc
 `status: received`, `sentBy.kind: human`, `receivedBy.kind: agent`, `space.kind: direct`,
 `content.type: text`. Messages are routed by `sentBy.handle` (E.164 or iMessage email) to a
 known person. Unknown senders are ignored.
+
+## Additive account and role endpoints
+
+Schemas for this release are in `schemas/experience.py`; the generated OpenAPI includes
+all request/response types. These endpoints never require a public shared token.
+
+| Group | Endpoints and behavior |
+| --- | --- |
+| Accounts | GET `/api/auth/session`; POST `/api/auth/login`, `/register`, `/logout`, `/invitation`; `/demo` exists only outside production |
+| Onboarding | POST `/api/onboarding/parents`, `/onboarding/invites`; create one-time role-bound invitations; both require an action_id |
+| Parent | GET `/api/parent/home`; POST `/parent/check-in`, `/parent/requests`, `/parent/requests/{id}/decision` |
+| Consent | POST `/api/parent/sharing`, `/parent/responders/{id}/approve`; parent-only |
+| Helper | GET `/api/responder/tasks`; POST `/responder/tasks/{id}/reply`; current assigned/authorized tasks only |
+| Personal health | GET `/api/parents/{id}/personal-health`; null if health sharing is off |
+| Cuff BP | POST `/api/parent/blood-pressure`; recorded timestamp/context, manual cuff source, simulated for explicit demo sessions |
+| Personal reference | POST `/api/parents/{id}/reference`; parent-only provisional statement, no safety override |
+| Readiness | GET `/ready`; 503 if production worker has no recent successful cycle; no private counts |
+
+Cookie mutations require the CSRF token returned by the authenticated session endpoint.
+Clients include credentials. Personal responses are no-store; passwords/tokens are not
+echoed in validation errors. Production requires a configured HTTPS origin and disables
+demo data and all legacy bearer authentication.
+
+Check-in, task, BP and onboarding mutations use an action identifier retained across
+retries. Reusing one for different input yields 409; repeating the same completed action
+returns its receipt. A new action still checks current consent and assignment. A helper
+can replay their successful decline after reassignment, but cannot perform a new action
+on the reassigned task. Consumed/expired invitation responses cannot be revived.
+
+`PersonalMetric` exposes coverage, descriptive median/MAD, exclusions, a provisional
+reference and an optional observational comparison. No comparison denotes a safe range.
+BP guidance records its event time; it is separate from baseline learning. See
+[health-evidence.md](health-evidence.md) for primary sources and engineering choices.
