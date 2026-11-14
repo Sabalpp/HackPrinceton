@@ -48,17 +48,17 @@ jobs:
         env:
           API: ${{ vars.API_BASE_URL }}
         run: |
-          for i in $(seq 1 60); do
-            commit=$(curl -fsS "$API/health" | jq -r '.commit // ""' || true)
-            if [ "$commit" = "$GITHUB_SHA" ]; then echo "Live at $commit"; exit 0; fi
-            if [ -z "$commit" ] && curl -fsS "$API/health" > /dev/null; then
-              echo "::warning::API is healthy but doesn't report its commit (set GIT_COMMIT on the host)."
-              exit 0
+          for i in $(seq 1 45); do
+            health=$(curl --connect-timeout 5 --max-time 10 -fsS "$API/health" || true)
+            commit=$(printf '%s' "$health" | jq -r '.commit // ""' 2>/dev/null || true)
+            if printf '%s' "$health" | jq -e --arg expected "$GITHUB_SHA" \
+              '.status == "ok" and .database == "ok" and .commit == $expected' > /dev/null 2>&1; then
+              echo "Live at $commit"; exit 0
             fi
-            echo "waiting ($i/60) live=${commit:-unknown} want=$GITHUB_SHA"
+            echo "waiting ($i/45) live=${commit:-unknown} want=$GITHUB_SHA"
             sleep 15
           done
-          echo "::error::Backend did not reach $GITHUB_SHA in time"; exit 1
+          echo "::error::Backend did not reach $GITHUB_SHA in time. Configure GIT_COMMIT (or the host commit variable); blank/old revisions never pass."; exit 1
       - name: Smoke test API
         run: bash scripts/smoke_test.sh "${{ vars.API_BASE_URL }}"
 
@@ -69,12 +69,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Web responds
+      # Availability only: this does not prove the hosted frontend's revision.
+      # The required Web CI check exercises the checked-out UI against a synthetic API.
+      - name: Web responds (availability only)
         env:
           WEB: ${{ vars.WEB_BASE_URL }}
         run: |
           for i in $(seq 1 20); do
-            curl -fsS -o /dev/null "$WEB" && { echo "Web is up"; exit 0; }
+            curl --connect-timeout 5 --max-time 10 -fsS -o /dev/null "$WEB" && { echo "Web is reachable; hosted frontend revision is not verified."; exit 0; }
             sleep 15
           done
           exit 1

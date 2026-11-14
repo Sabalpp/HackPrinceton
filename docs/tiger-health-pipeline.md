@@ -2,7 +2,7 @@
 
 This work extends the latest `feature/sumit-core` backend (`444bb85`), on
 `feature/sabal-fitbit`. `main` was older when the integration started. The newer
-`feature/saksham-ui` client was inspected read-only for API compatibility.
+`feature/saksham-ui` client (`7c969f5`) is now integrated on this feature branch.
 
 ## Existing backend, reused
 
@@ -133,8 +133,10 @@ an already-open SSE connection.
 Health changes are in Sabal-owned modules/tests. The user's passive-monitoring
 request also requires a narrowly scoped read-only change to `family.status_lines`,
 included for the core owner's review. No shared contract, route, model, outbound
-messaging or care-request state-machine behavior was changed. Frontend source
-was inspected separately, with no edits. The
-adapter and trend fixes were implemented independently, then integrated with the
+messaging or care-request state-machine behavior was changed. The latest frontend
+now lives in this checkout, with bundled licensed fonts, an explicit local-preview
+banner, an SSE connection label that does not imply fresh sensor data, and corrected
+upward-step wording. CI exercises the real dashboard/API with synthetic fixtures;
+see [browser checks](local-ci.md). The adapter and trend fixes were implemented independently, then integrated with the
 existing backend test suite. This branch includes the latest core branch ancestry;
 review/merge that upstream work before promoting a draft PR into main.
