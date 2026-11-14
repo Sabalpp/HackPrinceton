@@ -49,8 +49,8 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        {eyebrow && <p className="text-sm font-semibold text-primary">{eyebrow}</p>}
-        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h1>
+        {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>}
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-[2.6rem] sm:leading-tight">{title}</h1>
         {description && <p className="max-w-2xl text-body">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -112,7 +112,7 @@ export function Avatar({ name, size = "md", tone = "tint" }: { name: string; siz
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="text-lg font-bold text-ink">{children}</h2>
+      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{children}</h2>
       {action}
     </div>
   );

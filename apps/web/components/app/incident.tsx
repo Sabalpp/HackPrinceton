@@ -75,7 +75,7 @@ export function IncidentPanel({
   const frame = resolved
     ? "border-border bg-surface"
     : urgent
-      ? "border-danger/30 bg-danger-light"
+      ? "border-danger/30 bg-danger-tint"
       : incident.status === "checking"
         ? "border-watch-border bg-watch-bg"
         : "border-primary/25 bg-primary-tint";
@@ -84,7 +84,7 @@ export function IncidentPanel({
     <article className={`flex flex-col gap-5 rounded-2xl border p-5 sm:p-6 ${frame}`}>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-          <span className={`inline-flex items-center gap-1.5 ${resolved ? "text-good" : urgent ? "text-danger" : "text-watch-label"}`}>
+          <span className={`inline-flex items-center gap-1.5 ${resolved ? "text-good" : urgent ? "text-danger-ink" : "text-watch-label"}`}>
             {resolved ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldAlert size={18} aria-hidden="true" />}
             {incident.trigger === "fall.suspected" ? "Possible fall" : "Message alert"}
           </span>
@@ -97,7 +97,7 @@ export function IncidentPanel({
           {incident.data_mode === "simulated" && <SimulatedPill />}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className={`text-2xl font-bold ${urgent ? "text-danger" : "text-ink"}`}>{headline.title}</h3>
+          <h3 className={`text-2xl font-bold ${urgent ? "text-danger-ink" : "text-ink"}`}>{headline.title}</h3>
           <StatusPill tone={toneToPill[status.tone]}>{status.label}</StatusPill>
         </div>
         {deadline && (
@@ -201,7 +201,7 @@ function ResolveControl({
         </button>
       </div>
       {error && (
-        <p role="alert" className="text-sm font-semibold text-danger">
+        <p role="alert" className="text-sm font-semibold text-danger-ink">
           {error}
         </p>
       )}

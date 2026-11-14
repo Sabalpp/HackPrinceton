@@ -40,7 +40,7 @@ function LiveCallView({ state: s }: { state: FarCareState }) {
       {/* Status bar */}
       <div
         className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 ${
-          endedAt ? "border border-border bg-surface text-ink" : "bg-primary text-white"
+          endedAt ? "border border-border bg-surface text-ink" : "bg-primary text-on-primary"
         }`}
       >
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -49,7 +49,7 @@ function LiveCallView({ state: s }: { state: FarCareState }) {
             aria-hidden="true"
           />
           <span className="font-bold">{endedAt ? `Call with ${nick} ended` : `On a call with ${nick}`}</span>
-          <span className={endedAt ? "text-muted" : "text-primary-tint"}>
+          <span className={endedAt ? "text-muted" : "text-on-primary/80"}>
             · Tonight&apos;s check-in · {callLabel} her time · <Elapsed endedAt={endedAt} />
           </span>
         </p>
@@ -57,7 +57,7 @@ function LiveCallView({ state: s }: { state: FarCareState }) {
           <button
             type="button"
             onClick={() => setEndedAt(Date.now())}
-            className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-white/70 px-4 font-semibold text-white hover:bg-white hover:text-primary"
+            className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-on-primary/40 px-4 font-semibold text-on-primary hover:bg-on-primary hover:text-primary"
           >
             <PhoneOff size={18} aria-hidden="true" />
             End call

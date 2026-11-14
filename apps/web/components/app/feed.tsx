@@ -12,7 +12,7 @@ export function eventLook(e: TimelineEvent): Look {
     if (k === "incident.resolved") return { Icon: ShieldCheck, chip: "bg-good-bg text-good", label: "Safety", href: "/safety" };
     if (k === "incident.responder_en_route") return { Icon: ShieldAlert, chip: "bg-primary-tint text-primary", label: "Safety", href: "/safety" };
     if (k === "incident.opened") return { Icon: ShieldAlert, chip: "bg-watch-bg text-watch-label", label: "Safety", href: "/safety" };
-    return { Icon: ShieldAlert, chip: "bg-danger-light text-danger", label: "Safety", href: "/safety" };
+    return { Icon: ShieldAlert, chip: "bg-danger-tint text-danger-ink", label: "Safety", href: "/safety" };
   }
   if (k.startsWith("care_request.")) {
     const bad = k.endsWith("delivery_failed") || k.endsWith("more_help_needed");

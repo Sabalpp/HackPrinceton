@@ -29,7 +29,7 @@ export function PhoneDigest() {
   return (
     <PhoneFrame label="Your phone: FarCare morning update">
       <header className="flex flex-col items-center gap-1 border-b border-border bg-bg px-4 pb-3 pt-6">
-        <span className="grid size-11 place-items-center rounded-full bg-primary text-lg font-bold text-white" aria-hidden="true">
+        <span className="grid size-11 place-items-center rounded-full bg-primary text-lg font-bold text-on-primary" aria-hidden="true">
           F
         </span>
         <p className="font-semibold text-ink">FarCare</p>
@@ -67,7 +67,7 @@ export function PhoneDigest() {
           type="submit"
           aria-label="Send"
           disabled={!draft.trim()}
-          className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-white hover:bg-primary-hover disabled:opacity-50"
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-on-primary hover:bg-primary-hover disabled:opacity-50"
         >
           <ArrowUp size={20} aria-hidden="true" />
         </button>
@@ -82,7 +82,7 @@ function Bubble({ from, children }: { from: "farcare" | "me"; children: React.Re
     <li className={`flex ${me ? "justify-end" : "justify-start"}`}>
       <p
         className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[15px] leading-snug ${
-          me ? "rounded-br-md bg-primary text-white" : "rounded-bl-md bg-neutral-bg text-ink"
+          me ? "rounded-br-md bg-primary text-on-primary" : "rounded-bl-md bg-neutral-bg text-ink"
         }`}
       >
         {children}

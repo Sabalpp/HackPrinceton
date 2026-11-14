@@ -37,7 +37,7 @@ function Health({ name }: { name: string }) {
                 type="button"
                 onClick={() => setDays(d)}
                 aria-pressed={days === d}
-                className={`min-h-9 rounded-lg px-3 text-sm font-semibold ${days === d ? "bg-primary text-white" : "text-body hover:bg-inset"}`}
+                className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${days === d ? "bg-primary text-on-primary" : "text-body hover:bg-inset"}`}
               >
                 {d} days
               </button>
@@ -95,7 +95,7 @@ function Health({ name }: { name: string }) {
                       role="tab"
                       aria-selected={metric === t.metric}
                       onClick={() => setMetric(t.metric)}
-                      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${
+                      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${
                         metric === t.metric ? "bg-primary-tint text-on-tint" : "bg-inset text-body hover:text-ink"
                       }`}
                     >

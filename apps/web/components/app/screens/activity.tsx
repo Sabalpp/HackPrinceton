@@ -57,8 +57,8 @@ function ActivityView({ name }: { name: string }) {
             role="tab"
             aria-selected={filter === f}
             onClick={() => setFilter(f)}
-            className={`min-h-10 rounded-full px-4 text-sm font-semibold ${
-              filter === f ? "bg-primary text-white" : "border border-border bg-surface text-body hover:border-primary"
+            className={`min-h-11 rounded-full px-4 text-sm font-semibold ${
+              filter === f ? "bg-primary text-on-primary" : "border border-border bg-surface text-body hover:border-primary"
             }`}
           >
             {label}

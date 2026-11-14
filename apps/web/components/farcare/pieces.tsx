@@ -340,7 +340,7 @@ export function AgendaList({ items }: { items: AgendaItem[] }) {
         >
           <span
             className={`grid size-5 shrink-0 place-items-center rounded-md border ${
-              it.done ? "border-primary bg-primary text-white" : it.current ? "border-primary bg-surface" : "border-border bg-surface"
+              it.done ? "border-primary bg-primary text-on-primary" : it.current ? "border-primary bg-surface" : "border-border bg-surface"
             }`}
             aria-hidden="true"
           >

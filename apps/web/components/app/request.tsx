@@ -51,7 +51,7 @@ export function RequestCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className={`grid size-11 shrink-0 place-items-center rounded-xl ${emergency ? "bg-danger-light text-danger" : "bg-primary-tint text-primary"}`}
+            className={`grid size-11 shrink-0 place-items-center rounded-xl ${emergency ? "bg-danger-tint text-danger-ink" : "bg-primary-tint text-primary"}`}
             aria-hidden="true"
           >
             <Icon size={22} />
