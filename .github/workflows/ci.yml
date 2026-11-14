@@ -83,11 +83,9 @@ jobs:
 
   web:
     name: Web (lint, typecheck, build)
-    runs-on: ubuntu-latest
+    # Match the pinned browser driver's supported Linux image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
-    env:
-      PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
-      SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/farcare-dashboard-smoke
     defaults:
       run:
         working-directory: apps/web
@@ -125,6 +123,8 @@ jobs:
           cache-dependency-glob: apps/api/uv.lock
       - name: Install synthetic backend and pinned browser driver
         working-directory: apps/api
+        env:
+          PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
         run: |
           uv sync --frozen
           npm install --ignore-scripts --no-audit --no-fund --package-lock=false \
@@ -132,6 +132,9 @@ jobs:
           node "$PLAYWRIGHT_INSTALL_DIR/node_modules/playwright/cli.js" install --with-deps chromium
       - name: Verify the dashboard against the real API (synthetic data only)
         working-directory: .
+        env:
+          PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
+          SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/farcare-dashboard-smoke
         run: node scripts/dashboard_smoke.mjs
       - name: Upload synthetic dashboard evidence
         if: always()

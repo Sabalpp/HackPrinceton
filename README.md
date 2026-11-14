@@ -57,6 +57,21 @@ curl -s -XPOST localhost:8000/api/demo/fall -H "$A" -H "$J" -d '{"parent_id":"pa
 
 ## Docs
 
+Start reading the code in this order:
+
+| Part | Entry points | Purpose |
+| --- | --- | --- |
+| Dashboard | `apps/web/app/(app)/`, `apps/web/lib/dashboard.tsx` | Family screens, loading, and live timeline updates |
+| API connection | `apps/web/lib/api.ts`, `apps/api/app/main.py` | Typed browser requests and API startup |
+| Health data | `apps/api/app/health/tiger.py`, `sync_tiger.py`, `trends.py` | Tiger daily records, authenticated ingestion, and personal comparisons |
+| Care workflows | `apps/api/app/services/family.py`, `care_requests.py`, `safety.py` | Family questions, parent approval, neighbor responses, and safety checks |
+| Storage and access | `apps/api/app/models.py`, `auth.py`, `schemas/contracts.py` | Database tables, sharing permissions, and shared payload definitions |
+| Integrations and automation | `apps/api/app/integrations/`, `.github/workflows/` | Photon/Gemini adapters and CI/deployment verification |
+
+`apps/web/app/(web)/` contains older concept screens; the connected family app is
+under `(app)`. The sensor collector and private recorded exports can run outside
+this repository; the app consumes their Tiger projection through the health adapter.
+
 - [CLAUDE.md](CLAUDE.md): project context, verified integration facts, key decisions
 - [AGENTS.md](AGENTS.md): collaboration and engineering rules
 - [CI and browser verification](docs/local-ci.md): checks, screenshots, and deployment gates
