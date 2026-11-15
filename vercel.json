@@ -16,7 +16,8 @@
   },
   "rewrites": [
     { "source": "/backend/:path*", "destination": { "service": "api" } },
-    { "source": "/:path*", "destination": { "service": "web" } }
+    { "source": "/", "destination": { "service": "web", "path": "/" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
   ],
   "daemons": {
     "care_worker": {
