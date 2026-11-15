@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { HeartPulse, Info, Lightbulb } from "lucide-react";
+import { BarChart3, CircleCheck, HeartPulse, Info, Lightbulb, Sprout } from "lucide-react";
 import { api, type HealthSummary } from "@/lib/api";
 import { useLiveQuery } from "@/lib/dashboard";
 import { SimulatedPill } from "@/components/farcare/ui";
 import { Ready } from "../shell";
-import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "../kit";
+import { Card, EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "../kit";
 import { METRIC, MetricChart, TrendTile, type Metric } from "../health";
 import { PersonalHealthPanel } from "@/components/portal/personal-health";
 import { LiveSensorPanel } from "@/components/portal/live-sensors";
+import { HeartRateAlertCard } from "@/components/portal/heart-rate-alert";
 
 const RANGES = [14, 35, 60] as const;
 const fetchers = Object.fromEntries(
@@ -29,8 +30,8 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
     <div className="flex flex-col gap-8">
       <PageHeader
         eyebrow="Health"
-        title={`${name}'s trends`}
-        description={`Daily steps, sleep and resting heart rate, compared with ${name}'s own usual. FarCare looks for changes, it doesn't diagnose.`}
+        title={`${name}'s health`}
+        description={`Compared with ${name}'s own usual days. FarCare notices changes; it doesn't diagnose.`}
         actions={
           <div role="group" aria-label="Time range" className="flex rounded-[10px] border border-border bg-surface p-1">
             {RANGES.map((d) => (
@@ -58,26 +59,9 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
 
       {data && (
         <>
+          <Noticed data={data} name={name} />
           <LiveSensorPanel parentId={parentId} />
-          <PersonalHealthPanel parentId={parentId} />
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            {data.data_mode === "simulated" && <SimulatedPill />}
-            {data.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 font-semibold text-watch-heading">Mixed sources</span>}
-            <span>
-              Source: {data.data_mode === "live" ? "Fitbit (Google Health API)" : data.data_mode === "mixed" ? "mixed live and simulated records" : data.data_mode === "none" ? "no records" : "simulated demo data"} · {data.observations.length}{" "}
-              daily records
-            </span>
-          </div>
-
-          {data.suggest_checkin && (
-            <div className="flex items-start gap-3 rounded-2xl border border-watch-border bg-watch-bg p-5">
-              <Lightbulb size={22} className="mt-0.5 shrink-0 text-watch-label" aria-hidden="true" />
-              <div>
-                <p className="font-bold text-watch-heading">Something changed this week</p>
-                <p className="text-watch-body">This could be a good moment to call {name} and ask how they&apos;re doing.</p>
-              </div>
-            </div>
-          )}
+          <HeartRateAlertCard parentId={parentId} name={name} />
 
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {data.trends.map((t) => (
@@ -85,11 +69,10 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
             ))}
           </ul>
 
-          <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 sm:p-6" aria-labelledby="chart-title">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="chart-title" className="text-lg font-bold text-ink">
-                Day by day
-              </h2>
+          <Card
+            title="Day by day"
+            icon={BarChart3}
+            action={
               <div role="tablist" aria-label="Metric" className="flex flex-wrap gap-1.5">
                 {data.trends.map((t) => {
                   const m = METRIC[t.metric];
@@ -110,23 +93,21 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
                   );
                 })}
               </div>
-            </div>
+            }
+          >
             <MetricChart obs={data.observations} metric={metric} baseline={data.trends.find((t) => t.metric === metric)?.baseline ?? null} />
-          </section>
+          </Card>
 
-          <section className="flex flex-col gap-3" aria-labelledby="obs-title">
-            <h2 id="obs-title" className="text-lg font-bold text-ink">
-              What FarCare noticed
-            </h2>
-            <ul className="flex flex-col gap-2">
-              {data.trends.map((t) => (
-                <li key={t.metric} className="flex items-start gap-3 rounded-xl bg-surface p-4 text-body">
-                  <span className={`mt-1.5 size-2.5 shrink-0 rounded-full ${t.notable ? "bg-sun" : "bg-primary"}`} aria-hidden="true" />
-                  {t.observation}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+            {data.data_mode === "simulated" && <SimulatedPill />}
+            {data.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 font-semibold text-watch-heading">Mixed sources</span>}
+            <span>
+              {data.data_mode === "live" ? "From Fitbit via Google Health" : data.data_mode === "mixed" ? "A mix of watch and simulated records" : data.data_mode === "none" ? "No readings yet" : "Showing simulated demo data"} · {data.observations.length}{" "}
+              {data.observations.length === 1 ? "day" : "days"} of readings
+            </span>
+          </div>
+
+          <PersonalHealthPanel parentId={parentId} />
 
           <p className="flex items-start gap-2 rounded-xl border border-border bg-inset p-4 text-sm text-body">
             <Info size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />
@@ -135,5 +116,43 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
         </>
       )}
     </div>
+  );
+}
+
+/** One plain answer to "is anything different?", instead of a list per metric. */
+function Noticed({ data, name }: { data: HealthSummary; name: string }) {
+  const notable = data.trends.filter((t) => t.notable);
+  const learning = data.trends.every((t) => t.direction === "insufficient_data");
+  if (data.suggest_checkin || notable.length) {
+    return (
+      <section aria-label="What FarCare noticed" className="flex items-start gap-3 rounded-2xl border border-watch-border bg-watch-bg p-5">
+        <Lightbulb size={22} className="mt-0.5 shrink-0 text-watch-label" aria-hidden="true" />
+        <div>
+          <p className="font-bold text-watch-heading">Something changed this week</p>
+          <ul className="mt-1 list-disc pl-5 text-watch-body">{notable.map((t) => <li key={t.metric}>{t.observation}</li>)}</ul>
+          <p className="mt-2 text-watch-body">This could be a good moment to call {name} and ask how they&apos;re doing.</p>
+        </div>
+      </section>
+    );
+  }
+  if (learning) {
+    return (
+      <section aria-label="What FarCare noticed" className="flex items-start gap-3 rounded-2xl border border-border bg-surface p-5">
+        <Sprout size={22} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+        <div>
+          <p className="font-bold text-ink">Still learning {name}&apos;s usual</p>
+          <p className="text-body">Comparisons start after about a week of daily readings. Nothing needs your attention.</p>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section aria-label="What FarCare noticed" className="flex items-start gap-3 rounded-2xl border border-good-border bg-good-bg p-5">
+      <CircleCheck size={22} className="mt-0.5 shrink-0 text-good" aria-hidden="true" />
+      <div>
+        <p className="font-bold text-good-strong">Nothing unusual this week</p>
+        <p className="text-body">{name}&apos;s steps, sleep and resting heart rate look like their usual days.</p>
+      </div>
+    </section>
   );
 }

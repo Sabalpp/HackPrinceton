@@ -29,7 +29,7 @@ from app.health.live_sync import sync_linked_sources
 from app.integrations import delivery
 from app.models import InboundMessageRow
 from app.runtime_models import AgentLease, DeliveryJob, InboundRetry
-from app.services import care_requests, conversation, proactive, safety
+from app.services import care_requests, conversation, proactive, safety, vitals
 
 log = logging.getLogger(__name__)
 LEASE_ID = "farcare-worker"
@@ -144,6 +144,7 @@ def maintenance_unit(owner_id: str) -> str:
         safety.check_overdue(session)
         care_requests.expire_overdue(session)
         sync_linked_sources(session)
+        vitals.check_alerts(session)
         proactive.run(session)
         return "completed"
 

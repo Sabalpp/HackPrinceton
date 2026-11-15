@@ -22,7 +22,7 @@ from app.db import new_id, utcnow
 from app.health import service as health
 from app.models import CareCircleMember, CareRequestRow, CheckInRow, ConversationTurn, Person
 from app.schemas.contracts import AssistanceCategory, CareRequestStatus
-from app.services import actions, care_requests, safety, timeline
+from app.services import actions, care_requests, safety, timeline, vitals
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,10 @@ yourself and never claim someone was contacted; the system adds the approval que
 - record_checkin: when {name} shares how they feel (energy, sleep, mood, pain). Summarize \
 neutrally in their words.
 - get_activity_summary: recent activity compared with their own usual pattern.
+- get_my_readings: their latest watch readings (heart rate in bpm, resting heart rate, blood \
+oxygen, HRV, breathing rate, sleep, steps), each with its time. Use it whenever they ask for a \
+number. Quote the value and how long ago it was measured, exactly as given; if live_now is \
+false, say it is the last reading. Never call a reading normal or abnormal.
 - list_care_circle / get_request_status: who can help, and status of existing requests.
 - get_my_status: what is happening right now (open requests, any safety check, latest \
 check-in), the same facts {name}'s FarCare app shows.
@@ -128,6 +132,13 @@ def _declarations() -> list[Any]:
         _decl(
             "get_activity_summary",
             "Recent activity vs. their usual pattern (non-diagnostic).",
+            {},
+            [],
+        ),
+        _decl(
+            "get_my_readings",
+            "Their latest watch readings (heart rate bpm, resting heart rate, blood oxygen, HRV, "
+            "breathing rate, sleep, steps), each with when it was measured.",
             {},
             [],
         ),
@@ -234,6 +245,9 @@ class Tools:
             "observations": [t.observation for t in summ.trends],
             "note": "Describe gently. Not a diagnosis.",
         }
+
+    def t_get_my_readings(self) -> dict:
+        return vitals.readings_facts(self.s, self.parent)
 
     def t_list_care_circle(self) -> dict:
         rows = self.s.exec(
@@ -543,6 +557,8 @@ def _fallback_reply(session: Session, parent: Person, text: str, tools: Tools) -
             if parts
             else (f"Nothing is pending right now, {name}. How are you feeling today?")
         )
+    if vitals.READINGS_RE.search(text):
+        return vitals.answer(text, tools.run("get_my_readings", {}), "your readings")
     for category, words in CATEGORY_KEYWORDS:
         if any(w in lower for w in words):
             when = WHEN_RE.search(text)

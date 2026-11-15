@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db import init_db, session_scope
 from app.routes import (
     accounts,
+    alerts,
     chat,
     console,
     demo,
@@ -95,6 +96,7 @@ app.include_router(accounts.router)
 app.include_router(experience.router)
 app.include_router(chat.router)
 app.include_router(personal_health.router)
+app.include_router(alerts.router)
 app.include_router(parents.router)
 app.include_router(ingest.router)
 app.include_router(webhooks.router)
