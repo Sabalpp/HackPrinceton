@@ -43,7 +43,7 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
   const pct = trend.percent_change;
   const learning = trend.direction === "insufficient_data";
   return (
-    <li className={`flex flex-col gap-2 rounded-2xl border p-5 ${watch ? "border-watch-border bg-watch-bg" : "border-border bg-surface"}`}>
+    <li className={`flex flex-col gap-2 rounded-2xl border p-5 shadow-card ${watch ? "border-watch-border bg-watch-bg" : "border-border bg-surface"}`}>
       <p className={`flex items-center gap-2 text-sm font-semibold ${watch ? "text-watch-label" : "text-muted"}`}>
         <m.Icon size={17} aria-hidden="true" />
         {m.label}
@@ -54,7 +54,7 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
           {m.unit && <span className="ml-1 text-base font-semibold opacity-70">{m.unit}</span>}
         </p>
       ) : (
-        <p className="text-lg font-semibold text-muted">Not enough data</p>
+        <p className="text-lg font-semibold text-muted">Not enough data yet</p>
       )}
       <p className={`flex flex-wrap items-center gap-1.5 text-sm ${watch ? "text-watch-body" : "text-body"}`}>
         {learning && <span className="rounded-full bg-inset px-2 py-1 font-semibold text-muted">Learning their usual</span>}
@@ -67,8 +67,7 @@ export function TrendTile({ trend, obs }: { trend: MetricTrend; obs: HealthObser
         {trend.baseline !== null && <span>usual {m.fmt(trend.baseline)}</span>}
       </p>
       <Sparkline values={vals} highlight={watch} />
-      <p className="text-sm leading-relaxed text-body">{trend.observation}</p>
-      {!learning && <p className="text-xs text-muted">A personal comparison, not a diagnosis.</p>}
+      {!learning && <p className="text-sm leading-relaxed text-body">{trend.observation}</p>}
     </li>
   );
 }

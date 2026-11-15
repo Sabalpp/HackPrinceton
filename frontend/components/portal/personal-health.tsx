@@ -75,23 +75,53 @@ function CoverageDetails({ metric }: { metric:PersonalMetric }) {
   return <details className="mt-3 border-t border-border pt-3 text-sm"><summary className="min-h-9 cursor-pointer font-semibold text-primary">How days qualify</summary><p className="mt-2 text-muted">At least {metric.min_readings_per_day} qualifying reading{metric.min_readings_per_day === 1 ? "" : "s"} on each completed day.{(metric.metric === "systolic" || metric.metric === "diastolic") ? " Blood-pressure readings must be at least one minute apart and meet the app’s eligibility checks." : ""}</p>{counts.length > 0 && <ul className="mt-2 space-y-1 text-muted">{counts.map(([key,count]) => <li key={key}>{labels[key] || key.replaceAll("_", " ")}: {count}</li>)}</ul>}</details>;
 }
 
-function ObservedComparison({ metric }: { metric:PersonalMetric }) {
-  const comparison = metric.comparison;
-  if (!comparison || comparison.status === "unavailable") return null;
-  const reference = comparison.basis === "user_declared_reference";
-  return <div className="mt-3 rounded-xl border border-border bg-inset p-3"><p className="text-sm font-semibold text-ink">{reference ? "Compared with a provisional reference" : "Observed personal comparison"}</p>{comparison.delta != null && <p className="mt-1 font-semibold tabular text-body">Difference: {comparison.delta > 0 ? "+" : ""}{comparison.delta.toLocaleString(undefined, { maximumFractionDigits:1 })} {METRICS[metric.metric].unit}</p>}<p className="mt-2 text-sm text-body">{comparison.message}</p><p className="mt-2 text-xs text-muted">Describes recorded differences. This is not a medical range or a safety assessment.</p></div>;
+function usual(metric: PersonalMetric) {
+  const v = metric.median!;
+  if (metric.metric === "sleep_minutes") return `${Math.floor(v / 60)}h ${String(Math.round(v % 60)).padStart(2, "0")}m`;
+  return `${v.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${METRICS[metric.metric].unit}`;
+}
+
+function LearningRow({ metric }: { metric: PersonalMetric }) {
+  const label = METRICS[metric.metric].label;
+  const progress = Math.min(metric.required_days, metric.eligible_days);
+  const comparison = metric.comparison && metric.comparison.status !== "unavailable" ? metric.comparison.message : null;
+  return <li className="flex flex-col gap-1 py-4 first:pt-0 last:pb-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <h3 className="font-semibold text-ink">{label}</h3>
+      {metric.status === "observed" && metric.median != null
+        ? <p className="font-semibold text-ink">Usual: about {usual(metric)}</p>
+        : metric.status === "paused" ? <p className="text-sm font-semibold text-muted">Paused</p>
+        : <div className="flex items-center gap-3"><span role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={metric.required_days} aria-label={`${label}: ${metric.eligible_days} of ${metric.required_days} days`} className="h-2 w-24 overflow-hidden rounded-full bg-ring-track"><span className="block h-full rounded-full bg-primary" style={{ width: `${(progress / Math.max(1, metric.required_days)) * 100}%` }} /></span><span className="text-sm tabular text-muted">{metric.eligible_days} of {metric.required_days} days</span></div>}
+    </div>
+    {comparison && <p className="text-sm text-body">{comparison}</p>}
+    {metric.declared_reference != null && <p className="text-sm text-muted">Your own reference: {metric.declared_reference} {METRICS[metric.metric].unit} (doesn&apos;t change safety guidance)</p>}
+  </li>;
 }
 
 export function PersonalHealthPanel({ parentId }: { parentId:string }) {
   const fetcher = useCallback(() => experience.personalHealth(parentId), [parentId]);
   const result = usePortalData(fetcher);
-  return <section className="flex flex-col gap-4" aria-labelledby="personal-health-heading"><header><p className="flex items-center gap-2 text-sm font-semibold text-primary"><Sprout size={18} aria-hidden="true" />A personal picture, built over time</p><h2 id="personal-health-heading" className="mt-1 text-2xl font-bold">Learning what is usual</h2><p className="mt-2 max-w-3xl text-body">Recorded patterns and personal references stay separate. A familiar reading can still need attention.</p></header>
-    {result.loading && <p role="status" className="text-muted">Loading personal learning progress…</p>}
+  const data = result.data;
+  const isBp = (m: PersonalMetric) => m.metric === "systolic" || m.metric === "diastolic";
+  const hasBp = !!data && (data.blood_pressure.length > 0 || data.metrics.some(m => isBp(m) && m.eligible_days > 0));
+  const rows = data ? data.metrics.filter(m => hasBp || !isBp(m)) : [];
+  return <section className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-card" aria-labelledby="personal-health-heading">
+    <header className="border-b border-border px-5 py-3.5"><h2 id="personal-health-heading" className="flex items-center gap-2 text-base font-semibold text-ink"><Sprout size={18} className="text-primary" aria-hidden="true" />Learning what is usual</h2><p className="text-sm text-muted">FarCare learns what&apos;s normal from about a week of readings, then compares new days with it.</p></header>
+    <div className="flex flex-col gap-4 p-5">
+    {result.loading && <p role="status" className="text-muted">Loading…</p>}
     {result.error && <PortalMessage error>{result.error}</PortalMessage>}
-    {result.data && <><p className="text-sm text-muted">{result.data.explanation}</p><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{result.data.metrics.map(metric => {
-      const label = METRICS[metric.metric];
-      const progress = Math.min(metric.required_days,metric.eligible_days);
-      return <article key={metric.metric} className="rounded-2xl border border-border bg-surface p-5"><h3 className="font-bold text-ink">{label.label}</h3><p className="mt-2 text-sm font-semibold text-primary">{metric.status === "observed" ? "Observed personal pattern" : metric.status === "paused" ? "Learning is paused" : "Learning"}</p><p className="mt-3 text-3xl font-bold tabular">{metric.eligible_days}<span className="ml-1 text-base font-medium text-muted">/ {metric.required_days} qualified days</span></p><progress value={progress} max={Math.max(1,metric.required_days)} aria-label={`${label.label}: ${metric.eligible_days} of ${metric.required_days} qualified days`} className="mt-3 h-2 w-full accent-primary" /><p className="mt-3 text-sm text-body">{metric.explanation}</p>{metric.median != null && <p className="mt-3 font-semibold">Observed median: {metric.median.toLocaleString()} {label.unit}</p>}{metric.declared_reference != null && <p className="mt-3 rounded-lg bg-inset p-3 text-sm text-body">User-declared reference: <strong>{metric.declared_reference} {label.unit}</strong><span className="mt-1 block text-muted">Provisional; does not change safety guidance.</span></p>}<p className="mt-3 text-xs text-muted">{metric.eligible_readings} eligible readings in {metric.window_days} days. Learning progress is an app rule, not a medical calibration.</p><ObservedComparison metric={metric} /><CoverageDetails metric={metric} /></article>;
-    })}</div>{result.data.blood_pressure.length > 0 && <section className="flex flex-col gap-3"><h3 className="mt-2 text-lg font-bold">Recorded cuff readings</h3>{result.data.blood_pressure.slice(0,3).map(reading => <Assessment key={reading.reading_id} reading={reading} />)}</section>}<div className="flex items-start gap-2 text-sm text-muted"><ShieldCheck size={19} className="shrink-0" aria-hidden="true" /><p>Blood pressure comes from manually entered cuff readings. This is not a diagnosis. {result.data.evidence.map((source,index) => <span key={source.url}>{index > 0 ? " · " : " "}<a href={source.url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{source.title}</a></span>)}</p></div></>}
+    {data && <>
+      <ul className="divide-y divide-border">{rows.map(metric => <LearningRow key={metric.metric} metric={metric} />)}</ul>
+      {!hasBp && <p className="flex items-center gap-2 text-sm text-muted"><HeartPulse size={17} aria-hidden="true" />Blood pressure: no cuff readings yet.</p>}
+      {data.blood_pressure.length > 0 && <section className="flex flex-col gap-3"><h3 className="mt-2 text-lg font-bold">Recorded cuff readings</h3>{data.blood_pressure.slice(0,3).map(reading => <Assessment key={reading.reading_id} reading={reading} />)}</section>}
+      <details className="border-t border-border pt-3 text-sm"><summary className="min-h-10 cursor-pointer py-2 font-semibold text-primary">How FarCare learns</summary>
+        <div className="mt-2 flex flex-col gap-3 text-muted">
+          <p>{data.explanation}</p>
+          {data.metrics.map(metric => <div key={metric.metric}><p><strong className="text-body">{METRICS[metric.metric].label}:</strong> {metric.explanation} {metric.eligible_readings} readings in the last {metric.window_days} days.</p><CoverageDetails metric={metric} /></div>)}
+          <p className="flex items-start gap-2"><ShieldCheck size={18} className="shrink-0" aria-hidden="true" /><span>Blood pressure comes from cuff readings entered by hand. This is not a diagnosis. {data.evidence.map((source,index) => <span key={source.url}>{index > 0 ? " · " : " "}<a href={source.url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{source.title}</a></span>)}</span></p>
+        </div>
+      </details>
+    </>}
+    </div>
   </section>;
 }

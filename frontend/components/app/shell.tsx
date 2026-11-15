@@ -185,9 +185,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </p>
           {children}
           <footer className="mt-12 border-t border-border pt-5 text-sm text-muted">
-            FarCare is a hackathon prototype, not a medical device. It doesn&apos;t diagnose anything and never contacts
-            emergency services itself. Health records show their source and dates;
-            simulated readings are labeled simulated.
+            FarCare is not a medical device. It doesn&apos;t diagnose and never contacts emergency services itself.
+            Simulated readings are always labeled.
           </footer>
         </main>
       </div>

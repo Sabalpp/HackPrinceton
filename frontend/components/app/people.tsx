@@ -6,7 +6,7 @@ import { Avatar, CATEGORY_ICON, EmptyBlock } from "./kit";
 
 export function MemberCard({ member: m, rank, detailed = false }: { member: CareCircleMember; rank?: number; detailed?: boolean }) {
   return (
-    <li className="flex gap-4 rounded-2xl border border-border bg-surface p-5">
+    <li className="flex gap-4 rounded-2xl border border-border bg-surface p-5 shadow-card">
       <Avatar name={m.display_name} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -55,7 +55,7 @@ const ordinal = (n: number) => (n === 1 ? "first" : n === 2 ? "second" : n === 3
 const MOOD: Record<CheckIn["mood"], string> = { good: "Good", okay: "Okay", low: "Low", unknown: "Not shared" };
 const ENERGY: Record<CheckIn["energy"], string> = { high: "High", normal: "Normal", low: "Low", unknown: "Not shared" };
 
-export function CheckInCard({ checkin, shared, name }: { checkin: CheckIn | null; shared: boolean; name: string }) {
+export function CheckInCard({ checkin, shared, name, flat = false }: { checkin: CheckIn | null; shared: boolean; name: string; flat?: boolean }) {
   if (!checkin) {
     return shared ? (
       <EmptyBlock title="No check-in yet">{name}&apos;s next check-in will show up here.</EmptyBlock>
@@ -65,7 +65,7 @@ export function CheckInCard({ checkin, shared, name }: { checkin: CheckIn | null
   }
   const low = checkin.mood === "low" || checkin.energy === "low";
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5">
+    <div className={flat ? "flex flex-col gap-4" : "flex flex-col gap-4 rounded-2xl border border-border bg-surface p-5 shadow-card"}>
       <div className="flex items-center gap-3">
         <Avatar name={name} tone="sun" />
         <p className="text-sm text-muted">
