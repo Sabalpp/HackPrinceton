@@ -47,7 +47,7 @@ If configuring a Web Service manually instead of a Blueprint:
 | Runtime | Python 3 |
 | Instance type | Free |
 | Build command | `bash deploy/render/build.sh` |
-| Start command | `apps/api/.venv/bin/python deploy/render/run.py` |
+| Start command | `backend/.venv/bin/python deploy/render/run.py` |
 | Health check path | `/backend/ready` |
 
 Copy the non-secret environment settings from `deploy/render/free.yaml`, provide

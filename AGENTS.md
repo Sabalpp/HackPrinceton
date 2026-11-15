@@ -28,13 +28,13 @@ breaking each other. Context lives in [CLAUDE.md](CLAUDE.md).
 
 | Path | Owner | Others may |
 | --- | --- | --- |
-| `apps/api/**` (except below) | Sumit | open an issue / ask first |
-| `apps/api/app/health/**`, `apps/api/tests/test_health*.py` | Sabal | ask first |
-| `apps/api/app/models.py` → `HealthObservationRow` | Sabal (coordinate with Sumit) | ask first |
-| `apps/collector/**`, `research/fitbit_air/**` | Sabal | ask first |
+| `backend/**` (except below) | Sumit | open an issue / ask first |
+| `backend/app/health/**`, `backend/tests/test_health*.py` | Sabal | ask first |
+| `backend/app/models.py` → `HealthObservationRow` | Sabal (coordinate with Sumit) | ask first |
+| `backend/collector/**`, `research/fitbit_air/**` | Sabal | ask first |
 | `scripts/local/**`, `scripts/verification/**` | Sabal (coordinate API/runtime changes with Sumit) | ask first |
-| `apps/web/**` | Saksham | ask first |
-| `apps/api/app/schemas/contracts.py`, `packages/contracts/**` | Shared (Sumit coordinates) | contract-change process |
+| `frontend/**` | Saksham | ask first |
+| `backend/app/schemas/contracts.py`, `packages/contracts/**` | Shared (Sumit coordinates) | contract-change process |
 | `.github/**`, `scripts/setup-github.sh` | Sumit (+ repo owner review) | ask first |
 | `docs/**`, `CLAUDE.md`, `AGENTS.md` | Everyone (own sections) | small fixes OK |
 
@@ -59,9 +59,9 @@ were not part of the merged PR; preserve those commits and resolve the divergenc
 ## Commands (run before every commit)
 
 ```bash
-# Backend (apps/api)
+# Backend (backend)
 uv run ruff check . && uv run ruff format --check . && uv run pytest -q
-# Frontend (apps/web)
+# Frontend (frontend)
 npm run lint && npm run typecheck && npm run build
 ```
 
@@ -72,8 +72,8 @@ checks, not general CI fixtures.
 
 ## Where code belongs
 
-- Keep the FastAPI package in `apps/api/app/` and the dashboard in `apps/web/`.
-- Put BLE/cloud/database connectors in `apps/collector/farcare_collector/integrations/`,
+- Keep the FastAPI package in `backend/app/` and the dashboard in `frontend/`.
+- Put BLE/cloud/database connectors in `backend/collector/farcare_collector/integrations/`,
   normalization and reports in `health/`, and ingestion orchestration in `services/`.
 - Keep local launch/maintenance commands in `scripts/local/`, and experiments in
   `research/fitbit_air/`. Tests belong alongside their owning application or experiment.
@@ -83,7 +83,7 @@ checks, not general CI fixtures.
   `deploy/render/free.yaml`; it sleeps with its worker. Keep production guards, parent consent,
   durable queues and the distinction between console and delivered SMS intact.
 - Vercel imports the repository root using `vercel.json`. Keep its small API/worker
-  adapters in `apps/api/app/vercel_*.py`; the collector stays local. Preserve `/backend`
+  adapters in `backend/app/vercel_*.py`; the collector stays local. Preserve `/backend`
   routing, private response headers and server-only secrets. Vercel's production-only
   daemon has Hobby quotas; do not promise unlimited free background monitoring.
 - Keep credentials, recordings, exports, SQLite outboxes, logs and downloaded SDKs outside
@@ -96,19 +96,19 @@ checks, not general CI fixtures.
 
 ## Changing a shared contract
 
-Contracts are the Pydantic models in `apps/api/app/schemas/contracts.py`. Everything else is
+Contracts are the Pydantic models in `backend/app/schemas/contracts.py`. Everything else is
 generated from them.
 
 1. Tell the team which field/endpoint changes and why. Prefer **additive** changes: new
    optional fields, new endpoints. Renames and removals need everyone's agreement.
 2. Edit `contracts.py`. Update `packages/contracts/fixtures/*.json` if examples change.
-3. `cd apps/api && uv run python scripts/export_contracts.py`
-4. `cd apps/web && npm run gen:api && npm run typecheck`. Fix `lib/mocks.ts` if it no longer
+3. `cd backend && uv run python scripts/export_contracts.py`
+4. `cd frontend && npm run gen:api && npm run typecheck`. Fix `lib/mocks.ts` if it no longer
    type-checks.
 5. Update `docs/api-contracts.md`.
 6. One PR containing the contract, the regenerated files, and the consumer fixes.
 
-CI fails if `packages/contracts/` or `apps/web/lib/api-types.ts` are stale.
+CI fails if `packages/contracts/` or `frontend/lib/api-types.ts` are stale.
 
 ## When CI fails (the correction loop)
 

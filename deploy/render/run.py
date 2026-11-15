@@ -93,9 +93,9 @@ def main():
         node = shutil.which("node")
         if not node:
             raise RuntimeError("Node is unavailable")
-        python = str(ROOT / "apps/api/.venv/bin/python")
-        api_dir = ROOT / "apps/api"
-        web_dir = ROOT / "apps/web"
+        python = str(ROOT / "backend/.venv/bin/python")
+        api_dir = ROOT / "backend"
+        web_dir = ROOT / "frontend"
         plans = [
             (
                 api_dir,

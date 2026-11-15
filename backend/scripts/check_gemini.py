@@ -1,4 +1,4 @@
-"""Check which Gemini models work with your key, including a real tool call. Reads apps/api/.env.
+"""Check which Gemini models work with your key, including a real tool call. Reads backend/.env.
 
     uv run python scripts/check_gemini.py                  # GEMINI_MODEL + common candidates
     uv run python scripts/check_gemini.py gemini-3.8-flash # specific models
@@ -54,7 +54,7 @@ def try_model(model: str) -> bool:
 def main() -> int:
     settings = get_settings()
     if not settings.gemini_enabled:
-        raise SystemExit("Set GEMINI_API_KEY in apps/api/.env first.")
+        raise SystemExit("Set GEMINI_API_KEY in backend/.env first.")
     models = sys.argv[1:] or list(dict.fromkeys([settings.gemini_model, *CANDIDATES]))
     print("Testing tool calling:")
     for model in models:

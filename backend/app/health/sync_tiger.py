@@ -1,6 +1,6 @@
 """OWNER: Sabal. Publish Tiger daily projections through FarCare's ingest API.
 
-Run from apps/api with its Python 3.12 environment:
+Run from backend with its Python 3.12 environment:
   python -m app.health.sync_tiger --subject-id demo --parent-id parent_001 \
       --days 7 --api-url http://127.0.0.1:8000
 

@@ -91,7 +91,7 @@ No billing plan, domain purchase or resource deployment is performed by configur
 | `GEMINI_API_KEY` | Existing Gemini key; optional if using deterministic fallback |
 
 `npm run configure -- --import-local` copies missing application values from
-`apps/api/.env` to the private deployment file without printing them. It does not
+`backend/.env` to the private deployment file without printing them. It does not
 upload anything. The file is mode 0600 and ignored by Git. Cloudflare credentials
 stay with the operator and are not forwarded to a container. API credentials
 become Worker secrets in the same upload as the Worker code, through Wrangler's
@@ -173,7 +173,7 @@ database. A local Python 3.12 environment is enough; it connects directly to Tig
 and prompts for the password instead of putting it in command arguments:
 
 ```sh
-cd apps/api
+cd backend
 .venv/bin/python -m app.manage_accounts create-owner --email YOUR_EMAIL --name YOUR_NAME
 ```
 

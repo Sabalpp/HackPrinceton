@@ -24,7 +24,7 @@ the other. Photon treats them as different senders.
    `project:read`, `project:write` (+ `platforms:write` to assign lines by API). Put
    `PHOTON_API_KEY` and `PHOTON_PROJECT_ID` in the backend env.
 2. **Assign a shared iMessage line for each cast handle**: set the `DEMO_*_HANDLE` values, then
-   `cd apps/api && uv run python scripts/photon_setup.py assign` (or use the dashboard: iMessage
+   `cd backend && uv run python scripts/photon_setup.py assign` (or use the dashboard: iMessage
    → "Add the number you or your user will send from"). Each assignment uses plan capacity, so
    confirm we have enough seats. `scripts/photon_setup.py status` shows who maps to which line.
 3. **Every cast member texts their FarCare number once** (e.g. "JOIN"). This is required: a shared
@@ -101,7 +101,7 @@ curl -s -XPOST $API/api/demo/fall -H "$ADMIN" -H 'content-type: application/json
 curl -s -XPOST $API/api/demo/inbound -H "$ADMIN" -H 'content-type: application/json' \
   -d '{"person_id":"responder_001","text":"YES 5"}' | jq
 # Edge-device style replay (detector runs locally, only the event is sent):
-cd apps/api && INGEST_API_KEY=... uv run python scripts/replay_fall.py --api $API --trace fall
+cd backend && INGEST_API_KEY=... uv run python scripts/replay_fall.py --api $API --trace fall
 ```
 
 ## What to say about limitations (judges respect honesty)

@@ -7,7 +7,7 @@ import pytest
 
 from app.schemas.contracts import EXPORTED_CONTRACTS
 
-CONTRACTS = Path(__file__).resolve().parents[3] / "packages" / "contracts"
+CONTRACTS = Path(__file__).resolve().parents[2] / "packages" / "contracts"
 FIXTURES = sorted((CONTRACTS / "fixtures").glob("*.json"))
 
 
@@ -20,11 +20,11 @@ def test_fixture_matches_contract(path):
 @pytest.mark.parametrize("name", sorted(EXPORTED_CONTRACTS))
 def test_exported_schema_is_current(name):
     committed = CONTRACTS / "schemas" / f"{name}.schema.json"
-    assert committed.exists(), "Run: cd apps/api && uv run python scripts/export_contracts.py"
+    assert committed.exists(), "Run: cd backend && uv run python scripts/export_contracts.py"
     current = EXPORTED_CONTRACTS[name].model_json_schema()
     assert json.loads(committed.read_text()) == current, (
         f"{name} contract changed without re-exporting. Run "
-        "`cd apps/api && uv run python scripts/export_contracts.py` and follow the contract "
+        "`cd backend && uv run python scripts/export_contracts.py` and follow the contract "
         "change process in AGENTS.md."
     )
 

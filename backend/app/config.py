@@ -1,6 +1,6 @@
-"""Runtime configuration. Every value comes from environment variables (or apps/api/.env).
+"""Runtime configuration. Every value comes from environment variables (or backend/.env).
 
-See apps/api/.env.example for documentation of each variable.
+See backend/.env.example for documentation of each variable.
 """
 
 import os

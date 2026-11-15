@@ -1,16 +1,16 @@
 # Saksham — UI/UX and frontend
 
-**Branch:** `feature/saksham-ui` · **Owns:** `apps/web/**`
+**Branch:** `feature/saksham-ui` · **Owns:** `frontend/**`
 
 Stack: Next.js 16 (App Router) + TypeScript + Tailwind CSS 4. **Read
-`apps/web/AGENTS.md`:** Next 16 has breaking changes vs. older versions. Check
-`apps/web/node_modules/next/dist/docs/` before using an API from memory. `cacheComponents` is
+`frontend/AGENTS.md`:** Next 16 has breaking changes vs. older versions. Check
+`frontend/node_modules/next/dist/docs/` before using an API from memory. `cacheComponents` is
 enabled in `next.config.ts`.
 
 ## Start here (no backend needed)
 
 ```bash
-cd apps/web && cp .env.example .env.local     # set NEXT_PUBLIC_USE_MOCKS=true to start
+cd frontend && cp .env.example .env.local     # set NEXT_PUBLIC_USE_MOCKS=true to start
 npm install && npm run dev
 ```
 
@@ -20,11 +20,11 @@ npm install && npm run dev
   With mocks on, these return `lib/mocks.ts`. That file is type-checked against the contracts.
 - Live updates: `subscribeTimeline(token, parentId, onEvent)`. On each event, show the
   `summary` in the activity feed and refetch the overview (simplest correct approach).
-- Real backend: run `apps/api` (see CLAUDE.md), set `NEXT_PUBLIC_USE_MOCKS=false`, and use token
+- Real backend: run `backend` (see CLAUDE.md), set `NEXT_PUBLIC_USE_MOCKS=false`, and use token
   `dev-child-token`.
 
 **Reference:** the backend serves a plain Demo Console at `http://localhost:8000/console`
-(`apps/api/app/static/console.html`). It's a dev tool, not the product UI, but it shows every
+(`backend/app/static/console.html`). It's a dev tool, not the product UI, but it shows every
 API call your dashboard needs (overview, timeline + SSE, incidents, requests, health) working
 live. Borrow freely.
 

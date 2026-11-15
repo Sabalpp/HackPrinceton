@@ -35,7 +35,7 @@ The API and worker must use the same PostgreSQL `DATABASE_URL` as the collector'
 No connection string or health history belongs in the web bundle or Git.
 
 Create the real family account and parent care profile in FarCare first. Then an
-operator runs, from `apps/api` using the deployment environment:
+operator runs, from `backend` using the deployment environment:
 
 ```sh
 .venv/bin/python -m app.health.sources link \
@@ -157,7 +157,7 @@ subject identifier or health record is included in operational warnings.
 
 ## Verification
 
-From `apps/api`:
+From `backend`:
 
 ```sh
 .venv/bin/python -m pytest tests/test_health_live.py tests/test_health_tiger.py -q

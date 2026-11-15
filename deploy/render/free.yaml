@@ -10,7 +10,7 @@ services:
     branch: main
     autoDeployTrigger: checksPass
     buildCommand: bash deploy/render/build.sh
-    startCommand: apps/api/.venv/bin/python deploy/render/run.py
+    startCommand: backend/.venv/bin/python deploy/render/run.py
     healthCheckPath: /backend/ready
     envVars:
       - key: PYTHON_VERSION

@@ -34,8 +34,8 @@ until the end-to-end checks below pass for consenting recipients.
 
 1. In the Photon Beta project, configure an eligible SMS line and finish the applicable
    sender registration/campaign flow. FarCare does not buy numbers or register campaigns.
-2. With the project key and project ID in `apps/api/.env`, inspect existing SMS agents:
-   `cd apps/api && uv run python scripts/photon_setup.py sms-status`. It prints sender user
+2. With the project key and project ID in `backend/.env`, inspect existing SMS agents:
+   `cd backend && uv run python scripts/photon_setup.py sms-status`. It prints sender user
    IDs, masked handles, and campaign eligibility. This command is read-only. If you have
    not chosen a sender yet, leave `PHOTON_PLATFORM=imessage` during this discovery step.
 3. Configure the API and worker with the same values:
@@ -96,7 +96,7 @@ downgrade a delivery confirmation. Provider-reported recipient opt-out cancels f
 messages. Unknown receipt IDs never attach to another person's conversation. Polling remains a
 local inbound-text option; use signed webhooks to collect outbound delivery evidence.
 
-Offline verification: `cd apps/api && uv run pytest tests/test_photon_sms.py
+Offline verification: `cd backend && uv run pytest tests/test_photon_sms.py
 tests/test_photon_client.py tests/test_webhook_and_agent.py tests/test_care_flow.py tests/test_worker.py -q`.
 The suite uses fictional numbers and replacement provider clients, and sends no real messages.
 

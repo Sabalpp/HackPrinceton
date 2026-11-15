@@ -1,12 +1,14 @@
 # Codebase organization
 
-FarCare keeps the existing applications, collector and experiments in separate places.
+FarCare's application code has two entry folders: `frontend/` for screens and
+`backend/` for the API, worker, integrations and collector. The collector remains
+a separate Mac process in `backend/collector/`; it is not a hosted API dependency.
 This cleanup moves source and fixes references; it does not change health algorithms,
 message workflows, API contracts or dashboard behavior.
 
 ## Repository and private workspace
 
-The Git repository is the directory containing `apps/`, `packages/`, `scripts/` and this
+The Git repository is the directory containing `frontend/`, `backend/`, `packages/`, `scripts/` and this
 `docs/` directory. On the original Mac it is checked out as `app_repo` inside a larger
 private workspace. `ui_repo` is a separate checkout and is not a second source of truth
 for this repository.
@@ -23,17 +25,30 @@ Python environment. Credentials, health history, downloaded Android SDKs, emulat
 third-party research checkouts and temporary verification artifacts are not source files.
 The cleanup neither deletes nor publishes them.
 
+## Reading the code
+
+Start with [the frontend guide](../frontend/README.md) for screens and browser requests,
+then [the backend guide](../backend/README.md) for routes, health data and messaging.
+Shared API contracts stay in `packages/contracts/`; deployment files stay in `deploy/`.
+Research and temporary personal data are not mixed into the application packages.
+
+For existing branches, merge `origin/main` before continuing. Git records these as
+directory moves and preserves history. Keep the three developer branches and resolve
+any edits to the old locations into their new home; do not copy a second application
+back into the old tree. Existing local `.env` files move with their application and
+remain ignored. Create fresh virtual environments on other machines with `uv sync`.
+
 ## Code ownership and locations
 
 | Location | Responsibility | Owner |
 | --- | --- | --- |
-| `apps/api/app/` | FastAPI, permissions, care workflows, Photon SMS/iMessage, Gemini and persistence | Sumit; Sabal owns `health/` |
-| `apps/web/` | Next.js parent, family and helper dashboards | Saksham |
-| `apps/collector/farcare_collector/integrations/` | BLE/Google connectors and Tiger delivery; SQL under `sql/` | Sabal |
-| `apps/collector/farcare_collector/health/` | Normalization, descriptive features and offline reports | Sabal |
-| `apps/collector/farcare_collector/services/` | Durable collector orchestration | Sabal |
-| `apps/collector/tests/` | Synthetic collector Python and Node tests | Sabal |
-| `apps/collector/runtime/` | Existing managed-Node publisher and Google refresh fallback | Sabal |
+| `backend/app/` | FastAPI, permissions, care workflows, Photon SMS/iMessage, Gemini and persistence | Sumit; Sabal owns `health/` |
+| `frontend/` | Next.js parent, family and helper dashboards | Saksham |
+| `backend/collector/farcare_collector/integrations/` | BLE/Google connectors and Tiger delivery; SQL under `sql/` | Sabal |
+| `backend/collector/farcare_collector/health/` | Normalization, descriptive features and offline reports | Sabal |
+| `backend/collector/farcare_collector/services/` | Durable collector orchestration | Sabal |
+| `backend/collector/tests/` | Synthetic collector Python and Node tests | Sabal |
+| `backend/collector/runtime/` | Existing managed-Node publisher and Google refresh fallback | Sabal |
 | `scripts/local/` | Mac app launcher, private preview setup and offline maintenance | Sabal; coordinate API/runtime changes with Sumit |
 | `scripts/verification/` | Manual launcher and private-data handoff checks | Sabal |
 | `research/fitbit_air/` | Existing proprietary BLE probe and candidate-key experiment, with separate tests | Sabal |
@@ -41,29 +56,29 @@ The cleanup neither deletes nor publishes them.
 | `deploy/`, `.github/` | Deployment assets and CI | Sumit with repo-owner review |
 | `render.yaml` | Native Render API, worker and web deployment against existing Tiger | Sumit with repo-owner review |
 
-The existing `apps/api/app/fall_detection/` experiment and its callers remain unchanged.
+The existing `backend/app/fall_detection/` experiment and its callers remain unchanged.
 No new fall-detection module or functionality is part of this cleanup.
 
 ## Former root Python files
 
 | Former file | New location | Purpose |
 | --- | --- | --- |
-| `fitbit_hr.py` | `apps/collector/farcare_collector/integrations/fitbit_hr.py` | Live BLE HR recording and diagnostics |
-| `google_health.py` | `apps/collector/farcare_collector/integrations/google_health.py` | Google OAuth and original response/TCX exports |
-| `tiger_sink.py` | `apps/collector/farcare_collector/integrations/tiger_sink.py` | Acknowledged numeric measurement delivery |
-| `tiger_archive.py` | `apps/collector/farcare_collector/integrations/tiger_archive.py` | Original-record archive delivery |
-| `health_normalize.py` | `apps/collector/farcare_collector/health/health_normalize.py` | Canonical source records, units and identity |
-| `health_features.py` | `apps/collector/farcare_collector/health/health_features.py` | Source-separated descriptive features |
-| `health_dashboard.py` | `apps/collector/farcare_collector/health/health_dashboard.py` | Standalone report HTML |
-| `hr_analysis.py` | `apps/collector/farcare_collector/health/hr_analysis.py` | Offline HR snapshot analysis |
-| `health_pipeline.py` | `apps/collector/farcare_collector/services/health_pipeline.py` | SQLite outbox, ingestion, replay, reports and watch loop |
+| `fitbit_hr.py` | `backend/collector/farcare_collector/integrations/fitbit_hr.py` | Live BLE HR recording and diagnostics |
+| `google_health.py` | `backend/collector/farcare_collector/integrations/google_health.py` | Google OAuth and original response/TCX exports |
+| `tiger_sink.py` | `backend/collector/farcare_collector/integrations/tiger_sink.py` | Acknowledged numeric measurement delivery |
+| `tiger_archive.py` | `backend/collector/farcare_collector/integrations/tiger_archive.py` | Original-record archive delivery |
+| `health_normalize.py` | `backend/collector/farcare_collector/health/health_normalize.py` | Canonical source records, units and identity |
+| `health_features.py` | `backend/collector/farcare_collector/health/health_features.py` | Source-separated descriptive features |
+| `health_dashboard.py` | `backend/collector/farcare_collector/health/health_dashboard.py` | Standalone report HTML |
+| `hr_analysis.py` | `backend/collector/farcare_collector/health/hr_analysis.py` | Offline HR snapshot analysis |
+| `health_pipeline.py` | `backend/collector/farcare_collector/services/health_pipeline.py` | SQLite outbox, ingestion, replay, reports and watch loop |
 | `run_farcare.py` | `scripts/local/run_farcare.py` | Local API/dashboard/collector supervisor |
 | `prepare_farcare_preview.py` | `scripts/local/prepare_farcare_preview.py` | Isolated preview from existing cached records |
 | `remove_chatoverflow.py` | `scripts/local/remove_chatoverflow.py` | Explicit offline workstation maintenance, not an app dependency |
 | `air_probe.py` | `research/fitbit_air/air_probe.py` | Read-only proprietary BLE reconnaissance |
 | `air_key_capture.py` | `research/fitbit_air/air_key_capture.py` | Experimental candidate-key collection; no proven decoder |
 | `test_air_probe.py` | `research/fitbit_air/tests/test_air_probe.py` | Probe lifecycle and safe-target selection |
-| Other 13 `test_*.py` files | `apps/collector/tests/`, retaining their names | Recorder, decoder, cloud, normalization, reports, replay and delivery tests |
+| Other 13 `test_*.py` files | `backend/collector/tests/`, retaining their names | Recorder, decoder, cloud, normalization, reports, replay and delivery tests |
 
 No root Python source was proven redundant. In particular, `test_decoder.py` has payload
 edge cases absent from the recorder lifecycle tests. The API's `health/google_health.py`
@@ -81,7 +96,7 @@ Use the collector's Python environment (3.9+) for BLE and ingestion, and the API
 repository root, with the collector environment active:
 
 ```bash
-export PYTHONPATH="$PWD/apps/collector${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$PWD/backend/collector${PYTHONPATH:+:$PYTHONPATH}"
 # Set FARCARE_WORKSPACE to your existing private directory when needed.
 python -m farcare_collector.integrations.fitbit_hr --help
 python -m farcare_collector.integrations.google_health --help
@@ -105,7 +120,7 @@ Local app commands, also from the repository root:
 ```bash
 python scripts/local/run_farcare.py --check
 python scripts/local/run_farcare.py --web --open
-apps/api/.venv/bin/python scripts/local/prepare_farcare_preview.py --help
+backend/.venv/bin/python scripts/local/prepare_farcare_preview.py --help
 ```
 
 Existing outer-workspace `.command` launchers point to these new paths. API/web container
@@ -123,10 +138,10 @@ in [AGENTS.md](../AGENTS.md) and [local CI](local-ci.md), plus the relocated col
 From the repository root with the collector environment active:
 
 ```bash
-PYTHONPATH=apps/collector python -m unittest discover -s apps/collector/tests -p 'test_*.py'
-PYTHONPATH=apps/collector:. python -m unittest discover -s research/fitbit_air/tests -p 'test_*.py'
-node apps/collector/tests/test_tiger_publisher.cjs
-node apps/collector/tests/test_google_refresh.cjs
+PYTHONPATH=backend/collector python -m unittest discover -s backend/collector/tests -p 'test_*.py'
+PYTHONPATH=backend/collector:. python -m unittest discover -s research/fitbit_air/tests -p 'test_*.py'
+node backend/collector/tests/test_tiger_publisher.cjs
+node backend/collector/tests/test_google_refresh.cjs
 ```
 
 The Node publisher uses `node:sqlite`; use the existing Node 24 runtime for these checks.

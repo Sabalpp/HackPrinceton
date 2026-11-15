@@ -25,41 +25,41 @@ jobs:
       matrix:
         python-version: ["3.9", "3.12"]
     env:
-      PYTHONPATH: ${{ github.workspace }}/apps/collector:${{ github.workspace }}
+      PYTHONPATH: ${{ github.workspace }}/backend/collector:${{ github.workspace }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
-          cache-dependency-glob: apps/collector/pyproject.toml
+          cache-dependency-glob: backend/collector/pyproject.toml
       - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Install collector and development checks
         run: |
           uv venv --python '${{ matrix.python-version }}' .venv-collector
-          uv pip install --python .venv-collector/bin/python -e './apps/collector[dev]'
+          uv pip install --python .venv-collector/bin/python -e './backend/collector[dev]'
       - name: Lint and format collector, research tools, and local scripts
         run: |
-          .venv-collector/bin/ruff check --config apps/collector/pyproject.toml \
-            apps/collector research/fitbit_air scripts/local scripts/verification
-          .venv-collector/bin/ruff format --check --config apps/collector/pyproject.toml \
-            apps/collector research/fitbit_air scripts/local scripts/verification
+          .venv-collector/bin/ruff check --config backend/collector/pyproject.toml \
+            backend/collector research/fitbit_air scripts/local scripts/verification
+          .venv-collector/bin/ruff format --check --config backend/collector/pyproject.toml \
+            backend/collector research/fitbit_air scripts/local scripts/verification
       - name: Python syntax and synthetic unit tests
         run: |
           .venv-collector/bin/python -m compileall -q \
-            apps/collector/farcare_collector scripts/local scripts/verification research/fitbit_air
-          .venv-collector/bin/python -m unittest discover -s apps/collector/tests -p 'test_*.py' -v
+            backend/collector/farcare_collector scripts/local scripts/verification research/fitbit_air
+          .venv-collector/bin/python -m unittest discover -s backend/collector/tests -p 'test_*.py' -v
           .venv-collector/bin/python -m unittest discover -s research/fitbit_air/tests -p 'test_*.py' -v
       - name: Local launcher lifecycle (disposable fixtures only)
         run: .venv-collector/bin/python scripts/verification/verify_launchers.py
       - name: Node publisher and Google refresh tests (no external connections)
         run: |
-          node apps/collector/tests/test_tiger_publisher.cjs
-          node apps/collector/tests/test_google_refresh.cjs
+          node backend/collector/tests/test_tiger_publisher.cjs
+          node backend/collector/tests/test_google_refresh.cjs
       - name: Build collector wheel and verify bundled SQL
         run: |
-          uv build apps/collector --wheel --out-dir "$RUNNER_TEMP/collector-wheels"
+          uv build backend/collector --wheel --out-dir "$RUNNER_TEMP/collector-wheels"
           .venv-collector/bin/python - <<'PY'
           import os
           from pathlib import Path
@@ -83,7 +83,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: backend
     services:
       postgres:  # production runs on Postgres; tests run on SQLite AND Postgres
         image: postgres:16
@@ -100,7 +100,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
-          cache-dependency-glob: apps/api/uv.lock
+          cache-dependency-glob: backend/uv.lock
       - name: Install dependencies
         run: uv sync --frozen
       - name: Lint (ruff)
@@ -109,15 +109,15 @@ jobs:
         run: uv run ruff format --check .
       - name: Cloudflare process supervisor and smoke runner
         run: |
-          uv run ruff check --isolated --select E,F,I --line-length 100 ../../deploy/cloudflare/*.py
-          uv run ruff format --isolated --check ../../deploy/cloudflare/*.py
-          uv run python -m unittest discover -s ../../deploy/cloudflare -p 'test_*.py' -v
+          uv run ruff check --isolated --select E,F,I --line-length 100 ../deploy/cloudflare/*.py
+          uv run ruff format --isolated --check ../deploy/cloudflare/*.py
+          uv run python -m unittest discover -s ../deploy/cloudflare -p 'test_*.py' -v
       - name: Native free host lifecycle
         run: |
-          uv run ruff check --isolated --select E,F,I --line-length 100 ../../deploy/render/*.py
-          uv run ruff format --isolated --check ../../deploy/render/*.py
-          uv run python -m unittest discover -s ../../deploy/render -p 'test_*.py' -v
-          bash -n ../../deploy/render/build.sh
+          uv run ruff check --isolated --select E,F,I --line-length 100 ../deploy/render/*.py
+          uv run ruff format --isolated --check ../deploy/render/*.py
+          uv run python -m unittest discover -s ../deploy/render -p 'test_*.py' -v
+          bash -n ../deploy/render/build.sh
       - name: Python syntax check
         run: uv run python -m compileall -q app scripts
       - name: Tests (SQLite)
@@ -129,8 +129,8 @@ jobs:
       - name: Contract drift check (packages/contracts must match the code)
         run: |
           uv run python scripts/export_contracts.py
-          git diff --exit-code -- ../../packages/contracts || {
-            echo "::error::Contracts changed without re-export. Run 'cd apps/api && uv run python scripts/export_contracts.py', regenerate web types, and follow the contract-change process in AGENTS.md."
+          git diff --exit-code -- ../packages/contracts || {
+            echo "::error::Contracts changed without re-export. Run 'cd backend && uv run python scripts/export_contracts.py', regenerate web types, and follow the contract-change process in AGENTS.md."
             exit 1
           }
 
@@ -141,7 +141,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build Docker image (no push)
-        run: docker build -t farcare-api:ci apps/api
+        run: docker build -t farcare-api:ci backend
       - name: Container boots and serves /health
         run: |
           docker run -d --name api -p 8000:8000 -e APP_ENV=development \
@@ -160,21 +160,21 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: apps/web
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
       - name: Generated API types are current
         run: |
           npm run gen:api
           git diff --exit-code -- lib/api-types.ts || {
-            echo "::error::lib/api-types.ts is stale. Run 'npm run gen:api' in apps/web."
+            echo "::error::lib/api-types.ts is stale. Run 'npm run gen:api' in frontend."
             exit 1
           }
       - name: Lint (ESLint)
@@ -192,9 +192,9 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
-          cache-dependency-glob: apps/api/uv.lock
+          cache-dependency-glob: backend/uv.lock
       - name: Install synthetic backend and pinned browser driver
-        working-directory: apps/api
+        working-directory: backend
         env:
           PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
         run: |
@@ -296,6 +296,6 @@ jobs:
         run: |
           docker build -f deploy/cloudflare/Dockerfile.api -t farcare-cloudflare-api:ci .
           docker build -f deploy/Dockerfile.web --build-arg NEXT_PUBLIC_API_URL=/backend \
-            -t farcare-cloudflare-web:ci apps/web
+            -t farcare-cloudflare-web:ci frontend
       - name: Verify production boot, worker readiness, login and crash recovery
         run: python3 deploy/cloudflare/container_smoke.py

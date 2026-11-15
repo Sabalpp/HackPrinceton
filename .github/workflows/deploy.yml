@@ -1,7 +1,7 @@
 # Production checks on main; hosted deployment verification is manually triggered.
 #
 # Hosting model (see docs/architecture.md):
-# - Alternate Vercel frontend Git integration still uses root directory apps/web.
+# - Alternate Vercel frontend Git integration still uses root directory frontend.
 # - The native Render Blueprint deploys main after CI passes, without Docker.
 # - Existing container hosts remain supported by their Git integrations.
 # Automatic main runs must finish before Render's checksPass deployment can start.

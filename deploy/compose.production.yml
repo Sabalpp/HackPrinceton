@@ -4,7 +4,7 @@ name: farcare
 
 x-api: &api
   build:
-    context: ../apps/api
+    context: ../backend
   env_file: .env.production
   environment:
     APP_ENV: production
@@ -51,8 +51,8 @@ services:
 
   web:
     build:
-      context: ../apps/web
-      dockerfile: ../../deploy/Dockerfile.web
+      context: ../frontend
+      dockerfile: ../deploy/Dockerfile.web
       args:
         NEXT_PUBLIC_API_URL: /backend
     restart: unless-stopped

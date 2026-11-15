@@ -49,7 +49,7 @@ async function saveSettings() {
 }
 
 if (args.has('--import-local')) {
-  const local = parseEnv(await readFile(path.join(root, 'apps/api/.env'), 'utf8'));
+  const local = parseEnv(await readFile(path.join(root, 'backend/.env'), 'utf8'));
   for (const key of [...SECRET_KEYS, 'GEMINI_MODEL']) {
     if (!settings[key] && local[key]) settings[key] = local[key];
   }
