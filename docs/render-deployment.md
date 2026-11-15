@@ -7,6 +7,14 @@ The Mac collector continues sending real Fitbit and Google Health data to Tiger.
 
 ## 1. Import the Blueprint
 
+When switching from the previous Cloudflare host, disable its repository build
+connection in Cloudflare first. The current `Workers Builds: hackprinceton` check
+on main is failing; Render's **After CI Checks Pass** setting also waits for
+connected third-party checks. Keep GitHub Actions checks enabled. Pausing the old
+build connection avoids a failed deployment on an unused host blocking Render.
+This changes the old host's build automation, not your Tiger data.
+[Render's CI integration](https://render.com/docs/deploys#integrating-with-ci)
+
 After the deployment files reach `main`, open Render → **New → Blueprint**, connect
 `Sabalpp/HackPrinceton`, choose **main**, and use the repository-root `render.yaml`.
 The Blueprint selects three paid `0.5c-512mb` services in Virginia. Review Render's displayed
