@@ -10,6 +10,7 @@ import signal
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from collections import Counter
@@ -48,12 +49,19 @@ def digest(value):
 def private_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    temporary = path.with_name(path.name + ".tmp")
-    fd = os.open(str(temporary), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as output:
-        json.dump(value, output, indent=2, allow_nan=False)
-        output.write("\n")
-    temporary.replace(path)
+    # A separate 0600 file per writer prevents overlapping status/report updates
+    # from truncating or renaming one another's temporary file.
+    fd, temporary_name = tempfile.mkstemp(
+        prefix="." + path.name + ".", suffix=".tmp", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            json.dump(value, output, indent=2, allow_nan=False)
+            output.write("\n")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 class Store:

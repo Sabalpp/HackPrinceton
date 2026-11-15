@@ -125,6 +125,9 @@ Don't send `temperature` (deprecated for Gemini 3+).
 | Explicit `console` or `photon` gateway | Development/CI can simulate delivery; live Photon failures never silently become success |
 | DB-backed timeline + SSE that tails it | Real-time dashboard that survives restarts; no extra infra |
 | Standalone worker with PostgreSQL mutex and durable queues | Timers, sensor sync, inbound messages and retries survive process restarts |
+| App chat and Photon use the same conversation/actions | Approval, cancellation and task responses agree across both interfaces; app replies are not SMS delivery receipts |
+| Saved message permissions checked on every read and dispatch | Revoked family/helper access cannot expose old replies; unscoped legacy messages are hidden from family/helpers |
+| Optional read-only `TIGER_DATABASE_URL` | Read the collector's watch data separately while keeping accounts, messages and worker state in `DATABASE_URL` |
 | Separate collector package and private workspace | Preserves the Mac Python environment and existing recordings while making collector code reviewable and testable |
 | Synthetic IMU traces + threshold detector | Fitbit exposes no raw IMU; pipeline is real, data is labeled simulated |
 

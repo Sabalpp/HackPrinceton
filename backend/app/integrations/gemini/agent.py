@@ -279,12 +279,18 @@ class Tools:
         ]
         wanted = what.strip().lower()
         if wanted:
-            open_reqs = [
+            matches = [
                 r
                 for r in open_reqs
                 if wanted in care_requests.label(r).lower()
                 or wanted.replace(" ", "_") in r.request_type
-            ] or open_reqs
+            ]
+            if not matches:
+                return {
+                    "status": "ask_which",
+                    "open_requests": [care_requests.label(r) for r in open_reqs],
+                }
+            open_reqs = matches
         if not open_reqs:
             return {"status": "nothing_to_cancel"}
         if len(open_reqs) > 1:

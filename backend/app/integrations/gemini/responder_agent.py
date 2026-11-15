@@ -15,7 +15,7 @@ from typing import Any
 from sqlmodel import Session
 
 from app.config import get_settings
-from app.integrations.gemini.agent import _decl, _get_client, history
+from app.integrations.gemini.agent import _decl, _get_client
 from app.models import CareRequestRow, Person
 from app.services import actions, care_requests
 
@@ -127,14 +127,9 @@ def respond(
 def _gemini(session: Session, responder: Person, text: str, tools: ResponderTools) -> str:
     from google.genai import types
 
-    contents: list[Any] = [
-        types.Content(
-            role="user" if t.role == "user" else "model", parts=[types.Part.from_text(text=t.text)]
-        )
-        for t in history(session, responder.id)
-    ]
-    if not contents or contents[-1].role != "user":
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=text)]))
+    # Historical turns have no task/grant scope and may refer to a revoked
+    # assignment. Use the current message and permission-filtered tools only.
+    contents: list[Any] = [types.Content(role="user", parts=[types.Part.from_text(text=text)])]
     config = types.GenerateContentConfig(
         system_instruction=PROMPT.format(name=responder.display_name),
         tools=[types.Tool(function_declarations=_declarations())],

@@ -14,12 +14,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.db import session_scope, utcnow
+from app.integrations import delivery
 from app.integrations.gemini import agent
 from app.integrations.messaging import replying_in_app, send_to_person, show_typing
 from app.integrations.photon.inbound import InboundText, normalize_handle
 from app.integrations.photon.routing import matches_channel
 from app.models import ConversationTurn, InboundMessageRow, OutboundMessage, Person
-from app.services import care_requests, safety, timeline
+from app.services import actions, care_requests, safety, timeline
 from app.services.replies import (
     looks_like_emergency,
     parse_responder_reply,
@@ -290,6 +291,11 @@ def _handle_responder(s: Session, responder: Person, msg: InboundText, first_con
 
     _turn(s, responder, "user", _as_turn(msg))
     req = care_requests.active_request_for_responder(s, responder.id)
+    if req is not None:
+        try:
+            actions.assigned_task(s, responder, req.id)
+        except actions.NotFound:
+            req = None
     if (
         req is None
         and first_contact
@@ -362,8 +368,11 @@ def thread(s: Session, person: Person, limit: int = 60) -> list[dict]:
         payload = row.payload or {}
         if payload.get("kind") == "photon_receipt":
             continue
-        mine = payload.get("person_id") == person.id or (
-            person.handle and normalize_handle(payload.get("sender_handle") or "") == person.handle
+        mine = (
+            payload["person_id"] == person.id
+            if payload.get("person_id")
+            else person.handle
+            and normalize_handle(payload.get("sender_handle") or "") == person.handle
         )
         if not mine:
             continue
@@ -388,7 +397,7 @@ def thread(s: Session, person: Person, limit: int = 60) -> list[dict]:
         .order_by(OutboundMessage.created_at.desc())  # type: ignore[union-attr]
         .limit(limit)
     ).all():
-        if m.status == "cancelled":
+        if not delivery.can_read_message(s, person, m):
             continue
         items.append(
             {
