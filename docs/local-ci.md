@@ -11,9 +11,9 @@ Use Node 22, Python 3.12, and uv. The command requires permission to listen on l
 From the repository root:
 
 ```bash
-uv sync --frozen --project apps/api
-npm ci --prefix apps/web
-NEXT_PUBLIC_API_URL=/backend FARCARE_API_ORIGIN=http://127.0.0.1:18000 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false npm --prefix apps/web run build
+uv sync --frozen --project backend
+npm ci --prefix frontend
+NEXT_PUBLIC_API_URL=/backend FARCARE_API_ORIGIN=http://127.0.0.1:18000 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false npm --prefix frontend run build
 export PLAYWRIGHT_INSTALL_DIR="$(mktemp -d /tmp/farcare-playwright.XXXXXX)"
 npm install --ignore-scripts --no-audit --no-fund --package-lock=false --prefix "$PLAYWRIGHT_INSTALL_DIR" playwright@1.56.1
 node "$PLAYWRIGHT_INSTALL_DIR/node_modules/playwright/cli.js" install --with-deps chromium

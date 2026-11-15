@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
 import {spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
+import {createServer} from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -15,16 +16,19 @@ const install = process.env.PLAYWRIGHT_INSTALL_DIR;
 if (!install) throw new Error('Set PLAYWRIGHT_INSTALL_DIR to the temporary playwright@1.56.1 installation.');
 const require = createRequire(path.join(path.resolve(install), 'package.json'));
 const {chromium} = require('playwright');
-const backend = 'http://127.0.0.1:18000';
+const nativeHost = process.env.SMOKE_NATIVE_HOST === 'true';
+const vercelEntry = process.env.SMOKE_VERCEL_ENTRY === 'true';
+if (nativeHost && vercelEntry) throw new Error('Select one deployment entrypoint per smoke run.');
+const backend = nativeHost ? 'http://127.0.0.1:8000' : `http://127.0.0.1:18000${vercelEntry ? '/backend' : ''}`;
 const web = 'http://127.0.0.1:13000';
-const proxy = process.env.SMOKE_API_PROXY === 'true';
+const proxy = nativeHost || process.env.SMOKE_API_PROXY === 'true';
 const api = proxy ? `${web}/backend` : backend;
 const apiPrefix = new URL(api).pathname.replace(/\/$/, '');
 const children = [];
 const streams = [];
 const browserErrors = [];
 const responses = [];
-const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy};
+const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy,native_host:nativeHost,vercel_entry:vercelEntry};
 let browser, page, closing = false;
 await fs.mkdir(artifacts, {recursive:true});
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'farcare-smoke-db-'));
@@ -59,7 +63,7 @@ async function stop(child) {
   const exited = new Promise(resolve => child.once('exit', resolve));
   child.kill('SIGTERM');
   let timeout;
-  await Promise.race([exited, new Promise(resolve => {timeout=setTimeout(resolve, 4000);})]);
+  await Promise.race([exited, new Promise(resolve => {timeout=setTimeout(resolve, nativeHost ? 25000 : 4000);})]);
   clearTimeout(timeout);
   if (child.exitCode === null && child.signalCode === null) {
     child.kill('SIGKILL');
@@ -73,6 +77,14 @@ function check(name, condition) {
 }
 
 async function run() {
+  // Never connect these synthetic workflows to an already-running local app.
+  for (const endpoint of [backend, web]) {
+    await new Promise((resolve,reject) => {
+      const server=createServer();
+      server.once('error',reject);
+      server.listen(Number(new URL(endpoint).port),'127.0.0.1',()=>server.close(resolve));
+    });
+  }
   const apiEnv = {...process.env,
     APP_ENV:'test',DATABASE_URL:`sqlite:///${path.join(scratch, 'synthetic.sqlite3')}`,
     BACKGROUND_TASKS_ENABLED:'false',PROACTIVE_CHECKINS_ENABLED:'false',
@@ -85,18 +97,21 @@ async function run() {
     DEMO_EMERGENCY_NUMBER:'',CORS_ORIGINS:web,GIT_COMMIT:process.env.GITHUB_SHA || 'local-smoke',
   };
   delete apiEnv.TEST_DATABASE_URL;
-  const apiChild = launch(path.join(root,'apps/api/.venv/bin/python'),
-    ['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
-    path.join(root,'apps/api'), apiEnv, 'api.log');
+  const apiChild = nativeHost ? launch(path.join(root,'backend/.venv/bin/python'),
+    ['deploy/render/run.py'],root,{...apiEnv,PORT:'13000'},'native-host.log') :
+    launch(path.join(root,'backend/.venv/bin/python'),
+    ['-m','uvicorn',vercelEntry ? 'app.vercel_entry:app' : 'app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
+    path.join(root,'backend'), apiEnv, 'api.log');
   await ready(`${backend}/health`, apiChild);
   const health = await (await fetch(`${backend}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
-    health.database === 'ok' && health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
-  launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
-    path.join(root,'apps/api'), apiEnv, 'worker.log');
-  const webChild = launch(process.execPath,
-    [path.join(root,'apps/web/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
-    path.join(root,'apps/web'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
+    health.database === 'ok' && health.environment === 'test' && health.demo_mode === true &&
+    health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
+  if (!nativeHost) launch(path.join(root,'backend/.venv/bin/python'), ['-m',vercelEntry ? 'app.vercel_worker' : 'app.worker'],
+    path.join(root,'backend'), apiEnv, 'worker.log');
+  const webChild = nativeHost ? apiChild : launch(process.execPath,
+    [path.join(root,'frontend/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
+    path.join(root,'frontend'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
   await ready(web, webChild);
 
   browser = await chromium.launch({headless:true});
@@ -124,6 +139,22 @@ async function run() {
     return tab;
   }
   const mutation = (tab, path) => tab.waitForResponse(r => r.url()===`${api}${path}` && r.request().method()==='POST' && r.ok());
+  async function phoneWidths(tab, name) {
+    for (const width of [320, 390]) {
+      await tab.setViewportSize({width,height:844});
+      check(`${name} fits a ${width}px phone without horizontal scrolling`,
+        await tab.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    }
+  }
+  const mobileLogin = await rolePage({width:375,height:812});
+  await mobileLogin.getByRole('heading',{name:'Welcome back',exact:true,level:1}).waitFor();
+  const signIn = await mobileLogin.getByRole('button',{name:'Sign in',exact:true}).boundingBox();
+  check('Phone sign-in is visible without scrolling past a marketing hero',
+    signIn!==null && signIn.y>=0 && signIn.y+signIn.height<=812);
+  const invitationLink = await mobileLogin.getByRole('link',{name:'I have an invitation',exact:true}).boundingBox();
+  check('Invitation entry has a touch target at least 44px high',invitationLink!==null && invitationLink.height>=44);
+  await mobileLogin.screenshot({path:path.join(artifacts,'login-mobile.png'),fullPage:true});
+  await phoneWidths(mobileLogin,'Sign-in');
   page = await rolePage();
   const meResponse = page.waitForResponse(response => response.url()===`${api}/api/me` && response.status()===200);
   const overviewResponse = page.waitForResponse(response => response.url()===`${api}/api/parents/parent_001/overview` && response.status()===200);
@@ -198,6 +229,7 @@ async function run() {
   await parent.getByText('Your check-in is saved.',{exact:true}).waitFor();
   await parent.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   check('Parent mobile layout has no horizontal overflow',await parent.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(parent,'Parent dashboard');
   await parent.screenshot({path:path.join(artifacts,'parent-mobile.png'),fullPage:true});
 
   const helper = await rolePage({width:390,height:844});
@@ -220,6 +252,7 @@ async function run() {
   await helper.getByRole('button',{name:'Yes, I can help',exact:true}).click();
   check('Helper accepts a real assigned request',(await (await accepted).json()).status==='accepted');
   check('Helper mobile layout has no horizontal overflow',await helper.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(helper,'Helper dashboard');
   await helper.screenshot({path:path.join(artifacts,'helper-mobile.png'),fullPage:true});
   const completed = mutation(helper,`/api/responder/tasks/${request.request_id}/reply`);
   await helper.getByRole('button',{name:'Mark complete',exact:true}).click();
@@ -227,6 +260,16 @@ async function run() {
   check('Helper UI never requests private family or health routes',!helperPaths.some(p=>p.startsWith('/api/parents/')));
   const home = await (await parent.context().request.get(`${api}/api/parent/home`)).json();
   check('Parent sees completion and a running standalone worker',home.requests.some(r=>r.request_id===request.request_id && r.status==='completed') && home.agent.status==='healthy');
+  const longName = 'N'.repeat(80);
+  const longNameRoute = route => route.fulfill({status:200,contentType:'application/json',
+    body:JSON.stringify({...home,parent:{...home.parent,display_name:longName}})});
+  await parent.route(`${api}/api/parent/home`,longNameRoute);
+  await parent.reload({waitUntil:'domcontentloaded'});
+  await parent.getByRole('heading',{name:`Hello, ${longName}.`,exact:true}).waitFor();
+  await phoneWidths(parent,'Parent dashboard with a long display name');
+  await parent.setViewportSize({width:320,height:844});
+  await parent.screenshot({path:path.join(artifacts,'parent-narrow-long-name.png'),fullPage:true});
+  await parent.unroute(`${api}/api/parent/home`,longNameRoute);
   const familyRequests = await (await page.context().request.get(`${api}/api/parents/parent_001/care-requests`)).json();
   check('The family account sees the completed task',familyRequests.some(r=>r.request_id===request.request_id && r.status==='completed'));
   await page.goto(`${web}/demo`,{waitUntil:'domcontentloaded'});
@@ -240,10 +283,14 @@ async function run() {
   await more.getByRole('link',{name:'Family setup & invitations',exact:true}).click();
   await page.waitForURL(`${web}/setup`);
   check('Mobile family navigation opens the authenticated setup screen',true);
+  await page.getByRole('heading',{level:1}).waitFor();
+  await phoneWidths(page,'Family setup');
+  await page.screenshot({path:path.join(artifacts,'setup-mobile.png'),fullPage:true});
   await page.goto(`${web}/family`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.locator('span:text-is("Simulated"):visible').first().waitFor();
   check('Family mobile layout has no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(page,'Family dashboard');
   await page.screenshot({path:path.join(artifacts,'family-mobile.png'),fullPage:true});
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog').getByRole('button',{name:'Sign out',exact:true}).click();

@@ -1,10 +1,10 @@
 # FarCare API & event contracts
 
-**Source of truth:** `apps/api/app/schemas/contracts.py` and `schemas/experience.py`. Generated artifacts:
+**Source of truth:** `backend/app/schemas/contracts.py` and `schemas/experience.py`. Generated artifacts:
 
 - `packages/contracts/schemas/*.schema.json`: JSON Schema per payload
 - `packages/contracts/openapi.json`: full HTTP API
-- `apps/web/lib/api-types.ts`: TypeScript types (`npm run gen:api`)
+- `frontend/lib/api-types.ts`: TypeScript types (`npm run gen:api`)
 - `packages/contracts/fixtures/*.json`: canonical examples (validated in CI)
 
 Live interactive docs: `http://localhost:8000/docs`. Change process: [AGENTS.md](../AGENTS.md#changing-a-shared-contract).

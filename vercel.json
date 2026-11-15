@@ -1,0 +1,31 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["iad1"],
+  "services": {
+    "web": {
+      "root": "frontend",
+      "framework": "nextjs",
+      "installCommand": "npm ci",
+      "buildCommand": "NEXT_PUBLIC_API_URL=/backend NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false npm run build"
+    },
+    "api": {
+      "root": "backend",
+      "framework": "fastapi",
+      "entrypoint": "app.vercel_entry:app"
+    }
+  },
+  "rewrites": [
+    { "source": "/backend/:path*", "destination": { "service": "api" } },
+    { "source": "/:path*", "destination": { "service": "web" } }
+  ],
+  "daemons": {
+    "care_worker": {
+      "root": "backend",
+      "entrypoint": "Dockerfile",
+      "command": ["/app/.venv/bin/python", "-m", "app.vercel_worker"],
+      "instances": { "iad1": 1 },
+      "resources": { "requests": { "memory": "1Gi" } },
+      "terminationGracePeriodSeconds": 30
+    }
+  }
+}

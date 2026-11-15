@@ -1,7 +1,7 @@
 # Sabal — Google Health API (Fitbit) integration and health trends
 
-**Branch:** `feature/sabal-fitbit` · **Owns:** `apps/collector/**`, `research/fitbit_air/**`,
-`apps/api/app/health/**`, health tests, and the local launcher/verification scripts.
+**Branch:** `feature/sabal-fitbit` · **Owns:** `backend/collector/**`, `research/fitbit_air/**`,
+`backend/app/health/**`, health tests, and the local launcher/verification scripts.
 Coordinate `HealthObservationRow`, API runtime, and deployment changes with Sumit. You are
 also the **repo admin**. Read [the file map](../codebase-organization.md) before moving code.
 
@@ -31,7 +31,7 @@ it is not part of the API or web container image.
    integration and care-workflow modules.
 
 The same-named files are different components: the collector's `integrations/google_health.py`
-is the working OAuth/export client; `apps/api/app/health/google_health.py` remains an
+is the working OAuth/export client; `backend/app/health/google_health.py` remains an
 unimplemented direct-provider scaffold. The current path goes through Tiger and does not
 call that scaffold. Do not remove it merely because the filenames match, or report it as
 implemented. [Tiger handoff and permissions](../tiger-health-pipeline.md) describe the current
@@ -40,7 +40,7 @@ integration.
 The existing mock sender is still available for synthetic tests and demonstrations:
 
 ```bash
-cd apps/api && uv run python scripts/mock_fitbit_sender.py            # 35-day backfill
+cd backend && uv run python scripts/mock_fitbit_sender.py            # 35-day backfill
 uv run python scripts/mock_fitbit_sender.py --stream --interval 60    # today's running total
 ```
 

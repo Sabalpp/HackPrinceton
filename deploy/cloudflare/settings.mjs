@@ -88,7 +88,7 @@ export function wranglerConfig(s, commit) {
         images: {base: {dockerfile: './Dockerfile.api', build_context: '../..'}},
         observability: {enabled: false}},
       {class_name: 'FarCareWeb', scheduling_policy: 'durable_object',
-        images: {base: {dockerfile: '../Dockerfile.web', build_context: '../../apps/web',
+        images: {base: {dockerfile: '../Dockerfile.web', build_context: '../../frontend',
           build_vars: {NEXT_PUBLIC_API_URL: '/backend'}}},
         observability: {enabled: false}},
     ],

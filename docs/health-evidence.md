@@ -1,6 +1,6 @@
 # Personal health references and blood-pressure guidance
 
-Evidence reviewed: 14 November 2026. Implementation: `apps/api/app/health/personal.py`.
+Evidence reviewed: 14 November 2026. Implementation: `backend/app/health/personal.py`.
 This is an adult, nonpregnant MVP for recording measurements and showing descriptive
 history. It does not diagnose hypertension, prescribe treatment, establish that a
 reading is safe, or contact emergency services. Clinical review and validation of

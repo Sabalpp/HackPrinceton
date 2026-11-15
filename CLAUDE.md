@@ -27,20 +27,20 @@ Plus: simulated possible-fall → safety check → no reply/HELP → determinist
 ## Repository layout
 
 ```text
-apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal owns app/health/
+backend/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal owns app/health/
   app/schemas/contracts.py   SINGLE SOURCE OF TRUTH for shared payloads
   app/services/              care_requests (state machine), safety (incidents), conversation (router)
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
   app/health/                Tiger live readings, trusted source registry, daily sync, personal baselines
   app/fall_detection/        synthetic IMU traces + explainable detector
   tests/                     API, permissions, SMS, sensor and worker tests (SQLite + Postgres)
-apps/collector/          Existing Mac collector (Python 3.9+) — Sabal owns
+backend/collector/          Existing Mac collector (Python 3.9+) — Sabal owns
   farcare_collector/integrations/  BLE, Google OAuth/exports, Tiger delivery and SQL assets
   farcare_collector/health/        normalization, descriptive features and offline reports
   farcare_collector/services/      durable SQLite ingestion and polling
   tests/                          synthetic Python and Node tests
   runtime/                        managed-Node publisher and Google refresh fallback
-apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
+frontend/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
 packages/contracts/      exported JSON Schemas + OpenAPI + fixtures (generated; CI checks drift)
@@ -49,6 +49,9 @@ scripts/                 setup-github.sh (admin, once), smoke_test.sh, sync-afte
   verification/             manual checks, some requiring existing private records
 research/fitbit_air/      existing proprietary-BLE probe and candidate-key experiment
 render.yaml              native Render API + worker + dashboard, using external Tiger
+deploy/render/           optional one-service free demo Blueprint + native supervisor
+vercel.json              Next.js + mounted Python API services and production care daemon
+deploy/vercel/           server environment template; no secret values
 docs/                    architecture, contracts, demo plan, per-developer instructions
 ```
 
@@ -63,17 +66,17 @@ into Git. Android/emulator and third-party reverse-engineering workspaces remain
 
 ```bash
 # Backend (http://localhost:8000, docs at /docs). Works with no keys: console messaging + fallback AI.
-cd apps/api && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload --timeout-graceful-shutdown 2
+cd backend && cp .env.example .env && uv sync && uv run uvicorn app.main:app --reload --timeout-graceful-shutdown 2
 # Watch everything live (phones + dashboard + demo buttons): http://localhost:8000/console
 uv run pytest                                   # all backend tests (TEST_DATABASE_URL=postgresql://... for Postgres)
 uv run python scripts/export_contracts.py       # after ANY contract change
 
 # Frontend (http://localhost:3000)
-cd apps/web && cp .env.example .env.local && npm install && npm run dev
+cd frontend && cp .env.example .env.local && npm install && npm run dev
 npm run gen:api                                 # after contracts change
 ```
 
-**Mock mode** (no phones, no Fitbit yet): in `apps/api/.env` set `MESSAGING_CHANNEL=console`
+**Mock mode** (no phones, no Fitbit yet): in `backend/.env` set `MESSAGING_CHANNEL=console`
 (simulated messages even with Photon keys) and `SEED_HEALTH_DATA=false`. Then
 `uv run python scripts/mock_fitbit_sender.py` plays Sabal's sync and sends health data over
 the real ingest API.
@@ -139,9 +142,19 @@ Don't send `temperature` (deprecated for Gemini 3+).
   senders/recipients. STOP cancels pending texts, START does not replay them.
 - Existing databases receive additive schema upgrades at startup. No upgrade
   infers consent, maps real readings to demo people, or deletes existing rows.
+- Root `vercel.json` deploys the existing dashboard and Python API as Vercel Services
+  plus the existing worker as a production-only daemon. `app.vercel_entry` mounts
+  the API under `/backend`; `app.vercel_runtime` applies conservative host defaults.
+  This preserves business logic and Tiger permissions. Import the repository root,
+  not the collector. Hobby daemon quotas limit continuous operation; see
+  `docs/vercel-deployment.md`. CI is not proof of a public Vercel deployment or SMS delivery.
 - `render.yaml` provides a native deployment without Docker: Python API, separate worker,
   and Next.js web service use the existing Tiger database. See `docs/render-deployment.md`.
   It starts with console messaging; real Photon requires configured sender, secrets and opt-in.
+- `deploy/render/free.yaml` is the separate one-service free demo option. It sleeps when idle,
+  including its care worker; never present it as always-on monitoring. Its supervisor starts
+  the existing API, worker and dashboard; Tiger retains all durable state. See
+  `docs/free-deployment.md` for deployment, account setup without a Render Shell, and SMS gates.
 - Cloudflare uses Workers + Containers, not static Pages. The account needs paid
   Containers access. A successful image build alone does not prove the app is live.
 - Readiness checks compare `/health.commit` with the deployed Git SHA and check

@@ -28,7 +28,7 @@ os.environ.update(
     INGEST_API_KEY=secrets.token_hex(24),
 )
 os.environ.pop("TEST_DATABASE_URL", None)
-sys.path.insert(0, str(REPO_ROOT / "apps/api"))
+sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 from app.config import get_settings  # noqa: E402 - test settings must precede backend imports
 from app.db import reset_engine, session_scope  # noqa: E402 - test settings must precede backend imports
