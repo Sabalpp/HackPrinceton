@@ -222,7 +222,7 @@ export function DemoScreen() {
           <ul className="flex flex-col gap-1.5 text-sm" aria-live="polite">
             {log.length === 0 && <li className="text-muted">Actions you run appear here.</li>}
             {log.map((l) => (
-              <li key={l.id} className={l.ok ? "text-body" : "font-semibold text-danger"}>
+              <li key={l.id} className={l.ok ? "text-body" : "font-semibold text-danger-ink"}>
                 {l.text}
               </li>
             ))}
@@ -296,7 +296,7 @@ function SendAs({ people, disabled, onSend }: { people: DemoPerson[]; disabled: 
           {texters.map((p) => (
             <label
               key={p.person_id}
-              className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm font-semibold ${
+              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm font-semibold ${
                 personId === p.person_id ? "border-primary bg-primary-tint text-on-tint" : "border-border text-body"
               }`}
             >

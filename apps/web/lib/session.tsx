@@ -81,7 +81,7 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
     if (loading || error || allowed) return;
     router.replace(session?.authenticated && person ? roleHome(person.role) : "/login");
   }, [loading, error, allowed, session?.authenticated, person, router]);
-  if (error) return <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 p-6"><h1 className="text-2xl font-bold">Couldn&apos;t connect to FarCare</h1><p role="alert" className="text-body">{error}</p><button type="button" onClick={() => void refresh()} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-white">Try again</button></main>;
+  if (error) return <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 p-6"><h1 className="text-2xl font-bold">Couldn&apos;t connect to FarCare</h1><p role="alert" className="text-body">{error}</p><button type="button" onClick={() => void refresh()} className="min-h-12 rounded-xl bg-primary px-5 font-bold text-on-primary">Try again</button></main>;
   if (!allowed) return <main className="grid min-h-screen place-items-center p-6"><p role="status" className="text-lg text-muted">Opening your FarCare…</p></main>;
   return <>{children}</>;
 }

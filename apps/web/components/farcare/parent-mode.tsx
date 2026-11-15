@@ -48,7 +48,7 @@ export function ParentMode() {
             onClick={() => setPlaying((p) => !p)}
             aria-pressed={playing}
             aria-label={playing ? "रोक्नुहोस्" : "आवाज सन्देश सुन्नुहोस्"}
-            className="grid size-16 shrink-0 place-items-center rounded-full bg-primary text-white hover:bg-primary-hover"
+            className="grid size-16 shrink-0 place-items-center rounded-full bg-primary text-on-primary hover:bg-primary-hover"
           >
             {playing ? <Pause size={30} aria-hidden="true" /> : <Play size={30} className="ml-1" aria-hidden="true" />}
           </button>
@@ -58,10 +58,10 @@ export function ParentMode() {
           type="button"
           onClick={() => press("ok")}
           disabled={sent === "sending"}
-          className="flex min-h-28 flex-col items-center justify-center rounded-3xl bg-primary px-4 text-white hover:bg-primary-hover disabled:opacity-70"
+          className="flex min-h-28 flex-col items-center justify-center rounded-3xl bg-primary px-4 text-on-primary hover:bg-primary-hover disabled:opacity-70"
         >
           <span className="text-4xl font-bold">म ठीक छु</span>
-          <span lang="en" className="font-sans text-lg text-primary-tint">
+          <span lang="en" className="font-sans text-lg text-on-primary/80">
             I&apos;m OK
           </span>
         </button>
@@ -88,7 +88,7 @@ export function ParentMode() {
         <label className="flex min-h-20 cursor-pointer items-center gap-4 rounded-2xl border-2 border-border bg-surface p-4 has-[:checked]:border-primary has-[:checked]:bg-primary-tint">
           <input type="checkbox" checked={took} onChange={(e) => setTook(e.target.checked)} className="peer sr-only" />
           <span
-            className="grid size-11 shrink-0 place-items-center rounded-lg border-2 border-muted bg-surface text-white peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-sun"
+            className="grid size-11 shrink-0 place-items-center rounded-lg border-2 border-muted bg-surface text-on-primary peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-sun"
             aria-hidden="true"
           >
             {took && <Check size={28} strokeWidth={3} />}

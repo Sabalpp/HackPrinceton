@@ -27,6 +27,26 @@
             "title": "Messaging",
             "type": "string"
           },
+          "messaging_opted_out": {
+            "default": false,
+            "title": "Messaging Opted Out",
+            "type": "boolean"
+          },
+          "messaging_platform": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sms",
+                  "imessage"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Messaging Platform"
+          },
           "messaging_ready": {
             "title": "Messaging Ready",
             "type": "boolean"
@@ -2299,6 +2319,235 @@
           "resolved_at"
         ],
         "title": "SafetyIncident",
+        "type": "object"
+      },
+      "SensorHealthReport": {
+        "properties": {
+          "cloud_metrics": {
+            "items": {
+              "$ref": "#/components/schemas/SensorMetric"
+            },
+            "title": "Cloud Metrics",
+            "type": "array"
+          },
+          "connection_status": {
+            "enum": [
+              "not_linked",
+              "available",
+              "unavailable"
+            ],
+            "title": "Connection Status",
+            "type": "string"
+          },
+          "daily_sync_status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "ok",
+              "unavailable"
+            ],
+            "title": "Daily Sync Status",
+            "type": "string"
+          },
+          "data_mode": {
+            "const": "live",
+            "default": "live",
+            "title": "Data Mode",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "last_daily_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Daily Sync At"
+          },
+          "live_heart_rate": {
+            "$ref": "#/components/schemas/SensorMetric"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "recent_heart_rate": {
+            "items": {
+              "$ref": "#/components/schemas/SensorPoint"
+            },
+            "title": "Recent Heart Rate",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parent_id",
+          "connection_status",
+          "generated_at",
+          "live_heart_rate",
+          "cloud_metrics",
+          "message"
+        ],
+        "title": "SensorHealthReport",
+        "type": "object"
+      },
+      "SensorMetric": {
+        "description": "A source-reported value, with its original time basis and freshness.",
+        "properties": {
+          "age_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Seconds"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "freshness": {
+            "default": "missing",
+            "enum": [
+              "fresh",
+              "stale",
+              "missing",
+              "invalid"
+            ],
+            "title": "Freshness",
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sample",
+                  "interval",
+                  "daily",
+                  "session"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "local_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Date"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ble",
+                  "google_health"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "metric",
+          "label",
+          "unit",
+          "message"
+        ],
+        "title": "SensorMetric",
+        "type": "object"
+      },
+      "SensorPoint": {
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "observed_at",
+          "value"
+        ],
+        "title": "SensorPoint",
         "type": "object"
       },
       "SessionInfo": {
@@ -4587,6 +4836,72 @@
           }
         },
         "summary": "Declare Reference",
+        "tags": [
+          "personal health"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/sensor-health": {
+      "get": {
+        "operationId": "get_sensor_health_api_parents__parent_id__sensor_health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SensorHealthReport"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Sensor Health Api Parents  Parent Id  Sensor Health Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Sensor Health",
         "tags": [
           "personal health"
         ]

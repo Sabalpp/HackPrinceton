@@ -14,6 +14,7 @@ from sqlmodel import Session
 
 from app.config import get_settings
 from app.experience_models import Account
+from app.integrations.photon.routing import route_error
 from app.models import OutboundMessage, Person
 
 log = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ def channel_name() -> str:
 
 
 def photon_routed(person: Person) -> bool:
-    return bool(person.photon_space_id and person.photon_agent_user_id and person.reachable_since)
+    return route_error(person) is None
 
 
 def is_reachable(person: Person, session: Session | None = None) -> bool:
@@ -81,7 +82,7 @@ def send_to_person(
     elif channel == "photon":
         if not photon_routed(person):
             msg.status = "unreachable"
-            msg.error = "Person has not messaged the FarCare line yet (Photon shared-line rule)."
+            msg.error = route_error(person)
         else:
             msg.status = "queued"
             session.add(msg)
@@ -97,7 +98,11 @@ def send_to_person(
 
 def show_typing(person: Person) -> None:
     """Best-effort typing indicator while the agent thinks. Never raises."""
-    if channel_name() != "photon" or not photon_routed(person):
+    if (
+        channel_name() != "photon"
+        or get_settings().photon_platform == "sms"
+        or not photon_routed(person)
+    ):
         return
     from app.integrations.photon import client as photon
 
@@ -117,4 +122,4 @@ def delivered(msg: OutboundMessage) -> bool:
     be asked. It is NOT a delivery receipt: queued/accepted can still fail later.
     Inspect OutboundMessage.status / DeliveryJob for the actual dispatch outcome.
     """
-    return msg.status in ("available", "queued", "accepted", "sent", "simulated")
+    return msg.status in ("available", "queued", "accepted", "sent", "delivered", "simulated")

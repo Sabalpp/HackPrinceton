@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, TypeDecorator
+from sqlalchemy import Column, DateTime, TypeDecorator, text
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -82,8 +82,17 @@ def init_db() -> None:
         models,
         runtime_models,  # noqa: F401  (register worker tables)
     )
+    from app.health import live_models  # noqa: F401 (register trusted watch links)
+    from app.schema_upgrades import apply_additive_upgrades
 
-    SQLModel.metadata.create_all(get_engine())
+    engine = get_engine()
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
+            # API and worker can start together during a rollout. Serialize schema
+            # creation/upgrades across processes; release automatically at commit.
+            connection.execute(text("SELECT pg_advisory_xact_lock(734276192)"))
+        SQLModel.metadata.create_all(connection)
+        apply_additive_upgrades(connection)
 
 
 @contextmanager

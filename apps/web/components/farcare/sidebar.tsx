@@ -8,11 +8,13 @@ import { MOCK_STATE } from "@/lib/use-farcare-state";
 
 export function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 rounded-[10px]">
-      <span className="grid size-[34px] place-items-center rounded-[10px] bg-primary text-lg font-bold text-white" aria-hidden="true">
+    <Link href="/" className="flex min-h-11 items-center gap-2.5 rounded-[10px]">
+      <span className="grid size-[34px] place-items-center rounded-[10px] bg-primary text-lg font-extrabold text-on-primary" aria-hidden="true">
         F
       </span>
-      <span className="text-xl font-bold text-ink">FarCare</span>
+      <span className="text-xl font-extrabold tracking-tight text-ink">
+        Far<span className="text-primary">Care</span>
+      </span>
     </Link>
   );
 }
@@ -20,7 +22,7 @@ export function Logo() {
 /** Left column on desktop, stacked on top on phones. */
 export function SidebarFrame({ children }: { children: ReactNode }) {
   return (
-    <aside className="flex w-full flex-col gap-6 border-b border-border bg-side p-5 md:min-h-screen md:w-auto md:max-w-[280px] md:flex-[1_1_220px] md:border-b-0 md:border-r md:p-6">
+    <aside className="flex w-full flex-col gap-7 border-b border-border bg-side p-5 md:sticky md:top-0 md:h-screen md:w-auto md:max-w-[280px] md:flex-[1_1_256px] md:overflow-y-auto md:border-b-0 md:border-r md:p-6">
       {children}
     </aside>
   );

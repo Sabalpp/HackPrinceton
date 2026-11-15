@@ -10,7 +10,10 @@ flowchart LR
     F[Family: consented trends and timeline] --> W
     N[Helper: assigned tasks only] --> W
     W -->|HTTPS cookie and CSRF| A[FastAPI]
-    T[Tiger sensor and cloud summaries] -->|Private ingest key and explicit parent ID| A
+    BLE[Mac Fitbit BLE collector] -->|One-second outbox upload| T[(Tiger sensor history)]
+    GH[Google Health sync] --> T
+    T -->|Trusted watch-to-parent mapping| A
+    T -->|Durable daily projection| WK
     PH[Photon signed webhook] --> A
     A --> D[(PostgreSQL)]
     D --> WK[Supervised worker]
@@ -57,7 +60,10 @@ cannot silently survive in a later model prompt.
 Available means an in-app task/state can be read by the account. Queued means a durable
 intent exists. Accepted means Photon accepted submission. None proves delivery, reading,
 or human response. Account-only helpers work in their task view; phone messages require
-real Photon opt-in/routing. Console messaging is explicitly simulated.
+real Photon opt-in/routing. Signed, matched receipts can later record delivered or
+failed; delivered still does not mean read. SMS replies go through the same queue;
+STOP cancels pending texts and START never replays those cancelled alerts.
+Console messaging is explicitly simulated.
 
 ## Health and learning
 
@@ -65,6 +71,14 @@ Tiger ingestion preserves source dates, missingness and live/simulated labels fo
 reported resting heart rate and main sleep. Per-parent source binding is explicit; a new
 account never inherits another person's sensor stream. Manual cuff BP has its own source
 and is never inferred from Fitbit.
+
+The authorized `sensor-health` endpoint serves bounded canonical BLE and Google Health
+history directly from Tiger. Parent and family screens poll every two seconds while
+visible, show original timestamps, and distinguish current, stale, missing and invalid
+values. Trusted operators register `WatchSourceLink` records; browser input cannot choose
+arbitrary collector subjects. The worker projects daily metrics every minute and queues
+at most one consent-checked family wellbeing notice per local day for notable trends.
+Live pulse samples are never substituted for resting heart rate, HRV or blood pressure.
 
 Personal references are append-only provisional statements. Seven qualified completed
 local dates within 28 support descriptive median/MAD learning; this engineering coverage
@@ -77,8 +91,9 @@ reference. [Sources, exclusions and exact rules](health-evidence.md).
 
 Existing care, sensor and timeline tables remain. Additive tables hold accounts, sessions,
 rate limits, invitations, ownership, cuff readings, references, action receipts, audit events,
-worker coordination and durable jobs. create_all creates missing tables; it does not alter
-existing ones. The deployment directory includes a migration for earlier runtime previews.
+worker coordination and durable jobs. Startup creates missing tables and applies narrow,
+additive compatibility upgrades under a PostgreSQL advisory lock. Old messages do not
+gain new consent; records and existing sharing choices are retained.
 
 Pydantic contracts live in schemas/contracts.py and schemas/experience.py. OpenAPI and
 TypeScript are generated and checked for drift. CI runs SQLite/PostgreSQL tests, API-image
@@ -89,3 +104,14 @@ The prepared deployment uses Next, API, worker, PostgreSQL and a /backend gatewa
 loopback upstream port is published; an operator configures HTTPS and secrets. No host,
 domain, provider line or paid resource is created by the templates. Clinical review, live
 delivery/failure handling, monitoring and backup restoration remain acceptance work.
+# Cloudflare deployment option (2026-11-14)
+
+The complete app can be packaged with `deploy/cloudflare`: a Worker routes one
+HTTPS origin to two singleton Containers. Next.js retains its Node runtime;
+FastAPI and the standalone care worker run as separate supervised processes in
+the API container. Optional Tiger daily projection is a third supervised process.
+Tiger remains the existing durable database and worker mutex. A minute cron keeps
+the API available in `always_on` mode; this is not an uninterrupted-care guarantee.
+Runtime secrets reach only the API container. No raw sensor files, local OAuth
+tokens or secret env files enter either image. Configuration, choices, exact
+dashboard fields and verification limits are in [Cloudflare deployment](cloudflare-deployment.md).

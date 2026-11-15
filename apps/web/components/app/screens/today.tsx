@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowRight, CircleCheck, HandHeart, HeartPulse, ShieldAlert, Users } from "lucide-react";
-import type { ParentOverview, TimelineEvent } from "@/lib/api";
+import { ArrowRight, Footprints, HandHeart, HeartPulse, Moon, Users } from "lucide-react";
+import type { HealthSummary, MetricTrend, ParentOverview, TimelineEvent } from "@/lib/api";
 import { useDashboard } from "@/lib/dashboard";
 import { isRequestOpen, sortRequests, summarize, type Summary } from "@/lib/summary";
 import { useNow } from "@/lib/use-now";
 import { SimulatedPill } from "@/components/farcare/ui";
+import { LiveSensorPanel } from "@/components/portal/live-sensors";
 import { TwoClocks } from "@/components/ui/time";
 import { Ready } from "../shell";
 import { EmptyBlock, SectionTitle } from "../kit";
 import { IncidentPanel } from "../incident";
 import { RequestCard } from "../request";
-import { TrendTile } from "../health";
+import { METRIC } from "../health";
+import { Ring } from "../ring";
 import { CheckInCard, MemberCard } from "../people";
 import { Feed } from "../feed";
 
@@ -27,81 +29,127 @@ function Greeting({ name }: { name: string }) {
   return <>{h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}, {name}</>;
 }
 
-const HERO: Record<Summary["tone"], { band: string; sub: string; chip: string; Icon: typeof CircleCheck }> = {
-  done: { band: "bg-hero text-white", sub: "text-primary-tint", chip: "bg-white/12 text-white", Icon: CircleCheck },
-  neutral: { band: "bg-hero text-white", sub: "text-primary-tint", chip: "bg-white/12 text-white", Icon: CircleCheck },
-  coming: { band: "bg-hero text-white", sub: "text-primary-tint", chip: "bg-white/12 text-white", Icon: HandHeart },
-  waiting: { band: "bg-watch-bg text-watch-heading border border-watch-border", sub: "text-watch-body", chip: "bg-surface/70 text-watch-heading", Icon: HeartPulse },
-  urgent: { band: "bg-danger text-white", sub: "text-danger-light", chip: "bg-white/15 text-white", Icon: ShieldAlert },
+const TONE: Record<Summary["tone"], { frame: string; dot: string; label: string }> = {
+  done: { frame: "border-border bg-surface", dot: "bg-primary", label: "text-primary" },
+  neutral: { frame: "border-border bg-surface", dot: "bg-primary", label: "text-primary" },
+  coming: { frame: "border-primary/40 bg-surface", dot: "bg-primary animate-pulse", label: "text-primary" },
+  waiting: { frame: "border-watch-border bg-surface", dot: "bg-watch-label", label: "text-watch-label" },
+  urgent: { frame: "border-danger/60 bg-danger-tint", dot: "bg-danger-ink animate-pulse", label: "text-danger-ink" },
 };
 
-/** Two people far apart, connected: the brand idea, drawn flat. */
-function DistanceMotif({ light }: { light: boolean }) {
-  const line = light ? "rgba(255,255,255,.55)" : "var(--color-watch-border)";
+const RING_ICON = { steps: Footprints, sleep_minutes: Moon, resting_heart_rate: HeartPulse } as const;
+
+/** One ring per metric: the last 5 days as a share of the parent's own usual. */
+function TrendRing({ t }: { t: MetricTrend }) {
+  const m = METRIC[t.metric];
+  if (t.recent === null || !Number.isFinite(t.recent) || t.recent < 0) {
+    return <Ring value={0} tone="muted" center="–" label={m.label} caption="Not enough data" Icon={RING_ICON[t.metric]} />;
+  }
+  if (t.baseline === null || !Number.isFinite(t.baseline) || t.baseline <= 0) {
+    return <Ring value={0} tone="muted" center={m.fmt(t.recent)} label={m.label} caption="No usual baseline" Icon={RING_ICON[t.metric]} />;
+  }
+  const ratio = t.recent / t.baseline;
+  if (!Number.isFinite(ratio)) {
+    return <Ring value={0} tone="muted" center={m.fmt(t.recent)} label={m.label} caption="Comparison unavailable" Icon={RING_ICON[t.metric]} />;
+  }
+  const tone = t.notable ? "watch" : "primary";
+  if (t.metric === "resting_heart_rate") {
+    return (
+      <Ring value={Math.min(1, ratio)} tone={tone} center={`${Math.round(t.recent)}`} unit="bpm" label="Resting HR" caption={`usual ${Math.round(t.baseline)}`} Icon={RING_ICON[t.metric]} />
+    );
+  }
   return (
-    <svg viewBox="0 0 220 120" className="pointer-events-none absolute right-2 top-2 hidden h-40 w-72 sm:block" aria-hidden="true">
-      <path d="M30 92 C 80 10, 140 10, 172 52" fill="none" stroke={line} strokeWidth="2.5" strokeDasharray="3 7" strokeLinecap="round" />
-      <circle cx="30" cy="92" r="14" fill="var(--color-sun)" />
-      <circle cx="172" cy="52" r="20" fill={light ? "rgba(255,255,255,.9)" : "var(--color-primary)"} />
-      <circle cx="172" cy="52" r="34" fill="none" stroke={line} strokeWidth="1.5" />
-    </svg>
+    <Ring
+      value={ratio}
+      tone={tone}
+      center={`${Math.round(ratio * 100)}%`}
+      unit="of usual"
+      label={t.metric === "steps" ? "Steps" : "Sleep"}
+      caption={m.fmt(t.recent)}
+      Icon={RING_ICON[t.metric]}
+    />
   );
 }
 
 function Hero({ o, viewerName }: { o: ParentOverview; viewerName: string }) {
   const s = useMemo(() => summarize(o), [o]);
-  const look = HERO[s.tone];
-  const light = s.tone !== "waiting";
+  const look = TONE[s.tone];
   const open = o.recent_requests.filter(isRequestOpen).length;
   const reachable = o.care_circle.filter((m) => m.reachable).length;
   const alert = o.active_incidents.length > 0;
+  const health: HealthSummary | null = o.health;
+
   return (
-    <section aria-label="Right now" className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 ${look.band}`}>
-      <DistanceMotif light={light} />
-      <div className="relative flex max-w-3xl flex-col gap-5">
-        <div className="flex flex-col gap-1">
-          <p className={`text-sm font-semibold ${look.sub}`}>
-            <Greeting name={viewerName} />
-          </p>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{o.parent.display_name}</h1>
-          <div className={look.sub}>
-            <TwoClocks timeZone={o.parent.timezone} />
+    <section aria-label="Right now" className={`overflow-hidden rounded-3xl border ${look.frame}`}>
+      <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 flex-col gap-6">
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">
+              <Greeting name={viewerName} />
+            </p>
+            <h1 className="text-5xl font-extrabold tracking-tight text-ink sm:text-6xl">{o.parent.display_name}</h1>
+            <div className="text-body">
+              <TwoClocks timeZone={o.parent.timezone} />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <p className={`flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] ${look.label}`}>
+              <span className={`size-2 rounded-full ${look.dot}`} aria-hidden="true" />
+              Right now
+            </p>
+            <p className="text-2xl font-bold leading-tight text-ink sm:text-3xl">{s.title}</p>
+            {s.detail && <p className="text-body">{s.detail}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            {alert ? (
+              <Link href="/safety" className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-danger px-4 font-bold text-white hover:brightness-110">
+                Open the safety alert <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            ) : (
+              <Link href="/activity" className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-primary px-4 font-bold text-on-primary hover:bg-primary-hover">
+                Today&apos;s activity <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+            )}
+            <Stat Icon={HandHeart} value={open} label={`open request${open === 1 ? "" : "s"}`} />
+            <Stat Icon={Users} value={`${reachable}/${o.care_circle.length}`} label="reachable" />
           </div>
         </div>
 
-        <div className="flex items-start gap-3">
-          <look.Icon size={28} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <div>
-            <p className={`text-xs font-bold uppercase tracking-wider ${look.sub}`}>Right now</p>
-            <p className="text-2xl font-bold leading-tight sm:text-[1.75rem]">{s.title}</p>
-            {s.detail && <p className={`mt-1 ${look.sub}`}>{s.detail}</p>}
+        {health ? (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-inset/60 p-5">
+            <div className="flex w-full items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Last 5 days vs usual</p>
+              {health.data_mode === "simulated" && <SimulatedPill />}
+              {health.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 text-sm font-semibold text-watch-heading">Mixed sources</span>}
+              {health.data_mode === "none" && <span className="text-sm text-muted">No readings yet</span>}
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:gap-6">
+              {health.trends.map((t) => (
+                <TrendRing key={t.metric} t={t} />
+              ))}
+            </div>
+            <Link href="/health" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+              Health trends <ArrowRight size={15} aria-hidden="true" />
+            </Link>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {alert ? (
-            <Link href="/safety" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-white px-4 font-bold text-danger hover:bg-danger-light">
-              Open the safety alert <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          ) : (
-            <Link
-              href="/activity"
-              className={`inline-flex min-h-11 items-center gap-2 rounded-[10px] px-4 font-semibold ${
-                light ? "bg-white text-hero hover:bg-primary-tint" : "bg-primary text-white hover:bg-primary-hover"
-              }`}
-            >
-              See what happened today <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-          )}
-          <span className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${look.chip}`}>
-            <HandHeart size={15} aria-hidden="true" /> {open} open request{open === 1 ? "" : "s"}
-          </span>
-          <span className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${look.chip}`}>
-            <Users size={15} aria-hidden="true" /> {reachable} of {o.care_circle.length} helpers reachable
-          </span>
-        </div>
+        ) : (
+          <EmptyBlock title={`${o.parent.display_name} hasn't shared health data`} icon={HeartPulse}>
+            That&apos;s {o.parent.display_name}&apos;s choice. They can manage it from the parent screen&apos;s sharing settings.
+          </EmptyBlock>
+        )}
       </div>
     </section>
+  );
+}
+
+function Stat({ Icon, value, label }: { Icon: typeof Users; value: number | string; label: string }) {
+  return (
+    <span className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-border bg-inset px-3 text-sm text-body">
+      <Icon size={16} className="text-primary" aria-hidden="true" />
+      <span className="tabular font-bold text-ink">{value}</span> {label}
+    </span>
   );
 }
 
@@ -113,9 +161,14 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
   const requests = sortRequests(o.recent_requests).filter((r) => !r.incident_id || !openIncidentIds.has(r.incident_id));
   const shown = requests.slice(0, 3);
   const recent: TimelineEvent[] = timeline.slice(0, 6);
+  const more = (href: string, label: string) => (
+    <Link href={href} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+      {label} <ArrowRight size={15} aria-hidden="true" />
+    </Link>
+  );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <Hero o={o} viewerName={viewerName} />
 
       {o.active_incidents.map((inc) => (
@@ -128,44 +181,11 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
         />
       ))}
 
-      <section className="flex flex-col gap-4" aria-labelledby="health-snap">
-        <SectionTitle
-          action={
-            o.health && (
-              <span className="flex items-center gap-3">
-                {o.health.data_mode === "simulated" && <SimulatedPill />}
-                {o.health.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 text-sm font-semibold text-watch-heading">Mixed sources</span>}
-                <Link href="/health" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                  Health trends <ArrowRight size={15} aria-hidden="true" />
-                </Link>
-              </span>
-            )
-          }
-        >
-          <span id="health-snap">{name}&apos;s week vs usual</span>
-        </SectionTitle>
-        {o.health ? (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {o.health.trends.map((t) => (
-              <TrendTile key={t.metric} trend={t} obs={o.health!.observations} />
-            ))}
-          </ul>
-        ) : (
-          <EmptyBlock title={`${name} hasn't shared health data`} icon={HeartPulse}>
-            That&apos;s {name}&apos;s choice. They can manage it from the parent screen&apos;s sharing settings.
-          </EmptyBlock>
-        )}
-      </section>
+      {o.permissions.share_health && <LiveSensorPanel parentId={o.parent.parent_id} compact />}
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <section className="flex min-w-0 flex-col gap-4" aria-labelledby="req-title">
-          <SectionTitle
-            action={
-              <Link href="/requests" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                All requests <ArrowRight size={15} aria-hidden="true" />
-              </Link>
-            }
-          >
+          <SectionTitle action={more("/requests", "All requests")}>
             <span id="req-title">Help requests</span>
           </SectionTitle>
           {shown.length ? (
@@ -182,7 +202,7 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
           )}
         </section>
 
-        <div className="flex min-w-0 flex-col gap-8">
+        <div className="flex min-w-0 flex-col gap-10">
           <section className="flex flex-col gap-4" aria-labelledby="chk-title">
             <SectionTitle>
               <span id="chk-title">Latest check-in</span>
@@ -191,13 +211,7 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
           </section>
 
           <section className="flex flex-col gap-4" aria-labelledby="act-title">
-            <SectionTitle
-              action={
-                <Link href="/activity" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                  Everything <ArrowRight size={15} aria-hidden="true" />
-                </Link>
-              }
-            >
+            <SectionTitle action={more("/activity", "Everything")}>
               <span id="act-title">Recent activity</span>
             </SectionTitle>
             <div className="rounded-2xl border border-border bg-surface p-5">
@@ -208,13 +222,7 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
       </div>
 
       <section className="flex flex-col gap-4" aria-labelledby="circle-title">
-        <SectionTitle
-          action={
-            <Link href="/circle" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-              Care Circle <ArrowRight size={15} aria-hidden="true" />
-            </Link>
-          }
-        >
+        <SectionTitle action={more("/circle", "Care Circle")}>
           <span id="circle-title">Who&apos;s nearby for {name}</span>
         </SectionTitle>
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">

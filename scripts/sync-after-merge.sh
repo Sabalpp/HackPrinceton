@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# After your PR is SQUASH-merged, reset your long-lived feature branch onto main.
-# (Squash merges rewrite history; continuing on the old branch causes conflicts.)
+# After your PR is merged, include main in your long-lived feature branch.
+# Preserve both histories. Conflicts and remote divergence stop safely.
 # Refuses if you have commits that were not part of the merged PR.
 #   scripts/sync-after-merge.sh
 set -euo pipefail
@@ -21,6 +21,6 @@ if [ "$(git rev-parse HEAD)" != "$merged_head" ]; then
   echo "then cherry-pick the WIP commits onto the fresh branch."
   exit 1
 fi
-git switch -C "$branch" origin/main
-git push --force-with-lease origin "$branch"
-echo "$branch now matches main (PR #$number is in main)."
+git merge --no-edit origin/main
+git push origin "HEAD:refs/heads/$branch"
+echo "$branch includes main (PR #$number is merged)."

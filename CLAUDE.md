@@ -1,7 +1,7 @@
 # FarCare — shared project context
 
 **FarCare — Far away. Always there.** An AI care-coordination platform for aging parents whose
-children live far away. HackPrinceton Fall 2026 (Healthcare track; Photon 2.0 iMessage, Gemini,
+children live far away. HackPrinceton Fall 2026 (Healthcare track; Photon 2.0 SMS/iMessage, Gemini,
 optional Tiger Data / Photon Voice).
 
 > A notification tells you something may be wrong. FarCare helps connect your parent with
@@ -17,7 +17,7 @@ optional Tiger Data / Photon Voice).
 
 ## The one workflow that must always work
 
-Parent texts FarCare (iMessage via Photon) → Gemini understands → backend picks an **authorized**
+Parent texts FarCare (SMS or iMessage via Photon) → Gemini understands → backend picks an **authorized**
 Care Circle member → parent approves (YES) → Photon texts the responder → responder replies YES →
 request state updates → parent + child are told via Photon → dashboard updates live (SSE).
 Plus: simulated possible-fall → safety check → no reply/HELP → deterministic escalation.
@@ -29,9 +29,9 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/schemas/contracts.py   SINGLE SOURCE OF TRUTH for shared payloads
   app/services/              care_requests (state machine), safety (incidents), conversation (router)
   app/integrations/          photon/ (2.0 Beta client, webhook), gemini/ (agent + fallback), messaging
-  app/health/                Sabal: simulated provider, trends/baseline, Google Health stub
+  app/health/                Tiger live readings, trusted source registry, daily sync, personal baselines
   app/fall_detection/        synthetic IMU traces + explainable detector
-  tests/                     219 tests incl. end-to-end workflows (SQLite + Postgres)
+  tests/                     API, permissions, SMS, sensor and worker tests (SQLite + Postgres)
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
@@ -100,22 +100,29 @@ Don't send `temperature` (deprecated for Gemini 3+).
 | One FastAPI service + one Postgres DB (SQLite locally) | Smallest thing that works for 3 devs in 36 h; no microservices |
 | Pydantic contracts → JSON Schema/OpenAPI → generated TS types | One source of truth; CI fails on drift |
 | Safety + approvals + responder replies parsed **deterministically first** | The LLM can escalate but never suppress or decide an emergency |
-| Messaging gateway with `console` fallback | Whole product works without Photon keys (dev, CI, outage backup) |
+| Explicit `console` or `photon` gateway | Development/CI can simulate delivery; live Photon failures never silently become success |
 | DB-backed timeline + SSE that tails it | Real-time dashboard that survives restarts; no extra infra |
-| Background tick in-process (single instance) | Timeouts/escalations without a queue service |
+| Standalone worker with PostgreSQL mutex and durable queues | Timers, sensor sync, inbound messages and retries survive process restarts |
 | Synthetic IMU traces + threshold detector | Fitbit exposes no raw IMU; pipeline is real, data is labeled simulated |
 
-## Known gaps after the first integration (Nov 14)
+## Current integration and deployment
 
-- Saksham's "daily-call" pages (`/parent`, `/call`, `/emergency`, `/threads/*`, `/phone/digest`,
-  `/setup`) read a **proposed** `GET /api/state` plus `POST /api/call/answer`,
-  `/api/parent/ok`, `/api/parent/help`. None exist in the backend yet, so those pages run on mock
-  data only. The family dashboard pages (`/`, `/health`, `/requests`, `/safety`, `/circle`,
-  `/activity`, `/demo`) use the real API. Any implementation of the write endpoints **must
-  require the parent's token** (the proposal sends none).
-- `deploy.yml` passes only when the live API's `/health.commit` equals the deployed SHA, so the
-  host must set `GIT_COMMIT` (or `RENDER_GIT_COMMIT` / `RAILWAY_GIT_COMMIT_SHA`).
-- Tiger Data health sync is Sabal's (`apps/api/app/health/tiger.py`, `docs/tiger-health-pipeline.md`).
+- `main` is production. Merge PRs normally after CI; never reset or force-push a
+  teammate's branch. The dark/mobile UI retains authenticated role screens.
+- `/parent`, `/family`, `/respond`, `/login` and `/setup` use the real role-aware API.
+  Older concept pages remain separate; they are not the production care workflow.
+- `app.health.sources` registers a consenting real wearer's collector subject to
+  a real parent profile. `sensor-health` serves current and stale readings with
+  source timestamps; `app.worker` syncs daily trends and queues family check-in prompts.
+- Photon SMS configuration is documented in `docs/photon-track.md`. Do not confuse
+  an accepted request with verified delivery or enable a line without eligible
+  senders/recipients. STOP cancels pending texts, START does not replay them.
+- Existing databases receive additive schema upgrades at startup. No upgrade
+  infers consent, maps real readings to demo people, or deletes existing rows.
+- Cloudflare uses Workers + Containers, not static Pages. The account needs paid
+  Containers access. A successful image build alone does not prove the app is live.
+- Readiness checks compare `/health.commit` with the deployed Git SHA and check
+  the database and standalone worker. Keep `GIT_COMMIT` set by the deployment.
 
 ## Non-negotiable product rules
 

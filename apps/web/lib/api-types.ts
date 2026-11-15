@@ -615,6 +615,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/parents/{parent_id}/sensor-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sensor Health */
+        get: operations["get_sensor_health_api_parents__parent_id__sensor_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/parents/{parent_id}/stream": {
         parameters: {
             query?: never;
@@ -738,6 +755,13 @@ export interface components {
              * @enum {string}
              */
             messaging: "console" | "photon";
+            /**
+             * Messaging Opted Out
+             * @default false
+             */
+            messaging_opted_out: boolean;
+            /** Messaging Platform */
+            messaging_platform?: ("sms" | "imessage") | null;
             /** Messaging Ready */
             messaging_ready: boolean;
             /**
@@ -1583,6 +1607,86 @@ export interface components {
              * @enum {string}
              */
             trigger: "fall.suspected" | "parent_message" | "family_concern";
+        };
+        /** SensorHealthReport */
+        SensorHealthReport: {
+            /** Cloud Metrics */
+            cloud_metrics: components["schemas"]["SensorMetric"][];
+            /**
+             * Connection Status
+             * @enum {string}
+             */
+            connection_status: "not_linked" | "available" | "unavailable";
+            /**
+             * Daily Sync Status
+             * @default pending
+             * @enum {string}
+             */
+            daily_sync_status: "pending" | "ok" | "unavailable";
+            /**
+             * Data Mode
+             * @default live
+             * @constant
+             */
+            data_mode: "live";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Last Daily Sync At */
+            last_daily_sync_at?: string | null;
+            live_heart_rate: components["schemas"]["SensorMetric"];
+            /** Message */
+            message: string;
+            /** Parent Id */
+            parent_id: string;
+            /** Recent Heart Rate */
+            recent_heart_rate?: components["schemas"]["SensorPoint"][];
+        };
+        /**
+         * SensorMetric
+         * @description A source-reported value, with its original time basis and freshness.
+         */
+        SensorMetric: {
+            /** Age Seconds */
+            age_seconds?: number | null;
+            /** Ended At */
+            ended_at?: string | null;
+            /**
+             * Freshness
+             * @default missing
+             * @enum {string}
+             */
+            freshness: "fresh" | "stale" | "missing" | "invalid";
+            /** Kind */
+            kind?: ("sample" | "interval" | "daily" | "session") | null;
+            /** Label */
+            label: string;
+            /** Local Date */
+            local_date?: string | null;
+            /** Message */
+            message: string;
+            /** Metric */
+            metric: string;
+            /** Observed At */
+            observed_at?: string | null;
+            /** Source */
+            source?: ("ble" | "google_health") | null;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value?: number | null;
+        };
+        /** SensorPoint */
+        SensorPoint: {
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Value */
+            value: number;
         };
         /** SessionInfo */
         SessionInfo: {
@@ -2887,6 +2991,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReferenceInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sensor_health_api_parents__parent_id__sensor_health_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SensorHealthReport"] | null;
                 };
             };
             /** @description Validation Error */

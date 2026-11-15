@@ -1,82 +1,50 @@
 @import "tailwindcss";
 
 /*
- * FarCare design tokens: eucalyptus + marigold, light theme only, low saturation.
- * Every text/background pair used below passes WCAG AA (checked 2026-11-14).
- *
- * Meaning of colour (keep it this way):
- *   eucalyptus  primary actions, progress, "help is on the way"
- *   marigold    needs a look / waiting (fills and stripes only; use mari-ink for text)
- *   brick       escalated emergencies ONLY; never decorative
- *   slate       finished / resolved, recedes
- */
-/*
- * FarCare daily-call theme: calm healthcare teal with a soft coral accent.
- * Tinted page ground + white cards; amber = watch, green = good, red = urgent only.
- * Every text pair passes WCAG AA (checked 2026-11-15).
- * Cards rounded-2xl + 1px border, buttons rounded-[10px] min 44px, pills rounded-full. Flat.
+ * Dark dashboard surfaces with semantic accents.
+ * Mint marks primary actions and progress; amber marks items needing a look.
+ * Red is reserved for urgent items. Use on-primary text over bright mint,
+ * and danger-ink for red text on dark surfaces.
  */
 @theme {
-  --color-bg: #f2f7f6;
-  --color-side: #ffffff;
-  --color-surface: #ffffff;
-  --color-inset: #f5f9f8;
-  --color-border: #dce7e5;
-  --color-ink: #14211f;
-  --color-muted: #51625f;
-  --color-body: #33433f;
-  --color-primary: #0f766e;
-  --color-primary-hover: #0b5d57;
-  --color-primary-tint: #ddf1ee;
-  --color-on-tint: #0b5d57;
-  --color-sun: #e07a5f; /* coral accent: marks and dots only, never text */
-  --color-coral-tint: #fde8e1;
-  --color-coral-ink: #8a3b22;
-  --color-hero: #0b5d57; /* deep teal band behind the Today hero */
-  --color-live: #7ee0c3;
+  --color-bg: #0a0d0e;
+  --color-side: #0e1213;
+  --color-surface: #131819;
+  --color-inset: #1a2022;
+  --color-border: #252d30;
+  --color-ink: #f1f4f4;
+  --color-muted: #8b979a;
+  --color-body: #c4cdcf;
+  --color-primary: #3ddcb0;
+  --color-primary-hover: #6be6c4;
+  --color-primary-tint: #0f2e27;
+  --color-on-tint: #86edcf;
+  --color-on-primary: #03241b;
+  --color-sun: #ff8a65; /* coral accent: marks and dots only */
+  --color-coral-tint: #33190f;
+  --color-coral-ink: #ffb39a;
+  --color-hero: #101a1a;
+  --color-ring-track: #1f2729;
+  --color-live: #3ddcb0;
 
-  /* shared status colours */
-  --color-watch-bg: #fff4d6;
-  --color-watch-border: #f1dc9c;
-  --color-watch-label: #7a5600;
-  --color-watch-heading: #4a3500;
-  --color-watch-body: #694c00;
-  --color-good-bg: #e3f4ea;
-  --color-good: #1f6b45;
-  --color-good-strong: #134b30;
-  --color-good-border: #bfe3cd;
-  --color-danger: #b42318;
-  --color-danger-light: #ffe9e6;
-  --color-danger-lighter: #ffd6d0;
-  --color-info-bg: #e8eef8;
-  --color-info: #2a4a7a;
-  --color-neutral-bg: #f0f2f2;
-  --color-neutral: #4a5052;
-}
-
-/* Earlier contract-backed Overview (/overview) tokens. */
-@theme {
-  --color-paper: #f6f6f2;
-  --color-card: #ffffff;
-  --color-stone: #5a645d;
-  --color-line: #e1e4de;
-  --color-line-strong: #aeb5af;
-
-  --color-euc: #3f6659;
-  --color-euc-deep: #2f5548;
-  --color-euc-soft: #e3ebe6;
-
-  --color-mari: #d9a54a;
-  --color-mari-ink: #7a5714;
-  --color-mari-soft: #f5ead2;
-
-  --color-brick: #9e3b30;
-  --color-brick-soft: #f6e3df;
-
-  --color-slate: #4f5953;
-  --color-slate-soft: #eceeea;
-
-  --radius-card: 0.75rem;
+  --color-watch-bg: #2a2210;
+  --color-watch-border: #4a3b17;
+  --color-watch-label: #f4c35a;
+  --color-watch-heading: #ffe3a3;
+  --color-watch-body: #e6cc8c;
+  --color-good-bg: #0f2a1f;
+  --color-good: #5fdb9d;
+  --color-good-strong: #a9f2cc;
+  --color-good-border: #1f4a36;
+  --color-danger: #c93a3f;
+  --color-danger-ink: #ff6b6f;
+  --color-danger-tint: #2e1214;
+  --color-danger-light: #fff4f4;
+  --color-danger-lighter: #fff4f4;
+  --color-info-bg: #132235;
+  --color-info: #93bdf5;
+  --color-neutral-bg: #1c2426;
+  --color-neutral: #c3ccce;
 }
 
 @theme inline {
@@ -86,7 +54,7 @@
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {

@@ -46,6 +46,11 @@ jobs:
         run: uv run ruff check .
       - name: Format check (ruff)
         run: uv run ruff format --check .
+      - name: Cloudflare process supervisor and smoke runner
+        run: |
+          uv run ruff check --isolated --select E,F,I --line-length 100 ../../deploy/cloudflare/*.py
+          uv run ruff format --isolated --check ../../deploy/cloudflare/*.py
+          uv run python -m unittest discover -s ../../deploy/cloudflare -p 'test_*.py' -v
       - name: Python syntax check
         run: uv run python -m compileall -q app scripts
       - name: Tests (SQLite)
@@ -162,3 +167,38 @@ jobs:
           tar -xzf gitleaks.tgz gitleaks
       - name: Scan git history for secrets
         run: ./gitleaks git --redact --no-banner -v .
+
+  cloudflare:
+    name: Cloudflare (bundle, production containers)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: deploy/cloudflare/package-lock.json
+      - name: Install pinned deployment CLI
+        working-directory: deploy/cloudflare
+        run: npm ci --no-audit --no-fund
+      - name: Deployment and routing regression tests
+        working-directory: deploy/cloudflare
+        run: npm test
+      - name: Bundle the Worker with synthetic settings (no publication)
+        working-directory: deploy/cloudflare
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '00000000000000000000000000000000'
+          WORKER_NAME: farcare-ci
+          PUBLIC_ORIGIN: https://farcare-ci.synthetic.workers.dev
+          DATABASE_URL: postgresql://synthetic:ci-only@postgres/farcare_ci?sslmode=require
+          INGEST_API_KEY: synthetic-ci-ingest-key-never-use-in-production
+          WRANGLER_SEND_METRICS: 'false'
+        run: npm run build
+      - name: Build the deployment API and web images (no push)
+        run: |
+          docker build -f deploy/cloudflare/Dockerfile.api -t farcare-cloudflare-api:ci .
+          docker build -f deploy/Dockerfile.web --build-arg NEXT_PUBLIC_API_URL=/backend \
+            -t farcare-cloudflare-web:ci apps/web
+      - name: Verify production boot, worker readiness, login and crash recovery
+        run: python3 deploy/cloudflare/container_smoke.py

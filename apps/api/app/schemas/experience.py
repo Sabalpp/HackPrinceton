@@ -127,6 +127,8 @@ class AgentStatus(BaseModel):
     messaging: Literal["console", "photon"]
     messaging_ready: bool
     detail: str
+    messaging_platform: Literal["sms", "imessage"] | None = None
+    messaging_opted_out: bool = False
 
 
 class SharingMember(BaseModel):
@@ -299,3 +301,38 @@ class PersonalHealthReport(BaseModel):
     generated_at: datetime
     evidence: list[EvidenceSource]
     explanation: str
+
+
+class SensorMetric(BaseModel):
+    """A source-reported value, with its original time basis and freshness."""
+
+    metric: str
+    label: str
+    unit: str
+    value: float | None = None
+    source: Literal["ble", "google_health"] | None = None
+    kind: Literal["sample", "interval", "daily", "session"] | None = None
+    observed_at: datetime | None = None
+    ended_at: datetime | None = None
+    local_date: str | None = None
+    freshness: Literal["fresh", "stale", "missing", "invalid"] = "missing"
+    age_seconds: float | None = None
+    message: str
+
+
+class SensorPoint(BaseModel):
+    observed_at: datetime
+    value: float
+
+
+class SensorHealthReport(BaseModel):
+    parent_id: str
+    connection_status: Literal["not_linked", "available", "unavailable"]
+    generated_at: datetime
+    live_heart_rate: SensorMetric
+    cloud_metrics: list[SensorMetric]
+    recent_heart_rate: list[SensorPoint] = Field(default_factory=list)
+    message: str
+    last_daily_sync_at: datetime | None = None
+    daily_sync_status: Literal["pending", "ok", "unavailable"] = "pending"
+    data_mode: Literal["live"] = "live"

@@ -15,8 +15,10 @@ Built at HackPrinceton Fall 2026. **Prepared for an invited pilot; public produc
 requires the deployment and validation steps below.** This is not a medical device or an
 emergency response service. The default
 demo uses synthetic people and health readings labeled `simulated`. The authenticated
-Tiger adapter also supports real Fitbit steps, reported resting heart rate, and main
-sleep with original dates, missing values, and family sharing permissions.
+Tiger adapter reads live Fitbit heart rate and Google Health reports with original
+timestamps, missing values, and family sharing permissions. The browser refreshes
+watch readings every two seconds while visible. The durable worker projects daily
+steps, reported resting heart rate and main sleep every minute for linked profiles.
 
 ## Quick start
 
@@ -54,6 +56,10 @@ neighbor's help still follow the parent-approval workflow below.
 
 For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
+For Cloudflare, use [the Workers + Containers settings](docs/cloudflare-deployment.md).
+The app needs a running Next.js server and Python backend; it has no static Pages
+output directory. The deployment guide explains how to replace a failing
+`pages.dev` setup with the complete app.
 Blood pressure comes from reported cuff readings. [The health evidence and rules](docs/health-evidence.md)
 separate clinical guidance from the app's unvalidated seven-qualified-day learning heuristic.
 “This is usual for me” is a provisional reference and never disables urgent guidance.
@@ -77,6 +83,7 @@ Start reading the code in this order:
 | Dashboard | `apps/web/app/(app)/`, `apps/web/lib/dashboard.tsx` | Family screens, loading, and live timeline updates |
 | API connection | `apps/web/lib/api.ts`, `apps/api/app/main.py` | Typed browser requests and API startup |
 | Health data | `apps/api/app/health/tiger.py`, `sync_tiger.py`, `trends.py` | Tiger daily records, authenticated ingestion, and personal comparisons |
+| Live watch data | `apps/api/app/health/live.py`, `sources.py`, `live_sync.py` | Authorized watch mapping, bounded live queries, and daily synchronization |
 | Care workflows | `apps/api/app/services/family.py`, `care_requests.py`, `safety.py` | Family questions, parent approval, neighbor responses, and safety checks |
 | Storage and access | `apps/api/app/models.py`, `auth.py`, `schemas/contracts.py` | Database tables, sharing permissions, and shared payload definitions |
 | Integrations and automation | `apps/api/app/integrations/`, `.github/workflows/` | Photon/Gemini adapters and CI/deployment verification |
@@ -84,6 +91,19 @@ Start reading the code in this order:
 `apps/web/app/(web)/` contains older concept screens; the connected family app is
 under `(app)`. The sensor collector and private recorded exports can run outside
 this repository; the app consumes their Tiger projection through the health adapter.
+
+`main` is the production branch. Feature work goes through a PR and the full CI
+suite before an ordinary merge commit; this preserves the team's branch history.
+The Cloudflare Worker builds only `main`. `scripts/sync-after-merge.sh` safely merges
+main back into a feature branch without force-pushing or resetting its history.
+
+For real texts, use `MESSAGING_CHANNEL=photon`, `PHOTON_PLATFORM=sms`, a provisioned
+`PHOTON_AGENT_USER_ID`, and the provider secrets described in
+[the Photon setup guide](docs/photon-track.md). Registered participants first text
+the configured number. Replies, alerts, STOP/START/HELP and signed delivery receipts
+pass through the same durable worker. A daily change can prompt an authorized
+family member to check in; a single pulse value never triggers a medical diagnosis.
+Console mode and synthetic demo accounts do not establish real SMS delivery.
 
 - [CLAUDE.md](CLAUDE.md): project context, verified integration facts, key decisions
 - [AGENTS.md](AGENTS.md): collaboration and engineering rules
@@ -94,5 +114,5 @@ this repository; the app consumes their Tiger projection through the health adap
 
 ## Stack
 
-FastAPI · SQLModel · PostgreSQL · Photon 2.0 (iMessage) · Google Gemini · Google Health API
+FastAPI · SQLModel · PostgreSQL · Photon 2.0 (SMS / iMessage) · Google Gemini · Google Health API
 (Fitbit) · Next.js 16 · Tailwind CSS 4 · GitHub Actions

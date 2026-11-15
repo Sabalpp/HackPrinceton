@@ -25,8 +25,8 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.db import get_engine, init_db, session_scope, utcnow
+from app.health.live_sync import sync_linked_sources
 from app.integrations import delivery
-from app.integrations.photon.inbound import InboundText
 from app.models import InboundMessageRow
 from app.runtime_models import AgentLease, DeliveryJob, InboundRetry
 from app.services import care_requests, conversation, proactive, safety
@@ -109,7 +109,7 @@ def inbound_unit(owner_id: str) -> str:
         session.flush()
         try:
             with session.begin_nested():
-                outcome = conversation.handle(session, InboundText(**row.payload))
+                outcome = conversation.handle_payload(session, row.payload)
                 session.flush()
         except Exception:
             row.status = "failed" if row.attempts >= MAX_INBOUND_ATTEMPTS else "pending"
@@ -143,6 +143,7 @@ def maintenance_unit(owner_id: str) -> str:
             return "deferred"
         safety.check_overdue(session)
         care_requests.expire_overdue(session)
+        sync_linked_sources(session)
         proactive.run(session)
         return "completed"
 
@@ -211,7 +212,9 @@ def runtime_status(session: Session) -> dict:
         "delivery_failed": count(DeliveryJob, "failed"),
         "delivery_cancelled": count(DeliveryJob, "cancelled"),
         "delivery_accepted": count(DeliveryJob, "accepted"),
-        "delivery_receipts_verified": False,
+        "delivery_delivered": count(DeliveryJob, "delivered"),
+        "delivery_receipts_supported": True,
+        "delivery_receipts_verified": count(DeliveryJob, "delivered") > 0,
     }
 
 

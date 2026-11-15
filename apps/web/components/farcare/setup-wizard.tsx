@@ -29,7 +29,7 @@ function StepsSidebar() {
               >
                 <span
                   className={`grid size-7 shrink-0 place-items-center rounded-full text-sm font-bold ${
-                    done ? "bg-primary text-white" : current ? "border-2 border-primary text-primary" : "border border-border text-muted"
+                    done ? "bg-primary text-on-primary" : current ? "border-2 border-primary text-primary" : "border border-border text-muted"
                   }`}
                   aria-hidden="true"
                 >

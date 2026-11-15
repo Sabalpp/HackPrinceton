@@ -27,7 +27,7 @@ export function CardTitle({ children, aside }: { children: ReactNode; aside?: Re
 
 const BTN = "inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] px-4 font-semibold transition-colors disabled:opacity-60";
 export const btn = {
-  primary: `${BTN} bg-primary text-white hover:bg-primary-hover`,
+  primary: `${BTN} bg-primary text-on-primary hover:bg-primary-hover`,
   outline: `${BTN} border border-border bg-surface text-ink hover:border-primary hover:text-primary`,
   quiet: `${BTN} text-primary hover:bg-primary-tint`,
 };

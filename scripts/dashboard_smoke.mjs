@@ -136,6 +136,10 @@ async function run() {
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.getByRole('status').filter({hasText:/^Connected$/}).waitFor();
   check('Dashboard renders Sita and establishes the real SSE connection',true);
+  await page.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
+  const sensors = await (await page.context().request.get(`${api}/api/parents/parent_001/sensor-health`)).json();
+  check('An unlinked profile never displays invented live sensor readings',
+    sensors.connection_status==='not_linked' && sensors.live_heart_rate.value===null && sensors.recent_heart_rate.length===0);
   await page.screenshot({path:path.join(artifacts,'today.png'),fullPage:true});
   const nav = page.getByRole('navigation',{name:'Main'});
   await nav.getByRole('link',{name:'Health',exact:true}).click();
@@ -143,10 +147,32 @@ async function run() {
   await page.getByText('simulated demo data',{exact:false}).first().waitFor();
   await page.getByRole('heading',{name:'Learning what is usual',exact:true}).waitFor();
   check('Health route loads and labels synthetic records',true);
+  // Controlled UI fixture only. API permissions and the exact PostgreSQL query
+  // are tested separately; this is never evidence of a real watch connection.
+  const sensorUrl = `${api}/api/parents/parent_001/sensor-health`;
+  let pulseFixture = {...sensors, connection_status:'available',
+    generated_at:new Date().toISOString(),
+    live_heart_rate:{...sensors.live_heart_rate,value:73,source:'ble',kind:'sample',
+      freshness:'fresh',age_seconds:1,observed_at:new Date().toISOString(),message:'Synthetic browser-test sample.'},
+    recent_heart_rate:[]};
+  const sensorRoute = route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pulseFixture)});
+  await page.route(sensorUrl,sensorRoute);
+  const pulsePanel = page.locator('[data-testid="live-sensors"]:visible');
+  await pulsePanel.getByText('Live · Fitbit BLE',{exact:true}).waitFor();
+  await pulsePanel.getByText('73 bpm',{exact:true}).waitFor();
+  pulseFixture = {...pulseFixture,live_heart_rate:{...pulseFixture.live_heart_rate,value:74,observed_at:new Date().toISOString()}};
+  await pulsePanel.getByText('74 bpm',{exact:true}).waitFor();
+  check('Synthetic sensor response updates the displayed pulse through polling',true);
+  pulseFixture = {...pulseFixture,live_heart_rate:{...pulseFixture.live_heart_rate,freshness:'stale',age_seconds:80,observed_at:new Date(Date.now()-80000).toISOString()}};
+  await pulsePanel.getByText('Last known reading',{exact:true}).waitFor();
+  check('Stale sensor fixture loses its Live badge without fabricating a zero pulse',
+    await pulsePanel.getByText('Live · Fitbit BLE',{exact:true}).count()===0 && await pulsePanel.getByText('74 bpm',{exact:true}).count()===1);
+  await page.unroute(sensorUrl,sensorRoute);
+  await pulsePanel.getByText('Watch not linked',{exact:true}).waitFor();
   await page.screenshot({path:path.join(artifacts,'health.png'),fullPage:true});
   await nav.getByRole('link',{name:'Care Circle',exact:true}).click();
   await page.waitForURL(`${web}/circle`);
-  await page.getByText('Asha',{exact:true}).first().waitFor();
+  await page.locator('span:text-is("Asha"):visible').first().waitFor();
   check('Care Circle route displays the seeded authorized responder',true);
   await page.screenshot({path:path.join(artifacts,'circle.png'),fullPage:true});
 
@@ -165,6 +191,7 @@ async function run() {
     (await savedCheck.json()).latest_checkin.summary.includes('okay') &&
     Boolean(savedCheck.request().headers()['x-csrf-token']));
   await parent.getByText('Your check-in is saved.',{exact:true}).waitFor();
+  await parent.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   check('Parent mobile layout has no horizontal overflow',await parent.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
   await parent.screenshot({path:path.join(artifacts,'parent-mobile.png'),fullPage:true});
 
@@ -202,6 +229,20 @@ async function run() {
   await page.getByLabel('Admin token',{exact:true}).fill('dev-admin-token');
   const devResult = await devPeople;
   check('Explicit development controls omit personal session cookies',!(await devResult.request().allHeaders()).cookie);
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  const more = page.getByRole('dialog');
+  await more.getByRole('link',{name:'Family setup & invitations',exact:true}).click();
+  await page.waitForURL(`${web}/setup`);
+  check('Mobile family navigation opens the authenticated setup screen',true);
+  await page.goto(`${web}/family`,{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
+  check('Family mobile layout has no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await page.screenshot({path:path.join(artifacts,'family-mobile.png'),fullPage:true});
+  await page.getByRole('button',{name:'More',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Sign out',exact:true}).click();
+  await page.waitForURL(`${web}/login`);
+  check('Mobile sign out clears the authenticated session',!(await page.context().cookies()).some(cookie=>cookie.name==='farcare_session'));
   check('No browser exceptions, console errors, failed API responses, or external requests',browserErrors.length===0);
   evidence.status='passed';
 }
@@ -223,4 +264,4 @@ try {
   await fs.rm(scratch,{recursive:true,force:true});
   await fs.writeFile(path.join(artifacts,'result.json'),JSON.stringify({...evidence,browserErrors,responses},null,2)+'\n');
 }
-console.log(JSON.stringify({status:evidence.status,checks:evidence.checks.length,artifacts}));
+console.log(JSON.stringify({status:evidence.status,checks:evidence.checks.length,artifacts,failure:evidence.failure}));

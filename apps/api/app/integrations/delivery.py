@@ -16,6 +16,7 @@ from sqlmodel import Session, select
 from app.config import get_settings
 from app.db import utcnow
 from app.experience_models import Account
+from app.integrations.photon.routing import route_error
 from app.models import CareCircleMember, CareRequestRow, FamilyLink, OutboundMessage, Person
 from app.runtime_models import DeliveryJob
 
@@ -213,6 +214,8 @@ def dispatch(session: Session, job: DeliveryJob) -> str:
         session.add(job)
         return job.status
     permission_error = authorization_error(session, person, job)
+    if permission_error is None and person is not None:
+        permission_error = route_error(person)
     if permission_error:
         job.status = "cancelled"
         job.last_error_code = permission_error
@@ -275,3 +278,61 @@ def dispatch(session: Session, job: DeliveryJob) -> str:
     session.add(job)
     session.add(message)
     return job.status
+
+
+def opt_out(session: Session, person: Person) -> None:
+    """Revoke pending SMS intents in the same transaction as the inbound STOP."""
+    person.messaging_opted_out_at = utcnow()
+    session.add(person)
+    for job in session.exec(
+        select(DeliveryJob).where(
+            DeliveryJob.person_id == person.id, DeliveryJob.status == "pending"
+        )
+    ).all():
+        job.status = "cancelled"
+        job.last_error_code = "recipient_opted_out"
+        message = session.get(OutboundMessage, job.id)
+        if message is not None:
+            message.status = "cancelled"
+            message.error = "recipient_opted_out"
+            session.add(message)
+        session.add(job)
+
+
+def apply_receipt(session: Session, receipt: dict) -> str:
+    """Apply provider evidence to the original intent, never resubmit a failed receipt.
+
+    Out-of-order dispatch receipts cannot downgrade a delivered or failed message.
+    A delivery receipt confirms provider delivery, not that a person read or acted on it.
+    """
+    message = session.exec(
+        select(OutboundMessage).where(
+            OutboundMessage.channel == "photon",
+            OutboundMessage.provider_message_id == receipt["provider_message_id"],
+        )
+    ).first()
+    if message is None:
+        return "ignored"
+    job = session.get(DeliveryJob, message.id)
+    if (
+        job is None
+        or job.space_id != receipt.get("space_id")
+        or job.sender_id != receipt.get("agent_user_id")
+    ):
+        return "ignored"
+    status = receipt.get("status")
+    if status not in {"sent", "delivered", "failed"}:
+        return "ignored"
+    if message.status == "delivered" or (
+        message.status in {"failed", "cancelled"} and status == "sent"
+    ):
+        return "done"
+    message.status = job.status = status
+    message.error = job.last_error_code = receipt.get("error_code") if status == "failed" else None
+    if status == "failed" and receipt.get("error_code") == "recipient_opted_out":
+        person = session.get(Person, job.person_id)
+        if person is not None:
+            opt_out(session, person)
+    session.add(message)
+    session.add(job)
+    return "done"
