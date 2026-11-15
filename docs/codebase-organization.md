@@ -39,6 +39,7 @@ The cleanup neither deletes nor publishes them.
 | `research/fitbit_air/` | Existing proprietary BLE probe and candidate-key experiment, with separate tests | Sabal |
 | `packages/contracts/` | Generated shared API contracts | Shared; Sumit coordinates |
 | `deploy/`, `.github/` | Deployment assets and CI | Sumit with repo-owner review |
+| `render.yaml` | Native Render API, worker and web deployment against existing Tiger | Sumit with repo-owner review |
 
 The existing `apps/api/app/fall_detection/` experiment and its callers remain unchanged.
 No new fall-detection module or functionality is part of this cleanup.
@@ -110,6 +111,10 @@ apps/api/.venv/bin/python scripts/local/prepare_farcare_preview.py --help
 Existing outer-workspace `.command` launchers point to these new paths. API/web container
 entry points and Cloudflare build/deploy roots are unchanged. Do not change Cloudflare to
 static Pages or copy the Mac collector into the backend image as part of this cleanup.
+
+For the native hosting route, [the Render Blueprint](render-deployment.md) starts those same
+API, worker and web applications without Docker. The existing Docker assets stay because
+Cloudflare and CI still use them; collector and research code are excluded from hosted services.
 
 ## Verification
 

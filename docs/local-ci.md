@@ -1,6 +1,6 @@
 # CI and dashboard verification
 
-The four required check names remain unchanged. The **Web (lint, typecheck, build)** check runs on Ubuntu 24.04, matching the pinned browser driver's supported OS. It starts the actual FastAPI app with temporary synthetic SQLite data, starts the production Next.js build, and runs Chromium against both. It checks authenticated `/api/me` and overview responses, the Sita dashboard, a live SSE connection, Health and Care Circle navigation, and browser errors.
+Existing check names remain unchanged, with two additional collector checks for Python 3.9 and 3.12. The **Web (lint, typecheck, build)** check runs on Ubuntu 24.04, matching the pinned browser driver's supported OS. It starts the actual FastAPI app with temporary synthetic SQLite data, starts the production Next.js build, and runs Chromium through the dashboard's `/backend` proxy used by native hosting. It checks session cookies, CSRF mutations, authenticated `/api/me` and overview responses, a live SSE connection, Health and Care Circle navigation, and browser errors.
 
 `NEXT_PUBLIC_USE_MOCKS=false` means this checks the real API integration. All people and health observations used by this CI job are synthetic. Photon, Gemini, proactive messages, and background scheduling are disabled. The test starts and stops only its own processes and never reads the private local health exports or cloud credentials.
 
@@ -13,12 +13,12 @@ From the repository root:
 ```bash
 uv sync --frozen --project apps/api
 npm ci --prefix apps/web
-NEXT_PUBLIC_API_URL=http://127.0.0.1:18000 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false NEXT_PUBLIC_VIEWER_TOKEN=dev-child-token npm --prefix apps/web run build
+NEXT_PUBLIC_API_URL=/backend FARCARE_API_ORIGIN=http://127.0.0.1:18000 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false npm --prefix apps/web run build
 export PLAYWRIGHT_INSTALL_DIR="$(mktemp -d /tmp/farcare-playwright.XXXXXX)"
 npm install --ignore-scripts --no-audit --no-fund --package-lock=false --prefix "$PLAYWRIGHT_INSTALL_DIR" playwright@1.56.1
 node "$PLAYWRIGHT_INSTALL_DIR/node_modules/playwright/cli.js" install --with-deps chromium
 node --check scripts/dashboard_smoke.mjs
-node scripts/dashboard_smoke.mjs
+SMOKE_API_PROXY=true node scripts/dashboard_smoke.mjs
 ```
 
 Playwright is pinned to [Microsoft's published 1.56.1 package](https://github.com/microsoft/playwright/blob/v1.56.1/packages/playwright/package.json). Browser installation follows the [official CI instructions](https://playwright.dev/docs/ci). It is installed outside the app dependency tree, so the smoke job does not modify the app's package manifest or lockfile.
@@ -31,4 +31,12 @@ The backend deployment gate requires `/health` to report healthy application/dat
 
 The hosted frontend check currently proves HTTP availability only. It does not identify the hosted frontend commit or prove that the hosted page is connected to the intended backend. The CI browser check proves the checked-out build works with the synthetic backend. Hosted frontend revision verification requires a build-time revision marker or a deployment-specific URL and is not claimed by this workflow.
 
-No workflow publishes a site or bypasses branch protection. Deployment hooks and the hosts' Git integrations remain the existing deployment mechanisms.
+The Deploy workflow re-runs CI on pushes to main. Hosted smoke checks and the optional
+deploy hook run only when that workflow is manually dispatched after deployment.
+This lets Render's `checksPass` trigger finish waiting for CI before it starts a new
+deployment; waiting for the new live revision in that same automatic check would
+deadlock. Configure the live URL variables only for the manual verification step.
+
+No workflow bypasses branch protection. The host's Git integration publishes the
+application after checks pass. Container image checks remain for the existing
+Cloudflare deployment, but the native Render setup requires no Docker installation.

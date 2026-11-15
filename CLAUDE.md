@@ -48,6 +48,7 @@ scripts/                 setup-github.sh (admin, once), smoke_test.sh, sync-afte
   local/                    Mac launcher, private preview preparation, offline maintenance
   verification/             manual checks, some requiring existing private records
 research/fitbit_air/      existing proprietary-BLE probe and candidate-key experiment
+render.yaml              native Render API + worker + dashboard, using external Tiger
 docs/                    architecture, contracts, demo plan, per-developer instructions
 ```
 
@@ -138,6 +139,9 @@ Don't send `temperature` (deprecated for Gemini 3+).
   senders/recipients. STOP cancels pending texts, START does not replay them.
 - Existing databases receive additive schema upgrades at startup. No upgrade
   infers consent, maps real readings to demo people, or deletes existing rows.
+- `render.yaml` provides a native deployment without Docker: Python API, separate worker,
+  and Next.js web service use the existing Tiger database. See `docs/render-deployment.md`.
+  It starts with console messaging; real Photon requires configured sender, secrets and opt-in.
 - Cloudflare uses Workers + Containers, not static Pages. The account needs paid
   Containers access. A successful image build alone does not prove the app is live.
 - Readiness checks compare `/health.commit` with the deployed Git SHA and check

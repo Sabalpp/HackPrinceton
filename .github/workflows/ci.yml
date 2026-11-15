@@ -178,7 +178,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:18000
+          NEXT_PUBLIC_API_URL: /backend
+          FARCARE_API_ORIGIN: http://127.0.0.1:18000
           NEXT_PUBLIC_USE_MOCKS: 'false'
           NEXT_PUBLIC_LOCAL_PREVIEW: 'false'
           NEXT_TELEMETRY_DISABLED: '1'
@@ -200,6 +201,7 @@ jobs:
         env:
           PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
           SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/farcare-dashboard-smoke
+          SMOKE_API_PROXY: 'true'
         run: node scripts/dashboard_smoke.mjs
       - name: Upload synthetic dashboard evidence
         if: always()

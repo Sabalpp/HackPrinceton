@@ -161,8 +161,9 @@ Do not change a production Worker's feature-branch command to a full deploy.
 
 Keep the existing GitHub required checks. Set repository variables `WEB_BASE_URL`
 to `PUBLIC_ORIGIN` and `API_BASE_URL` to `PUBLIC_ORIGIN/backend` for the existing
-deployment smoke checks. GitHub's existing workflow checks the deployed revision;
-Cloudflare Workers Builds performs the actual publication.
+deployment smoke checks. After publication, manually run **Actions → Deploy → Run
+workflow** to check the deployed revision. Main-push checks complete without waiting
+for a host to deploy. Cloudflare Workers Builds performs the actual publication.
 
 ## First account and sensor setup
 

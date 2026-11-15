@@ -56,7 +56,9 @@ neighbor's help still follow the parent-approval workflow below.
 
 For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
-For Cloudflare, use [the Workers + Containers settings](docs/cloudflare-deployment.md).
+For the simplest deployment of this repository, use [the native Render Blueprint](docs/render-deployment.md):
+API, worker and dashboard run without Docker and use your existing Tiger database.
+For Cloudflare, the existing [Workers + Containers settings](docs/cloudflare-deployment.md) remain available.
 The app needs a running Next.js server and Python backend; it has no static Pages
 output directory. The deployment guide explains how to replace a failing
 `pages.dev` setup with the complete app.
@@ -99,7 +101,7 @@ integrations are unchanged by this cleanup.
 
 `main` is the production branch. Feature work goes through a PR and the full CI
 suite before an ordinary merge commit; this preserves the team's branch history.
-The Cloudflare Worker builds only `main`. `scripts/sync-after-merge.sh` safely merges
+The deployment configurations track `main`. `scripts/sync-after-merge.sh` safely merges
 main back into a feature branch without force-pushing or resetting its history.
 
 For real texts, use `MESSAGING_CHANNEL=photon`, `PHOTON_PLATFORM=sms`, a provisioned
@@ -113,6 +115,7 @@ Console mode and synthetic demo accounts do not establish real SMS delivery.
 - [CLAUDE.md](CLAUDE.md): project context, verified integration facts, key decisions
 - [AGENTS.md](AGENTS.md): collaboration and engineering rules
 - [Codebase organization](docs/codebase-organization.md): file map, collector commands, private data and research
+- [Native Render deployment](docs/render-deployment.md): build settings, Tiger connection, accounts and optional real SMS
 - [CI and browser verification](docs/local-ci.md): checks, screenshots, and deployment gates
 - [Tiger health integration](docs/tiger-health-pipeline.md): real data mapping and limitations
 - [docs/architecture.md](docs/architecture.md) · [docs/api-contracts.md](docs/api-contracts.md) · [docs/demo-plan.md](docs/demo-plan.md)

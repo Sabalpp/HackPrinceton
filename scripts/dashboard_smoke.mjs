@@ -15,13 +15,16 @@ const install = process.env.PLAYWRIGHT_INSTALL_DIR;
 if (!install) throw new Error('Set PLAYWRIGHT_INSTALL_DIR to the temporary playwright@1.56.1 installation.');
 const require = createRequire(path.join(path.resolve(install), 'package.json'));
 const {chromium} = require('playwright');
-const api = 'http://127.0.0.1:18000';
+const backend = 'http://127.0.0.1:18000';
 const web = 'http://127.0.0.1:13000';
+const proxy = process.env.SMOKE_API_PROXY === 'true';
+const api = proxy ? `${web}/backend` : backend;
+const apiPrefix = new URL(api).pathname.replace(/\/$/, '');
 const children = [];
 const streams = [];
 const browserErrors = [];
 const responses = [];
-const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only'};
+const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy};
 let browser, page, closing = false;
 await fs.mkdir(artifacts, {recursive:true});
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'farcare-smoke-db-'));
@@ -85,8 +88,8 @@ async function run() {
   const apiChild = launch(path.join(root,'apps/api/.venv/bin/python'),
     ['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
     path.join(root,'apps/api'), apiEnv, 'api.log');
-  await ready(`${api}/health`, apiChild);
-  const health = await (await fetch(`${api}/health`)).json();
+  await ready(`${backend}/health`, apiChild);
+  const health = await (await fetch(`${backend}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
     health.database === 'ok' && health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
   launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
@@ -101,7 +104,7 @@ async function run() {
     const context = await browser.newContext({viewport});
     await context.route('**/*', route => {
       const origin = new URL(route.request().url()).origin;
-      if (origin === api || origin === web) return route.continue();
+      if (origin === web || (!proxy && origin === backend)) return route.continue();
       browserErrors.push(`Unexpected external request: ${origin}`);
       return route.abort();
     });
@@ -111,7 +114,7 @@ async function run() {
     tab.on('console', message => {if(message.type()==='error') browserErrors.push(message.text());});
     tab.on('response', response => {
       const url = new URL(response.url());
-      if(url.origin===api) responses.push({path:url.pathname,status:response.status()});
+      if(response.url().startsWith(`${api}/`)) responses.push({path:url.pathname.slice(apiPrefix.length),status:response.status()});
       if(response.status()>=400) browserErrors.push(`HTTP ${response.status()}: ${url.pathname}`);
     });
     tab.on('requestfailed', request => {
@@ -120,7 +123,7 @@ async function run() {
     await tab.goto(`${web}/login`, {waitUntil:'domcontentloaded'});
     return tab;
   }
-  const mutation = (tab, path) => tab.waitForResponse(r => new URL(r.url()).pathname===path && r.request().method()==='POST' && r.ok());
+  const mutation = (tab, path) => tab.waitForResponse(r => r.url()===`${api}${path}` && r.request().method()==='POST' && r.ok());
   page = await rolePage();
   const meResponse = page.waitForResponse(response => response.url()===`${api}/api/me` && response.status()===200);
   const overviewResponse = page.waitForResponse(response => response.url()===`${api}/api/parents/parent_001/overview` && response.status()===200);
@@ -182,7 +185,7 @@ async function run() {
   await parent.getByRole('button',{name:'Parent',exact:true}).click();
   await parent.getByRole('heading',{name:'Hello, Sita.',exact:true}).waitFor();
   let parentCheckPosts = 0;
-  parent.on('request',r=>{if(r.method()==='POST' && new URL(r.url()).pathname==='/api/parent/check-in')parentCheckPosts++;});
+  parent.on('request',r=>{if(r.method()==='POST' && r.url()===`${api}/api/parent/check-in`)parentCheckPosts++;});
   await parent.getByRole('button',{name:'I need urgent help',exact:true}).click();
   await parent.getByRole('button',{name:'Go back without sending',exact:true}).click();
   check('Cancelling urgent-help confirmation sends no alert',parentCheckPosts===0);
@@ -199,7 +202,7 @@ async function run() {
 
   const helper = await rolePage({width:390,height:844});
   const helperPaths = [];
-  helper.on('request',request=>{if(new URL(request.url()).origin===api)helperPaths.push(new URL(request.url()).pathname);});
+  helper.on('request',request=>{if(request.url().startsWith(`${api}/`))helperPaths.push(new URL(request.url()).pathname.slice(apiPrefix.length));});
   await helper.getByRole('button',{name:'Helper',exact:true}).click();
   await helper.getByRole('heading',{name:'Your care requests',exact:true}).waitFor();
   await parent.getByRole('button',{name:/^Ask for help/}).click();
@@ -227,7 +230,7 @@ async function run() {
   const familyRequests = await (await page.context().request.get(`${api}/api/parents/parent_001/care-requests`)).json();
   check('The family account sees the completed task',familyRequests.some(r=>r.request_id===request.request_id && r.status==='completed'));
   await page.goto(`${web}/demo`,{waitUntil:'domcontentloaded'});
-  const devPeople = page.waitForResponse(r=>new URL(r.url()).pathname==='/api/demo/people' && r.ok());
+  const devPeople = page.waitForResponse(r=>r.url()===`${api}/api/demo/people` && r.ok());
   await page.getByLabel('Admin token',{exact:true}).fill('dev-admin-token');
   const devResult = await devPeople;
   check('Explicit development controls omit personal session cookies',!(await devResult.request().allHeaders()).cookie);
