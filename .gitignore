@@ -4,8 +4,15 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.venv-collector/
+*.egg-info/
+build/
+dist/
 *.db
 *.db-journal
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
 
 # Secrets / env (only *.example files are committed)
 .env
@@ -21,6 +28,21 @@ out/
 
 # Datasets (never commit raw sensor datasets)
 research/**/data/
+# Collector records, credentials and workstation output stay private.
+.google-health/
+api_data/
+pipeline_data/
+hr_demo/
+heart_rate.jsonl
+ble_status.json
+services.json
+scan_results.json
+air_keys.json
+air_capture.log
+air_probe.json
+air_probe_frames.jsonl
+client_secret*.json
+credentials*.json
 
 # OS / editors
 .DS_Store

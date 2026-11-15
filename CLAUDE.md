@@ -14,6 +14,8 @@ optional Tiger Data / Photon Voice).
    [Sabal](docs/agents/SABAL.md). Work only on your branch and owned paths.
 3. Contracts: [docs/api-contracts.md](docs/api-contracts.md). Photon track: [docs/photon-track.md](docs/photon-track.md). Architecture:
    [docs/architecture.md](docs/architecture.md). Demo: [docs/demo-plan.md](docs/demo-plan.md).
+4. [Codebase organization](docs/codebase-organization.md): moved collector files, local data
+   paths, launch commands, and the boundary between production code and research.
 
 ## The one workflow that must always work
 
@@ -32,13 +34,30 @@ apps/api/                FastAPI backend (Python 3.12, uv) — Sumit owns; Sabal
   app/health/                Tiger live readings, trusted source registry, daily sync, personal baselines
   app/fall_detection/        synthetic IMU traces + explainable detector
   tests/                     API, permissions, SMS, sensor and worker tests (SQLite + Postgres)
+apps/collector/          Existing Mac collector (Python 3.9+) — Sabal owns
+  farcare_collector/integrations/  BLE, Google OAuth/exports, Tiger delivery and SQL assets
+  farcare_collector/health/        normalization, descriptive features and offline reports
+  farcare_collector/services/      durable SQLite ingestion and polling
+  tests/                          synthetic Python and Node tests
+  runtime/                        managed-Node publisher and Google refresh fallback
 apps/web/                Next.js 16 + TypeScript + Tailwind 4 — Saksham owns
   lib/api-types.ts           GENERATED from packages/contracts/openapi.json (never hand-edit)
   lib/api.ts, lib/mocks.ts   typed client + contract-checked mocks (NEXT_PUBLIC_USE_MOCKS=true)
 packages/contracts/      exported JSON Schemas + OpenAPI + fixtures (generated; CI checks drift)
 scripts/                 setup-github.sh (admin, once), smoke_test.sh, sync-after-merge.sh
+  local/                    Mac launcher, private preview preparation, offline maintenance
+  verification/             manual checks, some requiring existing private records
+research/fitbit_air/      existing proprietary-BLE probe and candidate-key experiment
+render.yaml              native Render API + worker + dashboard, using external Tiger
 docs/                    architecture, contracts, demo plan, per-developer instructions
 ```
+
+The collector was moved from the surrounding workspace; it is not a replacement backend.
+Use package-qualified imports and `python -m farcare_collector...` entry points. `FARCARE_WORKSPACE`
+selects private recordings, Google tokens and pipeline state. In the existing `app_repo`
+checkout the default remains its parent workspace; a normally named checkout defaults to its
+repository root. Set an explicit external directory for new setups. No personal data moved
+into Git. Android/emulator and third-party reverse-engineering workspaces remain local.
 
 ## Run it
 
@@ -103,6 +122,7 @@ Don't send `temperature` (deprecated for Gemini 3+).
 | Explicit `console` or `photon` gateway | Development/CI can simulate delivery; live Photon failures never silently become success |
 | DB-backed timeline + SSE that tails it | Real-time dashboard that survives restarts; no extra infra |
 | Standalone worker with PostgreSQL mutex and durable queues | Timers, sensor sync, inbound messages and retries survive process restarts |
+| Separate collector package and private workspace | Preserves the Mac Python environment and existing recordings while making collector code reviewable and testable |
 | Synthetic IMU traces + threshold detector | Fitbit exposes no raw IMU; pipeline is real, data is labeled simulated |
 
 ## Current integration and deployment
@@ -119,6 +139,9 @@ Don't send `temperature` (deprecated for Gemini 3+).
   senders/recipients. STOP cancels pending texts, START does not replay them.
 - Existing databases receive additive schema upgrades at startup. No upgrade
   infers consent, maps real readings to demo people, or deletes existing rows.
+- `render.yaml` provides a native deployment without Docker: Python API, separate worker,
+  and Next.js web service use the existing Tiger database. See `docs/render-deployment.md`.
+  It starts with console messaging; real Photon requires configured sender, secrets and opt-in.
 - Cloudflare uses Workers + Containers, not static Pages. The account needs paid
   Containers access. A successful image build alone does not prove the app is live.
 - Readiness checks compare `/health.commit` with the deployed Git SHA and check

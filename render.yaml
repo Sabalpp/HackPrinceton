@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# Native Render services; Tiger remains the external database.
+# Applying this Blueprint creates three paid services. Review the dashboard quote first.
+# Setup and optional real messaging: docs/render-deployment.md.
+services:
+  - type: web
+    name: farcare-api
+    runtime: python
+    plan: 0.5c-512mb
+    region: virginia
+    branch: main
+    rootDir: apps/api
+    autoDeployTrigger: checksPass
+    buildCommand: uv sync --frozen --no-dev --no-install-project
+    startCommand: .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 5
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: farcare-runtime
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: worker
+    name: farcare-worker
+    runtime: python
+    plan: 0.5c-512mb
+    region: virginia
+    branch: main
+    rootDir: apps/api
+    autoDeployTrigger: checksPass
+    buildCommand: uv sync --frozen --no-dev --no-install-project
+    startCommand: .venv/bin/python -m app.worker
+    envVars:
+      - fromGroup: farcare-runtime
+      - key: DATABASE_URL
+        fromService:
+          name: farcare-api
+          type: web
+          envVarKey: DATABASE_URL
+      - key: CORS_ORIGINS
+        fromService:
+          name: farcare-api
+          type: web
+          envVarKey: CORS_ORIGINS
+
+  - type: web
+    name: farcare-web
+    runtime: node
+    plan: 0.5c-512mb
+    region: virginia
+    branch: main
+    rootDir: apps/web
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- --hostname 0.0.0.0 --port $PORT
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "24.14.0"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+      - key: NEXT_PUBLIC_API_URL
+        value: /backend
+      - key: NEXT_PUBLIC_USE_MOCKS
+        value: "false"
+      - key: NEXT_PUBLIC_LOCAL_PREVIEW
+        value: "false"
+      - key: FARCARE_API_ORIGIN
+        fromService:
+          name: farcare-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+envVarGroups:
+  - name: farcare-runtime
+    envVars:
+      # apps/api/.python-version selects Python 3.12 for both native services.
+      - key: UV_VERSION
+        value: "0.13.7"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: APP_ENV
+        value: production
+      - key: BACKGROUND_TASKS_ENABLED
+        value: "false"
+      - key: DEMO_MODE
+        value: "false"
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: SEED_HEALTH_DATA
+        value: "false"
+      - key: REGISTRATION_ENABLED
+        value: "false"
+      - key: PROACTIVE_CHECKINS_ENABLED
+        value: "false"
+      - key: MESSAGING_CHANNEL
+        value: console
+      - key: PHOTON_PLATFORM
+        value: sms
+      - key: PHOTON_DELIVERY
+        value: "off"
+      - key: INGEST_API_KEY
+        generateValue: true
+
+previews:
+  generation: "off"

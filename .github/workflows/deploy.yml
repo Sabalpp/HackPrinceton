@@ -1,11 +1,12 @@
-# Production deploy verification. Only runs for commits on main.
+# Production checks on main; hosted deployment verification is manually triggered.
 #
 # Hosting model (see docs/architecture.md):
-# - Frontend: Vercel Git integration (root directory apps/web) deploys main automatically.
-# - Backend: a container host that auto-deploys main (Render/Railway/Fly/Vultr), OR set the
-#   BACKEND_DEPLOY_HOOK_URL secret and this workflow triggers it.
-# This workflow re-runs CI on main, triggers the backend hook if configured, waits until the
-# API reports the new commit, then runs smoke tests against the live URLs.
+# - Alternate Vercel frontend Git integration still uses root directory apps/web.
+# - The native Render Blueprint deploys main after CI passes, without Docker.
+# - Existing container hosts remain supported by their Git integrations.
+# Automatic main runs must finish before Render's checksPass deployment can start.
+# Run this workflow manually after deployment to trigger an optional backend hook
+# and verify the live revision/URLs; waiting for that revision on push would deadlock.
 #
 # Repository variables: API_BASE_URL, WEB_BASE_URL. Secrets: BACKEND_DEPLOY_HOOK_URL (optional).
 name: Deploy
@@ -30,7 +31,7 @@ jobs:
   backend:
     name: Backend deploy + smoke test
     needs: checks
-    if: github.ref == 'refs/heads/main' && vars.API_BASE_URL != ''
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.API_BASE_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -65,7 +66,7 @@ jobs:
   frontend:
     name: Frontend smoke test
     needs: checks
-    if: github.ref == 'refs/heads/main' && vars.WEB_BASE_URL != ''
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.WEB_BASE_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -31,6 +31,8 @@ breaking each other. Context lives in [CLAUDE.md](CLAUDE.md).
 | `apps/api/**` (except below) | Sumit | open an issue / ask first |
 | `apps/api/app/health/**`, `apps/api/tests/test_health*.py` | Sabal | ask first |
 | `apps/api/app/models.py` → `HealthObservationRow` | Sabal (coordinate with Sumit) | ask first |
+| `apps/collector/**`, `research/fitbit_air/**` | Sabal | ask first |
+| `scripts/local/**`, `scripts/verification/**` | Sabal (coordinate API/runtime changes with Sumit) | ask first |
 | `apps/web/**` | Saksham | ask first |
 | `apps/api/app/schemas/contracts.py`, `packages/contracts/**` | Shared (Sumit coordinates) | contract-change process |
 | `.github/**`, `scripts/setup-github.sh` | Sumit (+ repo owner review) | ask first |
@@ -46,12 +48,13 @@ CODEOWNERS enforces review for `.github/` and the contracts.
 | Saksham | `feature/saksham-ui` |
 | Sabal | `feature/sabal-fitbit` |
 
-Flow: commit on your branch → push → open PR into `main` → CI runs → a teammate approves →
-auto-merge squashes it in once all required checks pass.
+`main` is the production branch. Flow: commit on your branch → push → open PR into `main` →
+CI and required reviews pass → ordinary merge commit. Preserve the three feature branches;
+never reset or force-push a teammate's history.
 
-**After your PR is squash-merged**, run `scripts/sync-after-merge.sh` before continuing. Squash
-merges rewrite history, so the old branch would conflict. The script refuses if you have commits
-that weren't part of the merged PR.
+**After your PR is merged**, run `scripts/sync-after-merge.sh` before continuing. It merges
+`origin/main` into your feature branch and pushes normally. It stops if you have commits that
+were not part of the merged PR; preserve those commits and resolve the divergence deliberately.
 
 ## Commands (run before every commit)
 
@@ -61,6 +64,28 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 # Frontend (apps/web)
 npm run lint && npm run typecheck && npm run build
 ```
+
+For collector, research, and launcher changes, also follow the commands in
+[the codebase guide](docs/codebase-organization.md). Collector tests use synthetic temporary
+files; the scripts in `scripts/verification/` that read cached personal records are manual
+checks, not general CI fixtures.
+
+## Where code belongs
+
+- Keep the FastAPI package in `apps/api/app/` and the dashboard in `apps/web/`.
+- Put BLE/cloud/database connectors in `apps/collector/farcare_collector/integrations/`,
+  normalization and reports in `health/`, and ingestion orchestration in `services/`.
+- Keep local launch/maintenance commands in `scripts/local/`, and experiments in
+  `research/fitbit_air/`. Tests belong alongside their owning application or experiment.
+- The collector's Python 3.9 environment is separate from the API's Python 3.12 environment.
+  Do not add macOS BLE dependencies to the backend production lockfile.
+- Keep credentials, recordings, exports, SQLite outboxes, logs and downloaded SDKs outside
+  tracked source. `FARCARE_WORKSPACE` selects the local data workspace; relocation must not
+  silently create a new token cache or data store.
+- Before moving or deleting a file, check imports, dynamic imports, subprocess paths, tests,
+  launchers and documentation. Preserve experimental code unless its removal is justified.
+- Cleanup changes must not add features or alter shared contracts. The existing simulated
+  fall experiment is unchanged by this reorganization; do not add fall-detection work to it.
 
 ## Changing a shared contract
 
