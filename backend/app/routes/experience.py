@@ -27,6 +27,7 @@ from app.schemas.experience import (
     HelpIn,
     InviteIssued,
     ParentHome,
+    RenewInviteIn,
     RequestDecisionIn,
     ResponderApprovalIn,
     ResponderMember,
@@ -346,7 +347,14 @@ def approve_responder(
 def issue_invite(session: Session, person: Person, parent_id: str, creator: Person) -> InviteIssued:
     if session.get(Account, person.id):
         raise HTTPException(409, "This person already has an account")
-    token = secrets.token_urlsafe(32)
+    # action_session serializes issuance across API instances. Do not reuse even
+    # expired codes: an old copied code must never claim a different person's profile.
+    for _ in range(20):
+        token = f"{secrets.randbelow(100_000_000):08d}"
+        if session.get(Invitation, hash_token(token)) is None:
+            break
+    else:
+        raise HTTPException(503, "Could not create an invitation code. Please retry.")
     # Only the newest invitation remains valid for an unclaimed profile.
     for prior in session.exec(
         select(Invitation).where(
@@ -361,7 +369,7 @@ def issue_invite(session: Session, person: Person, parent_id: str, creator: Pers
         parent_id=parent_id,
         created_by_id=creator.id,
         role=person.role,
-        expires_at=utcnow() + timedelta(days=2),
+        expires_at=utcnow() + timedelta(minutes=30),
     )
     session.add(row)
     return InviteIssued(
@@ -407,6 +415,28 @@ def create_parent(
         return issue_invite(session, parent, parent.id, person)
 
     return act(session, person, "create-parent", body, apply)
+
+
+@router.post("/onboarding/invites/renew", response_model=InviteIssued, status_code=201)
+def renew_invite(
+    body: RenewInviteIn,
+    person: Person = Depends(current_person),
+    session: Session = Depends(action_session),
+):
+    prior = session.get(Invitation, hash_token(body.invitation_token))
+    if prior is None or prior.created_by_id != person.id:
+        raise HTTPException(404, "Invitation not found")
+    recipient = session.get(Person, prior.person_id)
+    if prior.consumed_at is not None or recipient is None or recipient.role != prior.role:
+        raise HTTPException(409, "This invitation can no longer be renewed")
+
+    return act(
+        session,
+        person,
+        "renew-invite",
+        body,
+        lambda: issue_invite(session, recipient, prior.parent_id, person),
+    )
 
 
 @router.post("/onboarding/invites", response_model=InviteIssued, status_code=201)
