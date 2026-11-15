@@ -1,14 +1,11 @@
 # Production checks on main; hosted deployment verification is manually triggered.
 #
 # Hosting model (see docs/architecture.md):
-# - Alternate Vercel frontend Git integration still uses root directory frontend.
-# - The native Render Blueprint deploys main after CI passes, without Docker.
-# - Existing container hosts remain supported by their Git integrations.
-# Automatic main runs must finish before Render's checksPass deployment can start.
-# Run this workflow manually after deployment to trigger an optional backend hook
-# and verify the live revision/URLs; waiting for that revision on push would deadlock.
+# - The Vercel Git integration deploys main using the root vercel.json.
+# - It hosts the frontend, mounted Python API and standalone care daemon together.
+# Run this workflow manually after deployment to verify the live revision/URLs.
 #
-# Repository variables: API_BASE_URL, WEB_BASE_URL. Secrets: BACKEND_DEPLOY_HOOK_URL (optional).
+# Repository variables: API_BASE_URL, WEB_BASE_URL.
 name: Deploy
 
 on:
@@ -29,22 +26,13 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   backend:
-    name: Backend deploy + smoke test
+    name: Vercel API smoke test
     needs: checks
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.API_BASE_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Trigger backend deploy hook (optional)
-        env:
-          HOOK: ${{ secrets.BACKEND_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -n "$HOOK" ]; then
-            curl -fsS -X POST "$HOOK" > /dev/null && echo "Deploy hook triggered"
-          else
-            echo "No BACKEND_DEPLOY_HOOK_URL; relying on the host's auto-deploy from main."
-          fi
       - name: Wait for the new version to be live
         env:
           API: ${{ vars.API_BASE_URL }}

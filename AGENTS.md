@@ -79,9 +79,10 @@ checks, not general CI fixtures.
   `research/fitbit_air/`. Tests belong alongside their owning application or experiment.
 - The collector's Python 3.9 environment is separate from the API's Python 3.12 environment.
   Do not add macOS BLE dependencies to the backend production lockfile.
-- Hosting-only supervisors belong in `deploy/`, not the collector. The free native host is
-  `deploy/render/free.yaml`; it sleeps with its worker. Keep production guards, parent consent,
-  durable queues and the distinction between console and delivered SMS intact.
+- Hosting-only supervisors belong in `deploy/`, not the collector. Vercel is the active
+  production host; Render templates are legacy reference and Cloudflare deployment code
+  has been retired. Keep production guards, parent consent, durable queues and the
+  distinction between console and delivered SMS intact.
 - Vercel imports the repository root using `vercel.json`. Keep its small API/worker
   adapters in `backend/app/vercel_*.py`; the collector stays local. Preserve `/backend`
   routing, private response headers and server-only secrets. Vercel's production-only

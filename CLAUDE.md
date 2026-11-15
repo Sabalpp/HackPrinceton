@@ -158,8 +158,8 @@ Don't send `temperature` (deprecated for Gemini 3+).
   including its care worker; never present it as always-on monitoring. Its supervisor starts
   the existing API, worker and dashboard; Tiger retains all durable state. See
   `docs/free-deployment.md` for deployment, account setup without a Render Shell, and SMS gates.
-- Cloudflare uses Workers + Containers, not static Pages. The account needs paid
-  Containers access. A successful image build alone does not prove the app is live.
+- Vercel is the active production host. The Cloudflare deployment and its CI jobs
+  have been removed; do not recreate Worker or Pages deployments for this app.
 - Readiness checks compare `/health.commit` with the deployed Git SHA and check
   the database and standalone worker. Keep `GIT_COMMIT` set by the deployment.
 

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     background_tasks_enabled: bool = True
     session_hours: int = Field(default=24, ge=1, le=168)
     registration_enabled: bool = False
+    # Optional operator-managed sign-in names. They map to existing account emails;
+    # they never create an account or bypass its password/permissions.
+    login_aliases: dict[str, str] = Field(default_factory=dict)
     worker_interval_seconds: float = Field(default=2.0, gt=0)
     worker_batch_size: int = Field(default=25, ge=1, le=100)
     worker_max_delivery_attempts: int = Field(default=5, ge=1, le=10)

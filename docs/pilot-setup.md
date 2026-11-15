@@ -48,6 +48,14 @@ This revokes every existing session. A chosen production identity provider, MFA,
 verification/recovery UX, abuse controls and independent security review remain launch
 decisions, not capabilities claimed by this private-pilot login.
 
+For an operator-managed sign-in name, set the server-only `LOGIN_ALIASES` JSON
+object, for example `{"caregiver":"owner@example.test"}`. The target account must
+already exist. The alias uses its normal password, rate limit, session and role
+permissions. Registration and invitations still require email addresses and the
+usual password policy. An alias grants no administrative role or access to another
+family's records. Keep temporary shared demonstration accounts separate from real
+wearers and do not grant them health-data access.
+
 ## Connect the correct real data
 
 The existing Tiger adapter is machine-authenticated and takes an explicit destination

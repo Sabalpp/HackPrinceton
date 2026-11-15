@@ -1,5 +1,7 @@
 # Free hackathon deployment
 
+Legacy Render reference. The active deployment uses [Vercel](vercel-deployment.md).
+
 [deploy/render/free.yaml](../deploy/render/free.yaml) runs the existing dashboard,
 API and care worker in **one free Render web service**, without Docker. Tiger
 remains the external database. The collector still runs on the Mac near the watch.
@@ -54,9 +56,7 @@ Copy the non-secret environment settings from `deploy/render/free.yaml`, provide
 the Tiger secret and generate a strong `INGEST_API_KEY`. The Blueprint handles
 these settings automatically and is less error-prone.
 
-Automatic deployments wait for checks. If the unused Cloudflare Containers build
-still fails on `main`, disconnect that old Cloudflare build integration before
-switching hosts. Keep GitHub Actions tests enabled; do not bypass them.
+Automatic deployments wait for checks. Keep GitHub Actions tests enabled.
 
 ## Verify accounts and real data
 
@@ -128,7 +128,5 @@ PostgreSQL. Actual Render resource limits, cold starts, the live Tiger connectio
 and handset delivery must be checked after deployment. The three processes share
 the free service's memory; do not infer capacity for multiple families from CI.
 
-The existing Cloudflare Containers and paid native Render deployments remain
-available. A direct free Python Worker was tested and lacks the `hashlib.scrypt`
-function required by existing account passwords; moving this backend there would
-require an explicit authentication and background-work migration.
+The paid native Render template also remains as legacy reference. Use the active
+Vercel configuration for the current deployment.

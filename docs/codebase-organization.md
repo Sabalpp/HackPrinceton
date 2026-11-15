@@ -123,13 +123,11 @@ python scripts/local/run_farcare.py --web --open
 backend/.venv/bin/python scripts/local/prepare_farcare_preview.py --help
 ```
 
-Existing outer-workspace `.command` launchers point to these new paths. API/web container
-entry points and Cloudflare build/deploy roots are unchanged. Do not change Cloudflare to
-static Pages or copy the Mac collector into the backend image as part of this cleanup.
-
-For the native hosting route, [the Render Blueprint](render-deployment.md) starts those same
-API, worker and web applications without Docker. The existing Docker assets stay because
-Cloudflare and CI still use them; collector and research code are excluded from hosted services.
+Existing outer-workspace `.command` launchers point to these paths. Vercel imports
+the repository root and deploys the frontend, API and care daemon. Keep the
+collector and research code out of hosted services. The backend Dockerfile remains
+necessary for the Vercel daemon and its CI image check. Render templates remain as
+legacy reference; the Cloudflare deployment has been removed.
 
 ## Verification
 

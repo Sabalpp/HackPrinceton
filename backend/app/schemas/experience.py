@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.config import get_settings
 from app.schemas.contracts import (
     AssistanceCategory,
     CareRequest,
@@ -52,6 +53,15 @@ class LoginIn(Input):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def sign_in_alias(cls, value):
+        # Aliases are for signing into an already provisioned account, never for
+        # registration or invitation redemption (RegisterIn inherits this model).
+        if cls is LoginIn and isinstance(value, str) and "@" not in value:
+            return get_settings().login_aliases.get(value.strip().casefold(), value)
+        return value
 
     @field_validator("email")
     @classmethod

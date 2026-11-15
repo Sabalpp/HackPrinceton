@@ -27,16 +27,15 @@ CI uploads `synthetic-dashboard-smoke` with Today/Health/Care Circle screenshots
 
 ## What deployment verification proves
 
-The backend deployment gate requires `/health` to report healthy application/database status **and the exact GitHub commit being deployed**. Missing or old commit values keep retrying and eventually fail. Set `GIT_COMMIT`, `RENDER_GIT_COMMIT`, or `RAILWAY_GIT_COMMIT_SHA` on the host.
+The backend deployment gate requires `/health` to report healthy application/database status **and the exact GitHub commit being deployed**. Missing or old commit values keep retrying and eventually fail. Vercel supplies `VERCEL_GIT_COMMIT_SHA` to the API adapter; `GIT_COMMIT` is the explicit fallback.
 
 The hosted frontend check currently proves HTTP availability only. It does not identify the hosted frontend commit or prove that the hosted page is connected to the intended backend. The CI browser check proves the checked-out build works with the synthetic backend. Hosted frontend revision verification requires a build-time revision marker or a deployment-specific URL and is not claimed by this workflow.
 
-The Deploy workflow re-runs CI on pushes to main. Hosted smoke checks and the optional
-deploy hook run only when that workflow is manually dispatched after deployment.
-This lets Render's `checksPass` trigger finish waiting for CI before it starts a new
-deployment; waiting for the new live revision in that same automatic check would
-deadlock. Configure the live URL variables only for the manual verification step.
+The Deploy workflow re-runs CI on pushes to main. Vercel's Git integration handles
+deployment using the root `vercel.json`. Hosted smoke checks run when the Deploy
+workflow is manually dispatched after deployment. Set `API_BASE_URL` to the public
+Vercel origin plus `/backend`, and `WEB_BASE_URL` to the public origin.
 
-No workflow bypasses branch protection. The host's Git integration publishes the
-application after checks pass. Container image checks remain for the existing
-Cloudflare deployment, but the native Render setup requires no Docker installation.
+No workflow bypasses branch protection. Merge only after the PR checks and required
+reviews pass. API container image checks remain because the Vercel care daemon uses
+`backend/Dockerfile`, built remotely. The retired Cloudflare-specific job is removed.
