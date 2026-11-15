@@ -1,12 +1,13 @@
 """OWNER: Sabal. Storage + summary for health observations."""
 
+import os
 from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlmodel import Session, select
 
 from app.db import utcnow
-from app.health import simulated
+from app.health import daily_preview, simulated
 from app.health.trends import DISCLAIMER, compute_trends
 from app.models import HealthObservationRow, Person
 from app.schemas.contracts import DataMode, HealthObservation, HealthSummary, MetricTrend
@@ -51,6 +52,14 @@ def recent(session: Session, parent_id: str, days: int = 35) -> list[HealthObser
 
 
 def summary(session: Session, parent_id: str, days: int = 35) -> HealthSummary:
+    # Only the daily presentation is replaced. recent(), source mappings, live
+    # sensor reads, and the stored real history remain independent of previews.
+    if os.environ.get("SIMULATED_DAILY_PREVIEW"):
+        parent = session.get(Person, parent_id)
+        if parent is not None and parent.role == "parent":
+            preview = daily_preview.summary(parent_id, parent.timezone, days, utcnow())
+            if preview is not None:
+                return preview
     obs = recent(session, parent_id, days)
     modes = {o.data_mode.value for o in obs}
     mode = "none" if not modes else (modes.pop() if len(modes) == 1 else "mixed")
