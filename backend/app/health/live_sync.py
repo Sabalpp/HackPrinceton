@@ -16,7 +16,7 @@ from sqlalchemy import or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
-from app.db import utcnow
+from app.db import utcnow, watch_data_session
 from app.health import service, tiger
 from app.health.live_models import WatchSourceLink
 from app.health.trends import compute_trends
@@ -32,19 +32,20 @@ SYNC_SECONDS = 60
 def _fetch(
     session: Session, link: WatchSourceLink, parent: Person, now: datetime
 ) -> list[HealthObservation]:
-    if session.get_bind().dialect.name != "postgresql":
-        raise ValueError("Tiger PostgreSQL is not configured")
     today = now.astimezone(ZoneInfo(parent.timezone)).date()
-    session.execute(text("SET LOCAL statement_timeout = '5s'"))
-    return tiger.fetch_daily(
-        session,
-        subject_id=link.subject_id,
-        parent_id=parent.id,
-        start=today - timedelta(days=34),
-        end=today,
-        now=now,
-        timezone=parent.timezone,
-    )
+    with watch_data_session(session) as watch:
+        if watch.get_bind().dialect.name != "postgresql":
+            raise ValueError("Tiger PostgreSQL is not configured")
+        watch.execute(text("SET LOCAL statement_timeout = '5s'"))
+        return tiger.fetch_daily(
+            watch,
+            subject_id=link.subject_id,
+            parent_id=parent.id,
+            start=today - timedelta(days=34),
+            end=today,
+            now=now,
+            timezone=parent.timezone,
+        )
 
 
 def queue_daily_notices(

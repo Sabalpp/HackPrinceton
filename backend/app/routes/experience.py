@@ -36,7 +36,7 @@ from app.schemas.experience import (
     SharingIn,
     SharingMember,
 )
-from app.services import care_requests, safety, timeline
+from app.services import actions, care_requests, safety, timeline
 from app.worker import runtime_status
 
 router = APIRouter(prefix="/api", tags=["care experiences"])
@@ -261,60 +261,16 @@ def responder_task(session: Session, row: CareRequestRow) -> ResponderTask:
 
 
 def assigned_task(session: Session, person: Person, request_id: str) -> CareRequestRow:
-    row = session.get(CareRequestRow, request_id)
-    member = (
-        session.exec(
-            select(CareCircleMember).where(
-                CareCircleMember.parent_id == row.parent_id,
-                CareCircleMember.responder_id == person.id,
-                CareCircleMember.active == True,  # noqa: E712
-            )
-        ).first()
-        if row
-        else None
-    )  # noqa: E712
-    approved = row and (
-        row.parent_approved
-        or (
-            row.origin == "emergency"
-            and row.approval_basis == "emergency_policy"
-            and member
-            and member.emergency_contact
-        )
-    )
-    if not row or row.responder_id != person.id or not member or not approved:
-        raise HTTPException(404, "Task not found")
-    return row
+    try:
+        return actions.assigned_task(session, person, request_id)
+    except actions.ActionError as exc:
+        raise HTTPException(exc.status, str(exc)) from None
 
 
 @router.get("/responder/tasks", response_model=ResponderTasks)
 def get_tasks(person: Person = Depends(current_person), session: Session = Depends(get_session)):
     role(person, "responder")
-    rows = session.exec(
-        select(CareRequestRow)
-        .join(
-            CareCircleMember,
-            (CareCircleMember.parent_id == CareRequestRow.parent_id)
-            & (CareCircleMember.responder_id == CareRequestRow.responder_id),
-        )
-        .where(
-            CareRequestRow.responder_id == person.id,
-            (
-                (CareRequestRow.parent_approved == True)  # noqa: E712
-                | (
-                    (CareRequestRow.origin == "emergency")
-                    & (CareRequestRow.approval_basis == "emergency_policy")
-                    & CareCircleMember.emergency_contact.is_(True)
-                )
-            ),
-            CareCircleMember.active == True,  # noqa: E712
-            CareRequestRow.status.in_(
-                ["sent", "accepted", "completed", "declined", "cancelled", "expired"]
-            ),
-        )
-        .order_by(CareRequestRow.updated_at.desc())
-        .limit(50)
-    ).all()
+    rows = actions.responder_tasks(session, person)
     return ResponderTasks(
         tasks=[responder_task(session, row) for row in rows], agent=agent_status(session, person)
     )
@@ -330,19 +286,12 @@ def reply_to_task(
     role(person, "responder")
 
     def apply():
-        row = assigned_task(session, person, request_id)
-        required = "accepted" if body.decision == "complete" else "sent"
-        if row.status != required:
-            raise HTTPException(409, "This task changed. Refresh before replying.")
-        intent = {"accept": "accepted", "decline": "declined", "complete": "completed"}[
-            body.decision
-        ]
-        message = (
-            f"Yes, in {body.eta_minutes} minutes"
-            if body.eta_minutes and body.decision == "accept"
-            else body.note
-        )
-        care_requests.apply_responder_reply(session, row, person, intent, message)
+        try:
+            row = actions.respond_to_task(
+                session, person, request_id, body.decision, body.eta_minutes, body.note
+            )
+        except actions.ActionError as exc:
+            raise HTTPException(exc.status, str(exc)) from None
         return responder_task(session, row)
 
     return act(session, person, "task-reply:" + request_id, body, apply)
@@ -355,28 +304,10 @@ def set_sharing(
     session: Session = Depends(action_session),
 ):
     role(person, "parent")
-    link = session.exec(
-        select(FamilyLink).where(
-            FamilyLink.parent_id == person.id, FamilyLink.member_id == body.member_id
-        )
-    ).first()
-    if not link:
-        raise HTTPException(404, "Family member not found")
-    link.share_health, link.share_checkins = body.share_health, body.share_checkins
-    session.add(link)
-    session.add(
-        AccessAudit(
-            id=new_id("audit"), actor_id=person.id, parent_id=person.id, action="sharing.changed"
-        )
-    )
-    timeline.record(
-        session,
-        person.id,
-        "sharing.changed",
-        "The parent updated sharing preferences.",
-        visibility=timeline.FAMILY,
-    )
-    session.flush()
+    try:
+        actions.set_sharing(session, person, body.member_id, body.share_health, body.share_checkins)
+    except actions.ActionError as exc:
+        raise HTTPException(exc.status, str(exc)) from None
     return next(
         member
         for member in sharing_members(session, person.id)

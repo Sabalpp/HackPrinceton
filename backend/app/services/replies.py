@@ -109,8 +109,24 @@ def parse_yes_no(text: str) -> Literal["yes", "no"] | None:
     return None
 
 
+# Everyday tasks. A message about one of these ("can someone help me with groceries") is a
+# care request, not an answer to "Are you okay?", unless it also contains an emergency phrase.
+CARE_TASK_WORDS = re.compile(
+    r"\b(grocer\w*|shopping|ride|lift|taxi|appointment|medicine|medication|pharmacy|"
+    r"prescription|pills|meal|cook\w*|dinner|lunch|clean\w*|repair|fix|laundry|errand\w*|"
+    r"company|visit)\b"
+)
+
+
+def looks_like_care_request(text: str) -> bool:
+    return bool(CARE_TASK_WORDS.search(_norm(text))) and not looks_like_emergency(text)
+
+
 def parse_safety_reply(text: str) -> Literal["ok", "help"] | None:
-    """Reply to 'Are you okay?'. HELP wins over OK when both appear (fail safe)."""
+    """Reply to 'Are you okay?'. HELP wins over OK when both appear (fail safe).
+    Everyday care requests are not safety answers (they go to the normal request flow)."""
+    if looks_like_care_request(text):
+        return None
     norm = _norm(text)
     if any(re.search(p, norm) for p in HELP_PATTERNS) or looks_like_emergency(text):
         return "help"

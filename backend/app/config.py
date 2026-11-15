@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str = "sqlite:///./farcare.db"
+    # Optional, READ-ONLY source of live watch data (Tiger Data / TimescaleDB, the database the
+    # collector writes air_health.* into). When blank, watch data is read from DATABASE_URL
+    # (single-database deployments). FarCare never writes to this connection.
+    tiger_database_url: str = ""
     cors_origins: str = "http://localhost:3000"
     background_tasks_enabled: bool = True
     session_hours: int = Field(default=24, ge=1, le=168)
@@ -72,6 +76,9 @@ class Settings(BaseSettings):
     # auto: real Photon when PHOTON_API_KEY + PHOTON_PROJECT_ID are set, otherwise simulated.
     # console: always simulate (keep your keys in .env but run with mock people).
     messaging_channel: Literal["auto", "photon", "console"] = "auto"
+    # Public web address of the app (e.g. https://farcare.example). When set, texts include
+    # short links back to the right app screen (/parent, /respond, /). Leave blank to omit.
+    public_app_url: str = ""
     photon_poll_interval_seconds: float = 2.0
 
     # --- Gemini -------------------------------------------------------------

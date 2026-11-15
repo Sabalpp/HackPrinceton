@@ -16,6 +16,7 @@ def apply_additive_upgrades(connection: Connection) -> None:
             "photon_platform": "VARCHAR",
             "messaging_opted_out_at": timestamp,
         },
+        "outbound_messages": {"access_contexts": "JSON"},
         "delivery_jobs": {
             "parent_id": "VARCHAR",
             "visibility": "VARCHAR NOT NULL DEFAULT 'unscoped'",

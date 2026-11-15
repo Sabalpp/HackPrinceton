@@ -38,6 +38,20 @@ the destination directory before atomic replacement, so overlapping writers cann
 remove each other's temporary file. A healthy uploader does not imply that the
 band is connected: check the BLE timestamp as well as the delivery backlog.
 
+## Separate read-only Tiger connection (optional)
+
+Set `TIGER_DATABASE_URL` (in `backend/.env` or the host's secrets) to read watch data from
+Tiger **without** moving FarCare's own tables there. Accounts, messages, care requests and
+the worker queue stay in `DATABASE_URL`; only `air_health.*` reads (live sensor panel, source
+verification, daily projection) use the Tiger connection, and every session on it is
+`READ ONLY`. Leave it blank for single-database deployments, which behave as before.
+
+Verify the connection, the collector tables and recent wearers (no values printed):
+
+```sh
+cd backend && uv run python scripts/check_tiger.py
+```
+
 ## Explicit account and source registration
 
 The API and worker must use the same PostgreSQL `DATABASE_URL` as the collector's

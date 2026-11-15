@@ -8,6 +8,8 @@ idempotency key), records every attempt in `outbound_messages`, and picks the ch
 """
 
 import logging
+from contextlib import contextmanager
+from contextvars import ContextVar
 from types import SimpleNamespace
 
 from sqlmodel import Session
@@ -36,6 +38,21 @@ def is_reachable(person: Person, session: Session | None = None) -> bool:
     return photon_routed(person)
 
 
+# Person currently chatting from the app (set by the conversation router for one turn).
+_in_app_person: ContextVar[str | None] = ContextVar("farcare_in_app_person", default=None)
+
+
+@contextmanager
+def replying_in_app(person_id: str | None):
+    """While handling a message typed in the app, replies to that person stay in the app
+    (safety prompts included). Messages to other people keep their own channels."""
+    token = _in_app_person.set(person_id)
+    try:
+        yield
+    finally:
+        _in_app_person.reset(token)
+
+
 def send_to_person(
     session: Session,
     person: Person,
@@ -46,7 +63,10 @@ def send_to_person(
     visibility: str = "direct",
     request_id: str | None = None,
     offer_only: bool = False,
+    in_app: bool = False,
 ) -> OutboundMessage:
+    """in_app=True: this is a reply to something the person typed in the app, so it is shown
+    in their app conversation instead of being pushed to iMessage/SMS."""
     existing = session.get(OutboundMessage, idempotency_key)
     if existing is not None:
         return existing
@@ -67,10 +87,16 @@ def send_to_person(
     permission_error = delivery.authorization_error(session, person, context_view)
     account = session.get(Account, person.id)
     channel = channel_name()
-    if account is not None and not (channel == "photon" and photon_routed(person)):
+    in_app = in_app or _in_app_person.get() == person.id
+    if in_app or (account is not None and not (channel == "photon" and photon_routed(person))):
         channel = "in_app"
     msg = OutboundMessage(
-        id=idempotency_key, person_id=person.id, channel=channel, text=text, status="simulated"
+        id=idempotency_key,
+        person_id=person.id,
+        channel=channel,
+        text=text,
+        status="simulated",
+        access_contexts=delivery.message_contexts(session, person, context),
     )
     if permission_error:
         msg.status = "cancelled"

@@ -22,7 +22,7 @@ from app.db import new_id, utcnow
 from app.health import service as health
 from app.models import CareCircleMember, CareRequestRow, CheckInRow, ConversationTurn, Person
 from app.schemas.contracts import AssistanceCategory, CareRequestStatus
-from app.services import care_requests, safety, timeline
+from app.services import actions, care_requests, safety, timeline
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +43,12 @@ yourself and never claim someone was contacted; the system adds the approval que
 neutrally in their words.
 - get_activity_summary: recent activity compared with their own usual pattern.
 - list_care_circle / get_request_status: who can help, and status of existing requests.
+- get_my_status: what is happening right now (open requests, any safety check, latest \
+check-in), the same facts {name}'s FarCare app shows.
+- cancel_request: when {name} no longer needs an open request. If they have several, ask \
+which one. Anyone already asked is told it is no longer needed.
+- update_sharing: when {name} clearly asks to start or stop sharing their health data or \
+check-ins with a named family member. Confirm what changed in your reply.
 - report_urgent_help: if they describe a fall, injury, chest pain, trouble breathing, or \
 anything that could be an emergency. When unsure, use it.
 
@@ -71,6 +77,28 @@ def _decl(name: str, description: str, properties: dict, required: list[str]) ->
 
 def _declarations() -> list[Any]:
     return [
+        _decl(
+            "get_my_status",
+            "What is happening for them right now (requests, safety, check-in).",
+            {},
+            [],
+        ),
+        _decl(
+            "cancel_request",
+            "Cancel one of their open help requests.",
+            {"what": {"type": "string", "description": "Which request, e.g. 'groceries'"}},
+            [],
+        ),
+        _decl(
+            "update_sharing",
+            "Start or stop sharing health data / check-ins with family.",
+            {
+                "family_member": {"type": "string", "description": "Name or relation, e.g. Aarav"},
+                "share_health": {"type": "boolean"},
+                "share_checkins": {"type": "boolean"},
+            },
+            ["family_member"],
+        ),
         _decl(
             "request_assistance",
             "Start a request for practical help from the Care Circle.",
@@ -240,6 +268,62 @@ class Tools:
             )
         return {"open_requests": out}
 
+    def t_get_my_status(self) -> dict:
+        return actions.parent_status(self.s, self.parent)
+
+    def t_cancel_request(self, what: str = "") -> dict:
+        open_reqs = [
+            r
+            for r in care_requests.open_requests(self.s, self.parent.id)
+            if r.origin == "conversation"
+        ]
+        wanted = what.strip().lower()
+        if wanted:
+            matches = [
+                r
+                for r in open_reqs
+                if wanted in care_requests.label(r).lower()
+                or wanted.replace(" ", "_") in r.request_type
+            ]
+            if not matches:
+                return {
+                    "status": "ask_which",
+                    "open_requests": [care_requests.label(r) for r in open_reqs],
+                }
+            open_reqs = matches
+        if not open_reqs:
+            return {"status": "nothing_to_cancel"}
+        if len(open_reqs) > 1:
+            return {
+                "status": "ask_which",
+                "open_requests": [care_requests.label(r) for r in open_reqs],
+            }
+        try:
+            row = actions.cancel_request(self.s, self.parent, open_reqs[0].id)
+        except actions.ActionError as exc:
+            return {"error": str(exc)}
+        return {"status": "cancelled", "what": care_requests.label(row)}
+
+    def t_update_sharing(
+        self,
+        family_member: str = "",
+        share_health: bool | None = None,
+        share_checkins: bool | None = None,
+    ) -> dict:
+        link = actions.family_by_name(self.s, self.parent, family_member)
+        if link is None:
+            return {"status": "ask_who"}
+        health = link.share_health if share_health is None else bool(share_health)
+        checkins = link.share_checkins if share_checkins is None else bool(share_checkins)
+        actions.set_sharing(self.s, self.parent, link.member_id, health, checkins)
+        member = self.s.get(Person, link.member_id)
+        return {
+            "status": "updated",
+            "member": member.display_name if member else family_member,
+            "share_health": health,
+            "share_checkins": checkins,
+        }
+
     def t_report_urgent_help(self, description: str = "") -> dict:
         safety.open_from_message(self.s, self.parent, description or "(urgent help requested)")
         self.escalated = True
@@ -249,7 +333,7 @@ class Tools:
 # --------------------------------------------------------------------------- entry point
 
 
-def respond(session: Session, parent: Person, text: str) -> AgentResult:
+def respond(session: Session, parent: Person, text: str, channel: str = "text") -> AgentResult:
     tools = Tools(session, parent)
     mode: Literal["gemini", "fallback"] = "fallback"
     reply = ""
@@ -270,6 +354,9 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
         # ("Shall I send that request?"), so keep only the model's non-question sentences.
         lead = _without_questions(reply)
         reply = f"{lead}\n\n{prompt}" if lead else prompt
+        url = get_settings().public_app_url.rstrip("/")
+        if url and channel != "app":
+            reply += f"\n\nYou can also follow it in the FarCare app: {url}/parent"
     return AgentResult(
         reply=reply,
         mode=mode,
@@ -279,9 +366,20 @@ def respond(session: Session, parent: Person, text: str) -> AgentResult:
     )
 
 
+CLAIMS_CONTACT = re.compile(
+    r"\b(i'?ve|i have|i(?:'| ha)ve already|already)\s+(asked|contacted|messaged|texted|sent|"
+    r"reached out|notified|told)\b|\b(is|are) on (?:the|her|his|their) way\b|\bon the way\b",
+    re.I,
+)
+
+
 def _without_questions(text: str) -> str:
+    """Keep the model's statements, minus its own questions and any claim that someone was
+    already contacted: before the parent's YES, nobody has been."""
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-    return " ".join(x for x in sentences if x and not x.endswith("?")).strip()
+    return " ".join(
+        x for x in sentences if x and not x.endswith("?") and not CLAIMS_CONTACT.search(x)
+    ).strip()
 
 
 def history(session: Session, person_id: str, limit: int = 12) -> list[ConversationTurn]:
@@ -426,6 +524,25 @@ GREETINGS = ("hi", "hello", "hey", "namaste", "good morning", "good evening")
 def _fallback_reply(session: Session, parent: Person, text: str, tools: Tools) -> str:
     lower = text.lower()
     name = parent.display_name
+    if re.search(r"\b(cancel|don'?t need|no longer need|never ?mind)\b", lower):
+        what = next((w for c, ws in CATEGORY_KEYWORDS for w in ws if w in lower), "")
+        result = tools.run("cancel_request", {"what": what})
+        if result.get("status") == "cancelled":
+            return f"Okay, I've cancelled {result['what']}. Anyone I'd asked has been told."
+        if result.get("status") == "ask_which":
+            return "Which one should I cancel? " + "; ".join(result["open_requests"])
+        return "You don't have any open requests to cancel."
+    if re.search(r"\b(status|any updates?|what'?s happening|what is happening)\b", lower):
+        st = tools.run("get_my_status", {})
+        parts = [
+            f"{r['what']}: {r['status']}" + (f" with {r['helper']}" if r["helper"] else "")
+            for r in st.get("open_requests", [])
+        ]
+        return (
+            ("Here's where things are: " + "; ".join(parts) + ".")
+            if parts
+            else (f"Nothing is pending right now, {name}. How are you feeling today?")
+        )
     for category, words in CATEGORY_KEYWORDS:
         if any(w in lower for w in words):
             when = WHEN_RE.search(text)

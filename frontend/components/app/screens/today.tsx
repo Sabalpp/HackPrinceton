@@ -9,6 +9,8 @@ import { isRequestOpen, sortRequests, summarize, type Summary } from "@/lib/summ
 import { useNow } from "@/lib/use-now";
 import { SimulatedPill } from "@/components/farcare/ui";
 import { LiveSensorPanel } from "@/components/portal/live-sensors";
+import { FarCareChat } from "@/components/portal/chat";
+import { useSession } from "@/lib/session";
 import { TwoClocks } from "@/components/ui/time";
 import { Ready } from "../shell";
 import { EmptyBlock, SectionTitle } from "../kit";
@@ -155,6 +157,8 @@ function Stat({ Icon, value, label }: { Icon: typeof Users; value: number | stri
 
 function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerName: string }) {
   const { timeline } = useDashboard();
+  const { session } = useSession();
+  const isFamily = session?.person?.role === "child";
   const name = o.parent.display_name;
   const relOf = (id: string | null) => o.care_circle.find((m) => m.responder_id === id)?.relationship;
   const openIncidentIds = new Set(o.active_incidents.map((i) => i.incident_id));
@@ -231,6 +235,8 @@ function Today({ overview: o, viewerName }: { overview: ParentOverview; viewerNa
           ))}
         </ul>
       </section>
+
+      {isFamily && <FarCareChat role="child" />}
     </div>
   );
 }

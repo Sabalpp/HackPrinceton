@@ -30,6 +30,8 @@ the demo admin. Otherwise the API returns 404.
 | --- | --- | --- | --- |
 | GET | `/health` | none | `SystemHealth` (status, db, messaging photon/console, ai gemini/fallback, commit) |
 | GET | `/api/me` | session cookie | `Me` (person + accessible `parent_ids`) |
+| GET | `/api/me/conversation?limit=60` | session cookie | `ChatThread` with only the signed-in person's messages, filtered by current sharing and task permissions |
+| POST | `/api/me/conversation` | session cookie + CSRF | `ChatThread`; `ChatIn.text` runs the existing conversation and care-action rules, with replies in the app |
 | GET | `/api/parents/{id}/overview` | session cookie | `ParentOverview` (one call for the main dashboard) |
 | GET | `/api/parents/{id}/health?days=35` | session cookie | `HealthSummary` or `null` if not shared |
 | GET | `/api/parents/{id}/care-circle` | session cookie | `CareCircleMember[]` |

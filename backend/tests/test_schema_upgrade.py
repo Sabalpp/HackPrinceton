@@ -21,6 +21,12 @@ def test_old_people_and_delivery_rows_survive_idempotent_upgrade(tmp_path):
         connection.execute(
             text("INSERT INTO delivery_jobs VALUES ('old-job', 'Synthetic message')")
         )
+        connection.execute(
+            text("CREATE TABLE outbound_messages (id VARCHAR PRIMARY KEY, text VARCHAR)")
+        )
+        connection.execute(
+            text("INSERT INTO outbound_messages VALUES ('old-out', 'Existing message')")
+        )
         apply_additive_upgrades(connection)
         apply_additive_upgrades(connection)
         person = connection.execute(text("SELECT * FROM people")).mappings().one()
@@ -32,6 +38,9 @@ def test_old_people_and_delivery_rows_survive_idempotent_upgrade(tmp_path):
         assert job["visibility"] == "unscoped"
         assert job["parent_id"] is None
         assert not job["require_share_health"]
+        outbound = connection.execute(text("SELECT * FROM outbound_messages")).mappings().one()
+        assert outbound["text"] == "Existing message"
+        assert outbound["access_contexts"] is None  # no inferred legacy sharing grant
         indexes = inspect(connection).get_indexes("delivery_jobs")
         assert sum(i["name"] == "ix_delivery_jobs_parent_id" for i in indexes) == 1
 

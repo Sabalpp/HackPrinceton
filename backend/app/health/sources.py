@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
-from app.db import init_db, new_id, session_scope, utcnow
+from app.db import init_db, new_id, session_scope, utcnow, watch_data_session
 from app.experience_models import AccessAudit, Account, CareProfile
 from app.health.live_models import WatchSourceLink
 from app.models import Person
@@ -42,14 +42,14 @@ def authorized_operator_actor(session: Session, *, parent_id: str, actor_id: str
 
 
 def source_exists(session: Session, subject_id: str) -> bool:
-    if session.get_bind().dialect.name != "postgresql":
-        raise SourceLinkError(
-            "Source registration requires the configured Tiger PostgreSQL database."
-        )
-    with session.begin_nested():
-        session.execute(text("SET LOCAL statement_timeout = '3s'"))
+    with watch_data_session(session) as watch:
+        if watch.get_bind().dialect.name != "postgresql":
+            raise SourceLinkError(
+                "Source registration requires the configured Tiger PostgreSQL database."
+            )
+        watch.execute(text("SET LOCAL statement_timeout = '3s'"))
         return (
-            session.execute(
+            watch.execute(
                 text("""
                 SELECT 1 FROM air_health.measurement_versions
                 WHERE subject_id = :subject_id AND canonical_eligible

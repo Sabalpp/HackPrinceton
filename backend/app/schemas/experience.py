@@ -336,3 +336,29 @@ class SensorHealthReport(BaseModel):
     last_daily_sync_at: datetime | None = None
     daily_sync_status: Literal["pending", "ok", "unavailable"] = "pending"
     data_mode: Literal["live"] = "live"
+
+
+# --------------------------------------------------------------------------- conversation
+
+
+class ChatMessage(BaseModel):
+    """One message in a person's conversation with FarCare (any channel)."""
+
+    id: str
+    direction: Literal["in", "out"]
+    text: str
+    channel: str = Field(description="imessage | sms | voice | app | in_app | console | ...")
+    status: str
+    at: datetime
+
+
+class ChatThread(BaseModel):
+    messages: list[ChatMessage]
+    connected_by_text: bool = Field(
+        description="True once this person has texted their FarCare number (iMessage/SMS)"
+    )
+    messaging: Literal["console", "photon"]
+
+
+class ChatIn(Input):
+    text: str = Field(min_length=1, max_length=1000)
