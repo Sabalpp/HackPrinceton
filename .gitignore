@@ -25,6 +25,8 @@ node_modules/
 out/
 *.tsbuildinfo
 .vercel
+# Retired Cloudflare local generated settings and private verification artifacts.
+deploy/cloudflare/
 
 # Datasets (never commit raw sensor datasets)
 research/**/data/

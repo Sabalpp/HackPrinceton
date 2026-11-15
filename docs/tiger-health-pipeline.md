@@ -22,7 +22,7 @@ Google Health -- authorized sync ------------------> Tiger measurement_versions
                                                                Photon SMS + reply processing
 ```
 
-The BLE collector still runs on a computer physically near the watch. Cloudflare
+The BLE collector still runs on a computer physically near the watch. Vercel
 cannot directly receive the watch's radio signal. The collector writes individual
 observations; the dashboard reads current records, without waiting for the
 one-minute `ble_hr_1m` aggregate to refresh. Google metrics appear only after a

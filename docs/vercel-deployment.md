@@ -129,5 +129,6 @@ checks. These checks do not deploy to Vercel or send messages.
 
 Vercel's remote build, actual service routing, daemon startup, quotas, live Tiger
 connectivity, event-stream reconnection and real handset delivery still require
-hosted acceptance checks. The native Render and Cloudflare configurations remain
-available; this change does not migrate or delete their data.
+hosted acceptance checks. Vercel is the active production host. The obsolete
+Cloudflare deployment code and CI job have been removed; Render templates remain
+as legacy reference. Tiger data is independent of these hosting configurations.
