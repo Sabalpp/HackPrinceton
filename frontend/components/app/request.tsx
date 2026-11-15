@@ -36,18 +36,21 @@ export function RequestCard({
   parentName,
   events,
   quiet = false,
+  flat = false,
 }: {
   request: CareRequest;
   parentName: string;
   /** Timeline events for this request (ref_id), newest first. Shown when provided. */
   events?: TimelineEvent[];
   quiet?: boolean;
+  /** Render as a row inside a parent card instead of a card of its own. */
+  flat?: boolean;
 }) {
   const status = REQUEST_STATUS[r.status];
   const Icon = CATEGORY_ICON[r.request_type];
   const emergency = r.approval_basis === "emergency_policy";
   return (
-    <article className={`flex flex-col gap-3 rounded-2xl border p-5 ${quiet ? "border-border bg-inset" : "border-border bg-surface"}`}>
+    <article className={flat ? "flex flex-col gap-3 py-4 first:pt-0 last:pb-0" : `flex flex-col gap-3 rounded-2xl border p-5 ${quiet ? "border-border bg-inset" : "border-border bg-surface shadow-card"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span

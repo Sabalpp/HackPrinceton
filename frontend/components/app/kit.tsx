@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  ArrowRight,
   Car,
   HandHeart,
   MessageCircleHeart,
@@ -35,13 +37,14 @@ export const toneToPill: Record<Tone, PillTone> = {
   neutral: "neutral",
 };
 
+/** Standard page header: optional context line, one title, one sentence, actions on the right. */
 export function PageHeader({
   eyebrow,
   title,
   description,
   actions,
 }: {
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
@@ -49,12 +52,60 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>}
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-[2.6rem] sm:leading-tight">{title}</h1>
-        {description && <p className="max-w-2xl text-body">{description}</p>}
+        {eyebrow && <p className="text-sm font-medium text-muted">{eyebrow}</p>}
+        <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{title}</h1>
+        {description && <div className="max-w-2xl text-body">{description}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
+  );
+}
+
+/** Standard card: a header row (title, optional note, action) above the content. */
+export function Card({
+  title,
+  icon: Icon,
+  description,
+  action,
+  children,
+  className = "",
+  bodyClassName = "p-5",
+  testId,
+}: {
+  title?: ReactNode;
+  icon?: LucideIcon;
+  description?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  testId?: string;
+}) {
+  return (
+    <section data-testid={testId} className={`min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-card ${className}`}>
+      {(title || action) && (
+        <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-5 py-3.5">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+              {Icon && <Icon size={18} className="shrink-0 text-primary" aria-hidden="true" />}
+              {title}
+            </h2>
+            {description && <p className="text-sm text-muted">{description}</p>}
+          </div>
+          {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
+        </header>
+      )}
+      <div className={bodyClassName}>{children}</div>
+    </section>
+  );
+}
+
+/** "See all" style link used in card headers. */
+export function CardLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+      {children} <ArrowRight size={15} aria-hidden="true" />
+    </Link>
   );
 }
 
@@ -112,7 +163,7 @@ export function Avatar({ name, size = "md", tone = "tint" }: { name: string; siz
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{children}</h2>
+      <h2 className="text-lg font-semibold text-ink">{children}</h2>
       {action}
     </div>
   );

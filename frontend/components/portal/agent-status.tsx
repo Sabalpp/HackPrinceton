@@ -1,18 +1,18 @@
-import { Circle, Radio } from "lucide-react";
+import { MessageCircle, MessageCircleOff } from "lucide-react";
 import type { AgentStatus } from "@/lib/experience-api";
 
+/** One plain sentence about phone messages. System internals stay out of people's screens. */
 export function AgentStatusLine({ agent }: { agent: AgentStatus }) {
   const ready = agent.status === "healthy" && agent.messaging_ready;
-  const channel = agent.messaging_platform === "sms" ? "SMS" : "iMessage";
-  const title = agent.messaging === "console"
-    ? "In-app updates; phone messages are simulated"
-    : agent.messaging_opted_out ? `${channel} messages are paused`
-    : ready ? `${channel} messaging is available` : `In-app updates; ${channel} needs attention`;
-  return <aside className="flex items-start gap-3 rounded-2xl border border-border bg-inset p-4 text-sm text-body">
-    <span className={ready ? "text-primary" : "text-muted"}>{ready ? <Radio size={20} aria-hidden="true" /> : <Circle size={17} aria-hidden="true" />}</span>
-    <div><p className="font-semibold text-ink">{title}</p><p className="mt-0.5">{agent.detail}</p>
-      {agent.messaging === "photon" && agent.messaging_platform === "sms" && <p className="mt-2">Reply HELP to your FarCare text for instructions. STOP pauses texts; START asks to resume. You can still use this app.</p>}
-      {agent.last_heartbeat_at && <p className="mt-1 text-xs text-muted">Last system update: {new Date(agent.last_heartbeat_at).toLocaleString()}</p>}
-    </div>
-  </aside>;
+  const sms = agent.messaging === "photon" && agent.messaging_platform === "sms";
+  const text = agent.messaging === "console"
+    ? "Phone texts are simulated in this demo. Everything works here in the app."
+    : agent.messaging_opted_out ? "Phone texts are paused. You can still use FarCare here."
+    : ready ? "You can also text FarCare from your phone. It's the same conversation."
+    : "Phone texts aren't working right now. You can still use FarCare here.";
+  const Icon = ready ? MessageCircle : MessageCircleOff;
+  return <p className="flex items-start gap-2.5 text-sm text-muted">
+    <Icon size={18} className={`mt-0.5 shrink-0 ${ready ? "text-primary" : ""}`} aria-hidden="true" />
+    <span>{text}{sms && " Texts are automated. Reply HELP for help or STOP to pause."}</span>
+  </p>;
 }

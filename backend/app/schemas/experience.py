@@ -393,3 +393,38 @@ class ChatThread(BaseModel):
 
 class ChatIn(Input):
     text: str = Field(min_length=1, max_length=1000)
+
+
+class HeartRateAlertIn(ActionIn):
+    """The family's own heart-rate limits. Not medical thresholds."""
+
+    high_bpm: int | None = Field(default=None, ge=60, le=220)
+    low_bpm: int | None = Field(default=None, ge=30, le=100)
+    sustain_minutes: int = Field(default=2, ge=1, le=30)
+    notify_family: bool = True
+    check_on_parent: bool = False
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def _limits(self) -> "HeartRateAlertIn":
+        if self.enabled and self.high_bpm is None and self.low_bpm is None:
+            raise ValueError("Set a high limit, a low limit, or both.")
+        if self.high_bpm is not None and self.low_bpm is not None and self.low_bpm >= self.high_bpm:
+            raise ValueError("The low limit must be below the high limit.")
+        return self
+
+
+class HeartRateAlertInfo(BaseModel):
+    parent_id: str
+    configured: bool
+    enabled: bool
+    high_bpm: int | None
+    low_bpm: int | None
+    sustain_minutes: int
+    notify_family: bool
+    check_on_parent: bool
+    updated_by_name: str | None
+    updated_at: datetime | None
+    last_alert_at: datetime | None
+    last_alert_bpm: int | None
+    watch_linked: bool

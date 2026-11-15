@@ -226,7 +226,13 @@ def ingest_fall_event(session: Session, event: FallSuspectedEvent) -> FallIngest
 
 
 def open_family_concern(
-    session: Session, parent: Person, requester: Person, note: str = ""
+    session: Session,
+    parent: Person,
+    requester: Person,
+    note: str = "",
+    *,
+    prompt: str | None = None,
+    summary: str | None = None,
 ) -> SafetyIncidentRow:
     """A family member is worried (e.g. "Mom isn't answering"). Run the same deterministic
     safety check as a fall: ask the parent, and escalate on HELP or no reply."""
@@ -249,7 +255,8 @@ def open_family_concern(
         session,
         parent.id,
         "incident.opened",
-        f"{requester.display_name} asked FarCare to check on {parent.display_name}. Check-in sent.",
+        summary
+        or f"{requester.display_name} asked FarCare to check on {parent.display_name}. Check-in sent.",
         ref_id=inc.id,
         data={
             "requested_by": requester.id,
@@ -260,7 +267,8 @@ def open_family_concern(
     msg = send_to_person(
         session,
         parent,
-        f"Hi {parent.display_name}, {requester.display_name} asked me to check on you. Are you "
+        prompt
+        or f"Hi {parent.display_name}, {requester.display_name} asked me to check on you. Are you "
         "okay? Reply OK if you're fine, or HELP if you'd like someone to come.",
         f"incident:{inc.id}:check",
         parent_id=parent.id,
