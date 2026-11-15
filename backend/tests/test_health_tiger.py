@@ -220,7 +220,7 @@ def test_projection_requires_explicit_subject_and_aware_now():
         project([], now=datetime(2026, 11, 14))
 
 
-def test_query_is_subject_scoped_parameterized_and_uses_current_view():
+def test_query_is_subject_scoped_and_parameterized():
     session = Mock()
     session.execute.return_value.mappings.return_value = [record()]
     subject = "wearer' OR TRUE --"
@@ -234,7 +234,7 @@ def test_query_is_subject_scoped_parameterized_and_uses_current_view():
         timezone="UTC",
     )
     query, params = session.execute.call_args.args
-    assert "air_health.measurements_current" in str(query)
+    assert ":subject_id" in str(query)
     assert "subject_id = :subject_id" in str(query)
     assert subject not in str(query) and params["subject_id"] == subject
     assert "source = 'google_health'" in str(query)

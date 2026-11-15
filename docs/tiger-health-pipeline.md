@@ -155,6 +155,12 @@ asks the family to check in and labels itself as a wellbeing prompt. It does not
 declare an emergency or diagnose a condition. The rules do not alert from a
 short, stale, simulated or missing history.
 
+The daily worker uses the same candidate-first canonical revision strategy as the
+live readout. It includes intervals that overlap the requested dates, resolves
+corrections globally, then reapplies the wearer/date/metric scope. A large Google
+backfill must not require sorting every unrelated heart-rate record before the
+worker can update steps, resting HR and sleep trends.
+
 Only family members with health sharing receive the health notice. The normal
 outbound gateway enforces permissions and opt-out checks again at delivery. The
 outbox records `queued`, `available`, failure and provider delivery states

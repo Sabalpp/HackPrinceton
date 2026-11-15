@@ -28,14 +28,13 @@ from app.schemas.contracts import DataMode, HealthObservation
 
 METRICS = ("steps", "resting_heart_rate_bpm", "sleep_minutes_asleep")
 
-# The current view resolves revisions before projection. The subject is mandatory
-# and parameterized. Include sessions/intervals starting before the requested range
-# so cross-midnight steps cannot be silently discarded from an otherwise valid day.
-CURRENT_MEASUREMENTS_SQL = """
-SELECT event_id, subject_id, source, source_stream, metric, observed_at, ended_at,
-       local_date, value, unit, kind, attributes
-FROM air_health.measurements_current
-WHERE subject_id = :subject_id
+# Use the same global revision ordering as measurements_current, but filter a
+# candidate set before sorting revisions. Sorting the entire compressed history
+# can exhaust the worker's five-second read budget after a cloud backfill.
+# Repeat the scope after revision resolution: a correction may change identity,
+# metric or local date. Include cross-midnight intervals in the candidate scope.
+_DAILY_SCOPE = """
+subject_id = :subject_id
   AND source = 'google_health'
   AND metric IN ('steps', 'resting_heart_rate_bpm', 'sleep_minutes_asleep')
   AND local_date <= :end_date
@@ -44,8 +43,22 @@ WHERE subject_id = :subject_id
       OR attributes->>'end_local_date' >= :start_label
       OR attributes->>'coverage_end_local_date' >= :start_label
   )
-ORDER BY local_date, observed_at, event_id
 """
+CURRENT_MEASUREMENTS_SQL = f"""
+WITH candidates AS MATERIALIZED (
+ SELECT DISTINCT event_id FROM air_health.measurement_versions
+ WHERE canonical_eligible AND {_DAILY_SCOPE}
+), resolved AS MATERIALIZED (
+ SELECT DISTINCT ON (v.event_id) v.*
+ FROM (SELECT * FROM air_health.measurement_versions WHERE canonical_eligible OFFSET 0) v
+ JOIN candidates c ON c.event_id=v.event_id
+ ORDER BY v.event_id,v.source_revision_at DESC,v.received_at DESC,v.version_hash DESC
+)
+SELECT event_id, subject_id, source, source_stream, metric, observed_at, ended_at,
+       local_date, value, unit, kind, attributes
+FROM resolved WHERE {_DAILY_SCOPE}
+ORDER BY local_date, observed_at, event_id
+"""  # noqa: S608 -- scope is a fixed SQL literal; all request values remain bound.
 
 
 def _date(value: Any) -> date | None:
@@ -261,7 +274,7 @@ def fetch_daily(
     now: datetime,
     timezone: str,
 ) -> list[HealthObservation]:
-    """Read the current canonical view in the application's existing database."""
+    """Read canonical daily records in the application's existing database."""
     if not subject_id or not subject_id.strip():
         raise ValueError("An explicit subject_id is required")
     rows = session.execute(
