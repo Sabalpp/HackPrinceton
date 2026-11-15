@@ -139,12 +139,12 @@ These are already in `render.yaml`; do not create duplicate services manually:
 
 | Service | Type / runtime | Root | Build | Start |
 | --- | --- | --- | --- | --- |
-| `farcare-api` | Web / Python 3.12 | `apps/api` | `uv sync --frozen --no-dev --no-install-project` | `.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 5` |
-| `farcare-worker` | Background worker / Python 3.12 | `apps/api` | Same API build | `.venv/bin/python -m app.worker` |
-| `farcare-web` | Web / Node 24 | `apps/web` | `npm ci && npm run build` | `npm run start -- --hostname 0.0.0.0 --port $PORT` |
+| `farcare-api` | Web / Python 3.12 | `backend` | `uv sync --frozen --no-dev --no-install-project` | `.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 5` |
+| `farcare-worker` | Background worker / Python 3.12 | `backend` | Same API build | `.venv/bin/python -m app.worker` |
+| `farcare-web` | Web / Node 24 | `frontend` | `npm ci && npm run build` | `npm run start -- --hostname 0.0.0.0 --port $PORT` |
 
 The checked-in Python and Node dependency locks remain authoritative. The existing
-`apps/api/.python-version` selects Python 3.12; no runtime upgrade is needed.
+`backend/.python-version` selects Python 3.12; no runtime upgrade is needed.
 [Render Python version selection](https://render.com/docs/python-version)
 
 Render recognizes `uv.lock` in the API service root and supports an explicit `UV_VERSION`.

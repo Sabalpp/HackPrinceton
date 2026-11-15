@@ -97,21 +97,21 @@ async function run() {
     DEMO_EMERGENCY_NUMBER:'',CORS_ORIGINS:web,GIT_COMMIT:process.env.GITHUB_SHA || 'local-smoke',
   };
   delete apiEnv.TEST_DATABASE_URL;
-  const apiChild = nativeHost ? launch(path.join(root,'apps/api/.venv/bin/python'),
+  const apiChild = nativeHost ? launch(path.join(root,'backend/.venv/bin/python'),
     ['deploy/render/run.py'],root,{...apiEnv,PORT:'13000'},'native-host.log') :
-    launch(path.join(root,'apps/api/.venv/bin/python'),
+    launch(path.join(root,'backend/.venv/bin/python'),
     ['-m','uvicorn',vercelEntry ? 'app.vercel_entry:app' : 'app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
-    path.join(root,'apps/api'), apiEnv, 'api.log');
+    path.join(root,'backend'), apiEnv, 'api.log');
   await ready(`${backend}/health`, apiChild);
   const health = await (await fetch(`${backend}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
     health.database === 'ok' && health.environment === 'test' && health.demo_mode === true &&
     health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
-  if (!nativeHost) launch(path.join(root,'apps/api/.venv/bin/python'), ['-m',vercelEntry ? 'app.vercel_worker' : 'app.worker'],
-    path.join(root,'apps/api'), apiEnv, 'worker.log');
+  if (!nativeHost) launch(path.join(root,'backend/.venv/bin/python'), ['-m',vercelEntry ? 'app.vercel_worker' : 'app.worker'],
+    path.join(root,'backend'), apiEnv, 'worker.log');
   const webChild = nativeHost ? apiChild : launch(process.execPath,
-    [path.join(root,'apps/web/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
-    path.join(root,'apps/web'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
+    [path.join(root,'frontend/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
+    path.join(root,'frontend'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
   await ready(web, webChild);
 
   browser = await chromium.launch({headless:true});

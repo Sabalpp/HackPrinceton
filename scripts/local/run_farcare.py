@@ -51,7 +51,7 @@ def runtime_settings(python, api):
         return json.loads(result.stdout)
     except (subprocess.SubprocessError, ValueError):
         raise RuntimeError(
-            "Cannot load the backend configuration. Check apps/api/.env privately."
+            "Cannot load the backend configuration. Check backend/.env privately."
         ) from None
 
 
@@ -138,7 +138,7 @@ def main():
         parser.error("API and dashboard need different ports.")
     if not 1 <= args.days <= 366:
         parser.error("Days must be between 1 and 366.")
-    api = REPO_ROOT / "apps/api"
+    api = REPO_ROOT / "backend"
     python = api / ".venv/bin/python"
     if args.open and not args.web:
         parser.error("--open requires --web.")
@@ -164,16 +164,16 @@ def main():
                 "This is the local demo launcher. Use the deployment runbook for production."
             )
         if not configuration["ingest"]:
-            raise RuntimeError("Configure INGEST_API_KEY in apps/api/.env before starting.")
+            raise RuntimeError("Configure INGEST_API_KEY in backend/.env before starting.")
         if args.messaging == "photon" and not configuration["photon"]:
             raise RuntimeError(
-                "Photon is not configured. Add PHOTON_API_KEY and PHOTON_PROJECT_ID privately to apps/api/.env."
+                "Photon is not configured. Add PHOTON_API_KEY and PHOTON_PROJECT_ID privately to backend/.env."
             )
-        web = REPO_ROOT / "apps/web"
+        web = REPO_ROOT / "frontend"
         node = node_binary() if args.web else None
         if args.web and not (web / "node_modules/next/dist/bin/next").is_file():
             raise RuntimeError(
-                "Dashboard dependencies are missing. Run npm ci in app_repo/apps/web."
+                "Dashboard dependencies are missing. Run npm ci in app_repo/frontend."
             )
         if args.preview and not (ROOT / "pipeline_data/farcare_source_rows.json").is_file():
             raise RuntimeError(
@@ -306,7 +306,7 @@ def main():
                 ],
                 "sensor_collector.log",
                 ROOT / ".venv/bin/python",
-                cwd=REPO_ROOT / "apps/collector",
+                cwd=REPO_ROOT / "backend/collector",
             )
         if not args.preview:
             start(

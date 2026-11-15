@@ -8,6 +8,21 @@ channel. Family members see consented health trends; trusted nearby helpers see 
 assigned tasks. Gemini supports conversation. Deterministic code handles consent, safety
 checks, and escalation. A supervised worker processes messages and retries across restarts.
 
+The code is organized into two main folders:
+
+```text
+frontend/                 Screens, components, styling and browser API calls
+backend/
+  app/                    API routes, accounts, health data, care workflows and messaging
+  collector/              Mac Fitbit reader, Google imports and Tiger uploads
+  tests/                  API and workflow tests
+packages/contracts/       Shared API definitions used by both sides
+```
+
+Start with [frontend/README.md](frontend/README.md) or
+[backend/README.md](backend/README.md). The collector has its own dependencies and
+continues to run near the watch; the server and dashboard can be deployed together.
+
 > A notification tells you something may be wrong. FarCare helps connect your parent with
 > someone who can actually be there.
 
@@ -27,7 +42,7 @@ Python 3.12, uv, and Node 22. Existing private environment files are preserved.
 
 ```bash
 # Terminal 1: API and simulated messages; no external service keys required.
-cd apps/api
+cd backend
 test -f .env || cp .env.example .env
 uv sync --frozen
 MESSAGING_CHANNEL=console PHOTON_DELIVERY=off PROACTIVE_CHECKINS_ENABLED=false uv run uvicorn app.main:app --host 127.0.0.1 --reload --timeout-graceful-shutdown 2
@@ -35,7 +50,7 @@ MESSAGING_CHANNEL=console PHOTON_DELIVERY=off PROACTIVE_CHECKINS_ENABLED=false u
 
 ```bash
 # Terminal 2: actual dashboard connected to the API above.
-cd apps/web
+cd frontend
 test -f .env.local || cp .env.example .env.local
 npm ci
 NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev -- --hostname 127.0.0.1 --port 3000
@@ -58,7 +73,7 @@ For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
 For one Vercel project containing the dashboard, Tiger API and care worker, use
 [the Vercel deployment guide](docs/vercel-deployment.md). Import the **repository
-root**, not `apps/collector` or `apps/web`; the root `vercel.json` defines both web
+root**, not `backend/collector` or `frontend`; the root `vercel.json` defines both web
 services and a quota-limited background daemon. The BLE collector stays on the Mac.
 For a free hackathon host, use [the one-service Render Blueprint](docs/free-deployment.md):
 the API, worker and dashboard run without Docker and use your existing Tiger database.
@@ -88,17 +103,17 @@ Start reading the code in this order:
 
 | Part | Entry points | Purpose |
 | --- | --- | --- |
-| Dashboard | `apps/web/app/(app)/`, `apps/web/lib/dashboard.tsx` | Family screens, loading, and live timeline updates |
-| API connection | `apps/web/lib/api.ts`, `apps/api/app/main.py` | Typed browser requests and API startup |
-| Sensor collection | `apps/collector/farcare_collector/` | BLE recording, Google exports, normalization, durable outbox and Tiger delivery |
-| Health data | `apps/api/app/health/tiger.py`, `sync_tiger.py`, `trends.py` | Tiger daily records, authenticated ingestion, and personal comparisons |
-| Live watch data | `apps/api/app/health/live.py`, `sources.py`, `live_sync.py` | Authorized watch mapping, bounded live queries, and daily synchronization |
-| Care workflows | `apps/api/app/services/family.py`, `care_requests.py`, `safety.py` | Family questions, parent approval, neighbor responses, and safety checks |
-| Storage and access | `apps/api/app/models.py`, `auth.py`, `schemas/contracts.py` | Database tables, sharing permissions, and shared payload definitions |
-| Integrations and automation | `apps/api/app/integrations/`, `.github/workflows/` | Photon/Gemini adapters and CI/deployment verification |
+| Dashboard | `frontend/app/(app)/`, `frontend/lib/dashboard.tsx` | Family screens, loading, and live timeline updates |
+| API connection | `frontend/lib/api.ts`, `backend/app/main.py` | Typed browser requests and API startup |
+| Sensor collection | `backend/collector/farcare_collector/` | BLE recording, Google exports, normalization, durable outbox and Tiger delivery |
+| Health data | `backend/app/health/tiger.py`, `sync_tiger.py`, `trends.py` | Tiger daily records, authenticated ingestion, and personal comparisons |
+| Live watch data | `backend/app/health/live.py`, `sources.py`, `live_sync.py` | Authorized watch mapping, bounded live queries, and daily synchronization |
+| Care workflows | `backend/app/services/family.py`, `care_requests.py`, `safety.py` | Family questions, parent approval, neighbor responses, and safety checks |
+| Storage and access | `backend/app/models.py`, `auth.py`, `schemas/contracts.py` | Database tables, sharing permissions, and shared payload definitions |
+| Integrations and automation | `backend/app/integrations/`, `.github/workflows/` | Photon/Gemini adapters and CI/deployment verification |
 
-`apps/web/app/(web)/` contains older concept screens; the connected family app is
-under `(app)`. Collector source lives in `apps/collector`; its private recordings,
+`frontend/app/(web)/` contains older concept screens; the connected family app is
+under `(app)`. Collector source lives in `backend/collector`; its private recordings,
 OAuth tokens and database state remain in the local data workspace. The app consumes
 their Tiger projection through the health adapter. [The codebase guide](docs/codebase-organization.md)
 maps every former root Python file to its new home and explains collector setup,

@@ -1,6 +1,6 @@
 """Export shared contracts to packages/contracts/ (JSON Schema + OpenAPI).
 
-Run from apps/api:  uv run python scripts/export_contracts.py
+Run from backend:  uv run python scripts/export_contracts.py
 CI runs this and fails if the committed files differ (contract drift check).
 """
 
@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.main import app  # noqa: E402
 from app.schemas.contracts import EXPORTED_CONTRACTS  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[3] / "packages" / "contracts"
+OUT = Path(__file__).resolve().parents[2] / "packages" / "contracts"
 
 
 def dump(path: Path, data: dict) -> None:

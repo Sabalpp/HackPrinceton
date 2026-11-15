@@ -74,7 +74,7 @@ def configure_preview(database):
     )
     os.environ.pop("TEST_DATABASE_URL", None)
     logging.disable(logging.CRITICAL)
-    api = str(REPO_ROOT / "apps/api")
+    api = str(REPO_ROOT / "backend")
     if api not in sys.path:
         sys.path.insert(0, api)
     from app.config import get_settings

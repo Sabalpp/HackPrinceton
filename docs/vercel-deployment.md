@@ -25,11 +25,11 @@ bounded hackathon hosting option, not unlimited free, always-on care monitoring.
 | Framework preset | Other; the Services configuration specifies each framework |
 | Build, install and output overrides | Leave unset; `vercel.json` owns service-specific commands |
 | Node.js | 22.x |
-| Python | 3.12, selected by `apps/api/.python-version` |
+| Python | 3.12, selected by `backend/.python-version` |
 
-If the existing project uses `apps/collector` or `apps/web` as its root, change it
+If the existing project uses `backend/collector` or `frontend` as its root, change it
 to the repository root before redeploying. The collector has no web entrypoint.
-Selecting `apps/web` alone only deploys the dashboard. Do not add a fake server to
+Selecting `frontend` alone only deploys the dashboard. Do not add a fake server to
 the collector or put Tiger credentials in frontend environment variables.
 
 Services routes `/backend/*` to `app.vercel_entry:app` and all other paths to the
@@ -89,7 +89,7 @@ history remains in Tiger. Google measurements arrive when the cloud source syncs
 they are not per-second sensor samples. Missing data stays missing.
 
 Use the existing Tiger database containing both the collector's `air_health`
-schema and the application's accounts. From `apps/api` on the Mac, configured
+schema and the application's accounts. From `backend` on the Mac, configured
 for that same database, follow [pilot setup](pilot-setup.md) to create an owner
 account if needed. Create the parent and invitations through `/setup`, then use
 the consent-checked `app.health.sources link` command in

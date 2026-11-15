@@ -2,7 +2,7 @@
  * PROPOSED contract for GET /api/state (the FarCare daily-call dashboard).
  *
  * This shape is NOT in packages/contracts yet. Per AGENTS.md ("Changing a shared contract"),
- * Sumit needs to add it to apps/api/app/schemas/contracts.py; once he does, delete these
+ * Sumit needs to add it to backend/app/schemas/contracts.py; once he does, delete these
  * hand-written types and re-export the generated ones from lib/api-types.ts instead.
  * mock/state.json is type-checked against this file (see use-farcare-state.ts).
  */

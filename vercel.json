@@ -3,13 +3,13 @@
   "regions": ["iad1"],
   "services": {
     "web": {
-      "root": "apps/web",
+      "root": "frontend",
       "framework": "nextjs",
       "installCommand": "npm ci",
       "buildCommand": "NEXT_PUBLIC_API_URL=/backend NEXT_PUBLIC_USE_MOCKS=false NEXT_PUBLIC_LOCAL_PREVIEW=false npm run build"
     },
     "api": {
-      "root": "apps/api",
+      "root": "backend",
       "framework": "fastapi",
       "entrypoint": "app.vercel_entry:app"
     }
@@ -20,7 +20,7 @@
   ],
   "daemons": {
     "care_worker": {
-      "root": "apps/api",
+      "root": "backend",
       "entrypoint": "Dockerfile",
       "command": ["/app/.venv/bin/python", "-m", "app.vercel_worker"],
       "instances": { "iad1": 1 },

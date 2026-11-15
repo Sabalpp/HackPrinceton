@@ -30,7 +30,7 @@ export type SystemHealth = Schemas["SystemHealth"];
 
 /*
  * /api/demo/* responses are plain dicts in the backend (untyped in OpenAPI). These mirror
- * apps/api/app/routes/demo.py exactly; ask Sumit to add response models if they change.
+ * backend/app/routes/demo.py exactly; ask Sumit to add response models if they change.
  */
 export type DemoPerson = { person_id: string; display_name: string; role: string; has_handle: boolean; reachable: boolean };
 export type OutboxMessage = { to: string | null; to_role: string | null; channel: string; status: string; text: string; created_at: string };

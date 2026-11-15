@@ -1,4 +1,4 @@
-"""Photon 2.0 (Beta) project setup for the FarCare demo. Reads apps/api/.env.
+"""Photon 2.0 (Beta) project setup for the FarCare demo. Reads backend/.env.
 
     uv run python scripts/photon_setup.py status
     uv run python scripts/photon_setup.py sms-status        # read-only sender/campaign check
@@ -97,7 +97,7 @@ def assign(project: str) -> None:
     for role, attr in ROLES.items():
         handle = normalize_handle(getattr(settings, attr))
         if not handle or handle.startswith(PLACEHOLDER_PREFIX):
-            print(f"  {role}: skipped (set {attr.upper()} in apps/api/.env)")
+            print(f"  {role}: skipped (set {attr.upper()} in backend/.env)")
             continue
         if handle in existing:
             print(f"  {role}: already assigned")
@@ -214,7 +214,7 @@ def main() -> int:
 
     settings = get_settings()
     if not settings.photon_enabled:
-        raise SystemExit("Set PHOTON_API_KEY and PHOTON_PROJECT_ID in apps/api/.env first.")
+        raise SystemExit("Set PHOTON_API_KEY and PHOTON_PROJECT_ID in backend/.env first.")
     project = settings.photon_project_id
     try:
         if args.cmd == "status":

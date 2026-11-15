@@ -1,6 +1,6 @@
 # Sumit — architecture, backend, AI, Photon, fall detection, CI/CD, integration
 
-**Branch:** `feature/sumit-core` · **Owns:** `apps/api/**` (except `app/health/`), `.github/**`,
+**Branch:** `feature/sumit-core` · **Owns:** `backend/**` (except `app/health/`), `.github/**`,
 `scripts/**`, contract coordination.
 
 ## Done
@@ -22,7 +22,7 @@
 
 1. **Photon:** create a project in the Beta dashboard (`app.beta.photon.codes`) and a server key
    with `project:read`, `project:write`, `platforms:write`. Put `PHOTON_API_KEY` and
-   `PHOTON_PROJECT_ID` in `apps/api/.env`. Put your real iMessage handle in
+   `PHOTON_PROJECT_ID` in `backend/.env`. Put your real iMessage handle in
    `DEMO_PARENT_HANDLE` to start.
 2. `uv run python scripts/photon_setup.py assign`, then `... status`. Text the assigned number
    "hi" from your phone.
@@ -37,7 +37,7 @@
 ## Next (in order)
 
 1. **Deploy the API** (pick a host: Render / Railway / Fly / Vultr VM). Use
-   `apps/api/Dockerfile`, a single instance, Postgres `DATABASE_URL` (Tiger Data fits the
+   `backend/Dockerfile`, a single instance, Postgres `DATABASE_URL` (Tiger Data fits the
    prize), `APP_ENV=production`, real `DEMO_*_TOKEN`s, `INGEST_API_KEY`, and
    `CORS_ORIGINS=<vercel url>`. Then run
    `scripts/photon_setup.py webhook --url https://<api>/webhooks/photon`, set

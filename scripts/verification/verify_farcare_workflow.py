@@ -3,7 +3,7 @@
 This executable reads the existing private Tiger snapshot, creates a temporary
 SQLite application database, and writes only a private result artifact. It does
 not contact Google, Tiger, Photon, Gemini, or any real person. Run with the app's
-Python environment: app_repo/apps/api/.venv/bin/python app_repo/scripts/verification/verify_farcare_workflow.py
+Python environment: app_repo/backend/.venv/bin/python app_repo/scripts/verification/verify_farcare_workflow.py
 """
 
 import hashlib
@@ -58,7 +58,7 @@ os.environ.update(
 )
 os.environ.pop("TEST_DATABASE_URL", None)
 logging.disable(logging.CRITICAL)  # Never print private projected observations.
-sys.path.insert(0, str(REPO_ROOT / "apps/api"))
+sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 from app.config import get_settings  # noqa: E402 - test settings must precede backend imports
 from app.db import reset_engine, session_scope, utcnow  # noqa: E402 - test settings must precede backend imports

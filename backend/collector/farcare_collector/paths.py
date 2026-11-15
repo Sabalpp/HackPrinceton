@@ -7,7 +7,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 COLLECTOR_ROOT = PACKAGE_ROOT.parent
 # Source/editable checkout, or the caller's directory for an installed wheel.
 REPO_ROOT = next(
-    (parent for parent in PACKAGE_ROOT.parents if (parent / "apps/api/app/main.py").is_file()),
+    (parent for parent in PACKAGE_ROOT.parents if (parent / "backend/app/main.py").is_file()),
     Path.cwd(),
 )
 # Preserve the original Mac workspace layout. A normal standalone checkout uses
