@@ -1,11 +1,13 @@
 """Shared, additive contracts for authenticated three-role experiences."""
 
+import re
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
 
+from app.config import get_settings
 from app.schemas.contracts import (
     AssistanceCategory,
     CareRequest,
@@ -53,6 +55,15 @@ class LoginIn(Input):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=1, max_length=128)
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def sign_in_alias(cls, value):
+        # Aliases are for signing into an already provisioned account, never for
+        # registration or invitation redemption (RegisterIn inherits this model).
+        if cls is LoginIn and isinstance(value, str) and "@" not in value:
+            return get_settings().login_aliases.get(value.strip().casefold(), value)
+        return value
+
     @field_validator("email")
     @classmethod
     def email_format(cls, value: str) -> str:
@@ -66,10 +77,26 @@ class LoginIn(Input):
         return value
 
 
+def normalize_invitation_token(value):
+    if isinstance(value, str):
+        compact = re.sub(r"[\s-]+", "", value)
+        if re.fullmatch(r"[0-9]{8}", compact):
+            return compact
+    return value
+
+
+# Keep existing long invitation links valid while accepting grouped numeric codes.
+InvitationToken = Annotated[
+    str,
+    BeforeValidator(normalize_invitation_token),
+    Field(min_length=8, max_length=128, pattern=r"^(?:[0-9]{8}|[A-Za-z0-9_-]{32,128})$"),
+]
+
+
 class RegisterIn(LoginIn):
     password: str = Field(min_length=12, max_length=128)
     display_name: str = Field(min_length=1, max_length=80)
-    invitation_token: str | None = Field(default=None, min_length=32, max_length=128)
+    invitation_token: InvitationToken | None = None
     share_health: bool = False
     share_checkins: bool = False
 
@@ -79,7 +106,11 @@ class DemoLoginIn(Input):
 
 
 class InvitationLookup(Input):
-    token: str = Field(min_length=32, max_length=128)
+    token: InvitationToken
+
+
+class RenewInviteIn(ActionIn):
+    invitation_token: InvitationToken
 
 
 class InvitationInfo(BaseModel):

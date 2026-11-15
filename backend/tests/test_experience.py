@@ -408,6 +408,131 @@ def test_reissued_and_expired_invitations_are_rejected(client):
     assert expired.status_code == 400
 
 
+def test_numeric_invites_preserve_zeroes_avoid_old_codes_and_accept_grouping(client, monkeypatch):
+    draws = iter([42, 42, 43])
+    monkeypatch.setattr("app.routes.experience.secrets.randbelow", lambda _: next(draws))
+    child = demo(client)
+    first = new_parent(client, child)
+    assert first["invitation_token"] == "00000042"
+    with session_scope() as session:
+        row = session.get(Invitation, hash_token(first["invitation_token"]))
+        row.expires_at = utcnow() - timedelta(seconds=1)
+        session.add(row)
+    second = new_parent(client, child)
+    assert second["invitation_token"] == "00000043"
+    expiry = datetime.fromisoformat(second["expires_at"].replace("Z", "+00:00"))
+    assert timedelta(minutes=29) < expiry - utcnow() <= timedelta(minutes=30)
+    client.cookies.clear()
+    assert client.post("/api/auth/invitation", json={"token": "0000 0043"}).status_code == 200
+    response, _ = register(client, invitation={**second, "invitation_token": "0000-0043"})
+    assert response.status_code == 201, response.text
+    assert response.json()["person"]["person_id"] == second["parent_id"]
+
+
+def test_numeric_invite_generation_exhaustion_rolls_back_the_new_profile(client, monkeypatch):
+    child = demo(client)
+    monkeypatch.setattr("app.routes.experience.secrets.randbelow", lambda _: 42)
+    new_parent(client, child)
+    before = len(rows(Person))
+    response = post(
+        client,
+        child,
+        "/api/onboarding/parents",
+        action(display_name="Synthetic Collision", timezone="UTC", country_code="OTHER"),
+    )
+    assert response.status_code == 503
+    assert len(rows(Person)) == before
+
+
+@pytest.mark.parametrize("token", ["1234567", "123456789", "abcdefgh", "１２３４５６７８"])
+def test_malformed_short_invitation_codes_are_rejected(client, token):
+    assert client.post("/api/auth/invitation", json={"token": token}).status_code == 422
+    response, _ = register(client, invitation={"invitation_token": token})
+    assert response.status_code == 422
+
+
+def test_legacy_invitation_links_remain_redeemable(client):
+    child = demo(client)
+    invite = new_parent(client, child)
+    legacy = "synthetic-legacy-invitation-token-" + "A" * 20
+    with session_scope() as session:
+        row = session.get(Invitation, hash_token(invite["invitation_token"]))
+        row.token_hash = hash_token(legacy)
+        session.add(row)
+    client.cookies.clear()
+    assert client.post("/api/auth/invitation", json={"token": legacy}).status_code == 200
+    response, _ = register(client, invitation={**invite, "invitation_token": legacy})
+    assert response.status_code == 201, response.text
+
+
+def test_renewing_expired_code_reuses_profile_and_invalidates_previous_code(client):
+    child = demo(client)
+    invite = new_parent(client, child)
+    with session_scope() as session:
+        row = session.get(Invitation, hash_token(invite["invitation_token"]))
+        row.expires_at = utcnow() - timedelta(seconds=1)
+        session.add(row)
+    before = len(rows(Person))
+    body = action(invitation_token=invite["invitation_token"])
+    renewed = post(client, child, "/api/onboarding/invites/renew", body)
+    assert renewed.status_code == 201, renewed.text
+    replacement = renewed.json()
+    assert replacement["parent_id"] == invite["parent_id"]
+    assert replacement["invitation_token"] != invite["invitation_token"]
+    assert len(rows(Person)) == before
+    replay = post(client, child, "/api/onboarding/invites/renew", body)
+    assert replay.status_code == 201 and replay.json() == replacement
+    client.cookies.clear()
+    assert (
+        client.post("/api/auth/invitation", json={"token": invite["invitation_token"]}).status_code
+        == 400
+    )
+    response, _ = register(client, invitation=replacement)
+    assert response.status_code == 201
+    assert post(client, child, "/api/onboarding/invites/renew", body).status_code == 409
+
+
+def test_helper_code_renewal_is_creator_only_and_keeps_membership(client, household):
+    child, parent = household
+    issued = post(
+        client,
+        child,
+        "/api/onboarding/invites",
+        action(
+            parent_id=parent["id"],
+            role="responder",
+            display_name="Synthetic Helper",
+            categories=["grocery_assistance"],
+        ),
+    )
+    assert issued.status_code == 201, issued.text
+    invite = issued.json()
+    body = action(invitation_token=invite["invitation_token"])
+    assert post(client, parent, "/api/onboarding/invites/renew", body).status_code == 404
+    before = len(rows(Person))
+    renewed = post(client, child, "/api/onboarding/invites/renew", body)
+    assert renewed.status_code == 201, renewed.text
+    assert len(rows(Person)) == before
+    with session_scope() as session:
+        original = session.get(Invitation, hash_token(invite["invitation_token"]))
+        replacement = session.get(Invitation, hash_token(renewed.json()["invitation_token"]))
+        assert original.person_id == replacement.person_id
+    response, _ = register(client, invitation=renewed.json())
+    assert response.status_code == 201 and response.json()["person"]["role"] == "responder"
+
+
+def test_invitation_lookup_and_redemption_share_attempt_limit(client):
+    for attempt in range(40):
+        if attempt % 2:
+            response, _ = register(client, invitation={"invitation_token": "99999999"})
+        else:
+            response = client.post("/api/auth/invitation", json={"token": "9999 9999"})
+        assert response.status_code == 400
+    blocked = client.post("/api/auth/invitation", json={"token": "99999999"})
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "900"
+
+
 def test_parent_sharing_is_explicit_revocable_and_independent_for_checkins(client, household):
     child, parent = household
     own = get(client, parent, f"/api/parents/{parent['id']}/personal-health")

@@ -148,6 +148,10 @@ async function run() {
   }
   const mobileLogin = await rolePage({width:375,height:812});
   await mobileLogin.getByRole('heading',{name:'Welcome back',exact:true,level:1}).waitFor();
+  const loginIdentifier = mobileLogin.getByRole('textbox',{name:'Email or username',exact:true});
+  await loginIdentifier.fill('caregiver');
+  check('Sign-in accepts a username without browser email validation',
+    await loginIdentifier.evaluate(input=>input.checkValidity()));
   const signIn = await mobileLogin.getByRole('button',{name:'Sign in',exact:true}).boundingBox();
   check('Phone sign-in is visible without scrolling past a marketing hero',
     signIn!==null && signIn.y>=0 && signIn.y+signIn.height<=812);
@@ -286,6 +290,41 @@ async function run() {
   await page.getByRole('heading',{level:1}).waitFor();
   await phoneWidths(page,'Family setup');
   await page.screenshot({path:path.join(artifacts,'setup-mobile.png'),fullPage:true});
+  // The seeded parent can invite directly; the seeded child is not a profile creator.
+  await parent.goto(`${web}/setup`,{waitUntil:'domcontentloaded'});
+  await parent.getByLabel("Helper's name",{exact:true}).fill('Synthetic Code Helper');
+  await parent.getByLabel('Relationship',{exact:true}).fill('Neighbor');
+  await parent.locator('input[name="category"][value="grocery_assistance"]').check();
+  const issuedResponse = mutation(parent,'/api/onboarding/invites');
+  await parent.getByRole('button',{name:'Create helper invitation',exact:true}).click();
+  const issuedInvitation = await (await issuedResponse).json();
+  check('Setup issues an eight-digit numeric invitation',/^[0-9]{8}$/.test(issuedInvitation.invitation_token));
+  const codeDisplay = parent.getByRole('textbox',{name:'Invitation code',exact:true});
+  await codeDisplay.waitFor();
+  check('Setup groups the invitation code for easy reading',
+    (await codeDisplay.inputValue())===`${issuedInvitation.invitation_token.slice(0,4)} ${issuedInvitation.invitation_token.slice(4)}`);
+  const renewedResponse = mutation(parent,'/api/onboarding/invites/renew');
+  await parent.getByRole('button',{name:'New code',exact:true}).click();
+  const renewedInvitation = await (await renewedResponse).json();
+  check('New code replaces the original invitation',renewedInvitation.invitation_token!==issuedInvitation.invitation_token);
+  await phoneWidths(parent,'Numeric invitation');
+  await parent.screenshot({path:path.join(artifacts,'invitation-code-mobile.png'),fullPage:true});
+  const joiner = await rolePage({width:375,height:812});
+  await joiner.goto(`${web}/join`,{waitUntil:'domcontentloaded'});
+  const codeEntry = joiner.getByRole('textbox',{name:'Invitation code',exact:true});
+  check('Joining offers a numeric keypad',await codeEntry.getAttribute('inputmode')==='numeric');
+  await codeEntry.fill(`${renewedInvitation.invitation_token.slice(0,4)} ${renewedInvitation.invitation_token.slice(4)}`);
+  await phoneWidths(joiner,'Join with a numeric code');
+  await joiner.screenshot({path:path.join(artifacts,'join-code-mobile.png'),fullPage:true});
+  await joiner.getByRole('button',{name:'Check invitation',exact:true}).click();
+  await joiner.getByLabel('Your name',{exact:true}).fill('Synthetic Code Helper');
+  await joiner.getByLabel('Email',{exact:true}).fill('synthetic-code-helper@example.test');
+  await joiner.getByLabel('Create a password',{exact:false}).fill('Synthetic browser password 42!');
+  const joinedResponse = mutation(joiner,'/api/auth/register');
+  await joiner.getByRole('button',{name:'Accept invitation & create account',exact:true}).click();
+  const joinedSession = await (await joinedResponse).json();
+  await joiner.waitForURL(`${web}/respond`);
+  check('A grouped code joins only the invited helper account',joinedSession.authenticated && joinedSession.person.role==='responder');
   await page.goto(`${web}/family`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.locator('span:text-is("Simulated"):visible').first().waitFor();

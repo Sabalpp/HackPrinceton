@@ -12,9 +12,9 @@ history with an ordinary merge after required checks/reviews. After merge, use
 `scripts/sync-after-merge.sh`. Do not rerun the old administrative setup script to change
 repository governance during routine feature work or cleanup.
 
-Cloudflare uses Workers + Containers; see [deployment settings](../cloudflare-deployment.md).
-Keep its build root at the repository root. The collector runs near the watch on the Mac;
-it is not part of the API or web container image.
+Vercel hosts the app; see [deployment settings](../vercel-deployment.md). Import the
+repository root so the frontend, API and care worker deploy together. The collector
+runs near the watch on the Mac and is not part of the hosted services.
 
 ## Current health pipeline
 

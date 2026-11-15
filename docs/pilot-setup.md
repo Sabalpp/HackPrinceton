@@ -19,9 +19,13 @@ deployment, live Photon delivery, a verified cuff, or clinical validation has ha
    commits, tickets, or chat logs. Email is a login identifier; this implementation
    does not claim email verification, public signup, or automated recovery.
 3. Sign in at `/login`. `/setup` creates the parent's profile, timezone and country,
-   and a private invitation link. Deliver that link yourself to the intended parent.
-   Invitations expire in two days and can be used once. Retried setup submissions
-   reuse their action identifier and do not create duplicate profiles.
+   and an 8-digit invitation code, displayed in two groups of four. Share the code
+   with the intended parent to enter at `/join`, or copy the private link. New codes
+   expire in 30 minutes and can be used once. **New code** replaces an expired or
+   unaccepted code for the same profile, invalidating the previous code. Keep the
+   setup page open until the invitation is accepted. Retried setup submissions
+   reuse their action identifier and do not create duplicate profiles. Previously
+   issued long invitation links retain their original expiry and remain valid.
 4. The parent accepts their invitation and chooses health/check-in sharing. Both are
    initially off. They can later change them in **My sharing & Care Circle**.
 5. The family invites a nearby helper. The helper creates their own account; the
@@ -37,6 +41,9 @@ POST bodies. Invitation hashes are stored in the invitation table; setup idempot
 receipts temporarily retain the invitation response for a reliable retry. Protect the
 database and backups accordingly. Do not log request bodies or copy invitation links
 into public issues. An accepted/expired invitation cannot be revived by replaying setup.
+An authenticated invitation creator can request a fresh code for an unclaimed profile.
+Codes use cryptographic randomness; existing codes, including expired ones, are not reused.
+Lookup and account creation share the existing persisted attempt limits.
 
 For operator-assisted recovery, independently verify the account owner, then run:
 
@@ -47,6 +54,14 @@ python -m app.manage_accounts reset-password --email owner@example.test
 This revokes every existing session. A chosen production identity provider, MFA,
 verification/recovery UX, abuse controls and independent security review remain launch
 decisions, not capabilities claimed by this private-pilot login.
+
+For an operator-managed sign-in name, set the server-only `LOGIN_ALIASES` JSON
+object, for example `{"caregiver":"owner@example.test"}`. The target account must
+already exist. The alias uses its normal password, rate limit, session and role
+permissions. Registration and invitations still require email addresses and the
+usual password policy. An alias grants no administrative role or access to another
+family's records. Keep temporary shared demonstration accounts separate from real
+wearers and do not grant them health-data access.
 
 ## Connect the correct real data
 

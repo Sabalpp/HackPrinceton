@@ -104,14 +104,10 @@ The prepared deployment uses Next, API, worker, PostgreSQL and a /backend gatewa
 loopback upstream port is published; an operator configures HTTPS and secrets. No host,
 domain, provider line or paid resource is created by the templates. Clinical review, live
 delivery/failure handling, monitoring and backup restoration remain acceptance work.
-# Cloudflare deployment option (2026-11-14)
+# Active deployment: Vercel (2026-11-15)
 
-The complete app can be packaged with `deploy/cloudflare`: a Worker routes one
-HTTPS origin to two singleton Containers. Next.js retains its Node runtime;
-FastAPI and the standalone care worker run as separate supervised processes in
-the API container. Optional Tiger daily projection is a third supervised process.
-Tiger remains the existing durable database and worker mutex. A minute cron keeps
-the API available in `always_on` mode; this is not an uninterrupted-care guarantee.
-Runtime secrets reach only the API container. No raw sensor files, local OAuth
-tokens or secret env files enter either image. Configuration, choices, exact
-dashboard fields and verification limits are in [Cloudflare deployment](cloudflare-deployment.md).
+The repository-root `vercel.json` hosts Next.js, FastAPI under `/backend`, and the
+standalone care daemon. Tiger retains application records, sensor measurements and
+the worker mutex. The Mac collector stays near the band. Server secrets never enter
+the frontend bundle. Cloudflare deployment assets and build automation have been
+retired. See [Vercel deployment](vercel-deployment.md) for settings and verification.

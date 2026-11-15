@@ -75,14 +75,10 @@ For one Vercel project containing the dashboard, Tiger API and care worker, use
 [the Vercel deployment guide](docs/vercel-deployment.md). Import the **repository
 root**, not `backend/collector` or `frontend`; the root `vercel.json` defines both web
 services and a quota-limited background daemon. The BLE collector stays on the Mac.
-For a free hackathon host, use [the one-service Render Blueprint](docs/free-deployment.md):
-the API, worker and dashboard run without Docker and use your existing Tiger database.
-It sleeps when idle, so care timers are not always active. The separate
-[paid native Render Blueprint](docs/render-deployment.md) keeps a standalone worker running.
-For Cloudflare, the existing [Workers + Containers settings](docs/cloudflare-deployment.md) remain available.
-The app needs a running Next.js server and Python backend; it has no static Pages
-output directory. The deployment guide explains how to replace a failing
-`pages.dev` setup with the complete app.
+**Vercel is the active deployment platform.** The frontend, API and care worker use
+the root configuration; Tiger remains the database. The previous Cloudflare
+deployment has been retired. Existing Render templates are retained only as legacy
+reference and do not publish the app.
 Blood pressure comes from reported cuff readings. [The health evidence and rules](docs/health-evidence.md)
 separate clinical guidance from the app's unvalidated seven-qualified-day learning heuristic.
 “This is usual for me” is a provisional reference and never disables urgent guidance.

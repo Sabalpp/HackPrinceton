@@ -361,6 +361,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/onboarding/invites/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renew Invite */
+        post: operations["renew_invite_api_onboarding_invites_renew_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding/parents": {
         parameters: {
             query?: never;
@@ -1643,6 +1660,13 @@ export interface components {
              */
             share_health: boolean;
         };
+        /** RenewInviteIn */
+        RenewInviteIn: {
+            /** Action Id */
+            action_id: string;
+            /** Invitation Token */
+            invitation_token: string;
+        };
         /** RequestDecisionIn */
         RequestDecisionIn: {
             /** Action Id */
@@ -2638,6 +2662,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateInviteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteIssued"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    renew_invite_api_onboarding_invites_renew_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenewInviteIn"];
             };
         };
         responses: {

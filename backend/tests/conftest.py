@@ -12,6 +12,7 @@ os.environ.update(
     GEMINI_API_KEY="",
     INGEST_API_KEY="",
     TIGER_DATABASE_URL="",
+    LOGIN_ALIASES="{}",
     DEMO_MODE="true",
     SEED_DEMO_DATA="true",
     PROACTIVE_CHECKINS_ENABLED="false",

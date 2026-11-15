@@ -1,5 +1,7 @@
 # Deploy FarCare on Render
 
+Legacy reference. The active deployment uses [Vercel](vercel-deployment.md).
+
 For the one-service **free hackathon option**, use [the free deployment guide](free-deployment.md)
 and Blueprint path `deploy/render/free.yaml`. It sleeps when idle. The guide below is the
 separate paid deployment with a continuously running worker.
@@ -10,14 +12,6 @@ external PostgreSQL database; no new database, queue or storage service is provi
 The Mac collector continues sending real Fitbit and Google Health data to Tiger.
 
 ## 1. Import the Blueprint
-
-When switching from the previous Cloudflare host, disable its repository build
-connection in Cloudflare first. The current `Workers Builds: hackprinceton` check
-on main is failing; Render's **After CI Checks Pass** setting also waits for
-connected third-party checks. Keep GitHub Actions checks enabled. Pausing the old
-build connection avoids a failed deployment on an unused host blocking Render.
-This changes the old host's build automation, not your Tiger data.
-[Render's CI integration](https://render.com/docs/deploys#integrating-with-ci)
 
 After the deployment files reach `main`, open Render → **New → Blueprint**, connect
 `Sabalpp/HackPrinceton`, choose **main**, and use the repository-root `render.yaml`.
@@ -168,5 +162,5 @@ This file is a deployable configuration, not evidence that the services have bee
 Account permissions, billing, the live Tiger connection, HTTPS routing, worker readiness and
 real SMS delivery require verification on the deployed services.
 
-The existing Docker and Cloudflare files remain because their workflows still reference
-them. They are an optional deployment route, not a requirement for this native Render setup.
+The API Dockerfile remains in use by CI and the active Vercel care daemon. It is
+not required for this legacy native Render setup.

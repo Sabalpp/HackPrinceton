@@ -1,5 +1,0 @@
-.env
-.dev.vars*
-.wrangler/
-wrangler.generated.json
-verification.private.json
