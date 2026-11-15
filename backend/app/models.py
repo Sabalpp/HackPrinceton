@@ -193,4 +193,7 @@ class OutboundMessage(SQLModel, table=True):
     status: str  # sent | simulated | unreachable | failed
     provider_message_id: str | None = None
     error: str | None = None
+    # Immutable grants required to display this message in the authenticated app.
+    # Legacy messages without a snapshot are hidden from family/helpers.
+    access_contexts: list[dict] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow, sa_column=dt_column(nullable=False))

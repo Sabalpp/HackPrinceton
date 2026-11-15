@@ -91,7 +91,12 @@ def send_to_person(
     if in_app or (account is not None and not (channel == "photon" and photon_routed(person))):
         channel = "in_app"
     msg = OutboundMessage(
-        id=idempotency_key, person_id=person.id, channel=channel, text=text, status="simulated"
+        id=idempotency_key,
+        person_id=person.id,
+        channel=channel,
+        text=text,
+        status="simulated",
+        access_contexts=delivery.message_contexts(session, person, context),
     )
     if permission_error:
         msg.status = "cancelled"

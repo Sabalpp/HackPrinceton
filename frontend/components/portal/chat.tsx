@@ -19,7 +19,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   voice: "Voice call",
   app: "App",
   in_app: "App",
-  photon: "iMessage",
+  photon: "Text message",
   console: "Simulated",
   simulated: "Simulated",
 };

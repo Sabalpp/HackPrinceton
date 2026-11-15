@@ -26,7 +26,7 @@ from app.models import (
 )
 from app.runtime_models import AgentLease, DeliveryJob, InboundRetry
 from app.schemas.contracts import AssistanceCategory
-from app.services import care_requests, conversation
+from app.services import actions, care_requests, conversation
 
 
 @pytest.fixture
@@ -48,6 +48,61 @@ def routed(client, monkeypatch):
 def queue(key="job-1", text="A synthetic test message"):
     with session_scope() as session:
         return messaging.send_to_person(session, session.get(Person, "parent_001"), text, key)
+
+
+@pytest.mark.parametrize("revoke", [False, True])
+def test_cancel_notice_dispatches_after_commit_but_still_requires_membership(
+    routed, monkeypatch, revoke
+):
+    calls = []
+    monkeypatch.setattr(
+        photon, "send_text", lambda **kwargs: calls.append(kwargs) or "cancel-notice"
+    )
+    with session_scope() as s:
+        helper = route_person(s, "responder_001")
+        parent = s.get(Person, "parent_001")
+        parent.display_name = "Sita PrivateSurname"
+        s.add(parent)
+        task = CareRequestRow(
+            id="cancel-task",
+            parent_id=parent.id,
+            responder_id=helper.id,
+            request_type="grocery_assistance",
+            status="sent",
+            parent_approved=True,
+        )
+        s.add(task)
+        s.flush()
+        messaging.send_to_person(
+            s,
+            helper,
+            "Old task offer",
+            "old-offer",
+            parent_id=parent.id,
+            visibility="responder",
+            request_id=task.id,
+            offer_only=True,
+        )
+        actions.cancel_request(s, parent, task.id)
+        assert task.status == "cancelled"
+        assert calls == []  # no external side effects before the transaction commits
+    if revoke:
+        with session_scope() as s:
+            member = s.exec(
+                select(CareCircleMember).where(CareCircleMember.responder_id == "responder_001")
+            ).one()
+            member.active = False
+            s.add(member)
+    worker.run_cycle("cancel-check")
+    worker.run_cycle("cancel-retry")
+    assert len(calls) == (0 if revoke else 1)
+    if calls:
+        assert "no longer needs" in calls[0]["text"]
+        assert "PrivateSurname" not in calls[0]["text"]
+    with session_scope() as s:
+        assert s.get(OutboundMessage, "old-offer").status == "cancelled"
+        notice = s.get(OutboundMessage, "care:cancel-task:cancelled:responder_001")
+        assert notice.status == ("cancelled" if revoke else "accepted")
 
 
 def make_due(key="job-1"):

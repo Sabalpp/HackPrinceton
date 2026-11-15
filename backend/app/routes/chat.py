@@ -27,7 +27,7 @@ APP_MESSAGES_PER_10_MIN = 30
 def _thread(session: Session, person: Person, limit: int = 60) -> ChatThread:
     return ChatThread(
         messages=[ChatMessage(**m) for m in conversation.thread(session, person, limit)],
-        connected_by_text=photon_routed(person),
+        connected_by_text=channel_name() == "photon" and photon_routed(person),
         messaging=channel_name(),  # type: ignore[arg-type]
     )
 

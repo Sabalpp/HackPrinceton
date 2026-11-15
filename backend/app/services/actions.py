@@ -59,6 +59,10 @@ def assigned_task(session: Session, responder: Person, request_id: str) -> CareR
     )
     if not row or row.responder_id != responder.id or member is None or not approved:
         raise NotFound("Task not found")
+    if (row.origin == CareRequestOrigin.emergency and not member.emergency_contact) or (
+        row.origin != CareRequestOrigin.emergency and row.request_type not in member.categories
+    ):
+        raise NotFound("Task not found")
     return row
 
 
@@ -88,7 +92,13 @@ def responder_tasks(
         .order_by(CareRequestRow.updated_at.desc())  # type: ignore[union-attr]
         .limit(50)
     ).all()
-    return list(rows)
+    allowed = []
+    for row in rows:
+        try:
+            allowed.append(assigned_task(session, responder, row.id))
+        except NotFound:
+            continue
+    return allowed
 
 
 def respond_to_task(
@@ -149,20 +159,21 @@ def cancel_request(session: Session, parent: Person, request_id: str) -> CareReq
     if row.status not in (S.awaiting_approval, S.approved, S.sent, S.accepted):
         raise Conflict("This request is already finished.")
     helper = session.get(Person, row.responder_id) if row.responder_id else None
-    if row.status in (S.sent, S.accepted) and helper is not None:
-        # Tell the helper BEFORE cancelling: delivery rules block task messages about a
-        # request that is already cancelled.
+    notify_helper = row.status in (S.sent, S.accepted) and helper is not None
+    care_requests.cancel(session, row, summary=f"{parent.display_name} cancelled the request")
+    if notify_helper:
+        # The worker sends after commit. Only this cancellation notice may pass
+        # for a cancelled task; stale offers and acknowledgements remain blocked.
         send_to_person(
             session,
             helper,
-            f"Update from FarCare: {parent.display_name} no longer needs "
+            f"Update from FarCare: {care_requests.parent_first_name(parent)} no longer needs "
             f"{care_requests.label(row)}. Thank you for being ready to help!",
             f"care:{row.id}:cancelled:{helper.id}",
             parent_id=parent.id,
-            visibility="responder",
+            visibility="responder_cancellation",
             request_id=row.id,
         )
-    care_requests.cancel(session, row, summary=f"{parent.display_name} cancelled the request")
     return row
 
 
@@ -200,10 +211,15 @@ def family_by_name(session: Session, parent: Person, name: str) -> FamilyLink | 
             FamilyLink.parent_id == parent.id, FamilyLink.member_id == Person.id
         )
     ).all()
-    wanted = name.strip().lower()
-    for link, member in rows:
-        if wanted and (
-            wanted in member.display_name.lower() or wanted in (link.relationship or "").lower()
-        ):
-            return link
-    return rows[0][0] if len(rows) == 1 else None
+    wanted = name.strip().lower().removeprefix("my ")
+    matches = [
+        link
+        for link, member in rows
+        if wanted
+        and (wanted in member.display_name.lower() or wanted in (link.relationship or "").lower())
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if wanted in ("", "him", "her", "them", "family") and len(rows) == 1:
+        return rows[0][0]
+    return None

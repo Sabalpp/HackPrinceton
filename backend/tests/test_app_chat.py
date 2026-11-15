@@ -1,8 +1,14 @@
 """The app and the AI messaging agent are one system: same conversation, same actions."""
 
+from types import SimpleNamespace
+
+import pytest
+from sqlmodel import select
+
 from app.config import get_settings
 from app.db import session_scope
-from app.models import CareRequestRow, FamilyLink
+from app.integrations import messaging
+from app.models import CareCircleMember, CareRequestRow, ConversationTurn, FamilyLink, Person
 from tests.conftest import ADMIN
 from tests.test_experience import ORIGIN, become, demo, get, post
 from tests.test_webhook_and_agent import FakeGemini
@@ -74,6 +80,20 @@ def test_parent_status_by_text(client):
     chat(client, parent, "Can someone help me with groceries tomorrow?")
     out = chat(client, parent, "any updates?")
     assert "help with groceries" in replies(out)[-1]
+
+
+def test_unknown_request_or_family_name_does_not_change_someone_else(client):
+    from app.integrations.gemini.agent import Tools
+    from app.services import actions
+
+    parent = demo(client, "parent")
+    chat(client, parent, "Can someone help me with groceries tomorrow?")
+    with session_scope() as s:
+        person = s.get(Person, parent["id"])
+        assert Tools(s, person).t_cancel_request("medicine")["status"] == "ask_which"
+        assert s.query(CareRequestRow).one().status == "awaiting_approval"
+        assert actions.family_by_name(s, person, "Unknown relative") is None
+        assert actions.family_by_name(s, person, "my son") is not None
 
 
 def test_gemini_changes_sharing_through_the_same_action_as_the_app(client, monkeypatch):
@@ -176,3 +196,70 @@ def test_model_claim_of_contact_is_removed_before_approval(client, monkeypatch):
     parent = demo(client, "parent")
     [reply] = replies(chat(client, parent, "groceries tomorrow please"))[-1:]
     assert "I've asked" not in reply and reply.startswith("Would you like me to ask Asha")
+
+
+@pytest.mark.parametrize("permission", ["share_health", "share_checkins"])
+def test_conversation_hides_previously_shared_facts_after_revocation(client, permission):
+    parent, child = demo(client, "parent"), demo(client, "child")
+    with session_scope() as s:
+        messaging.send_to_person(
+            s,
+            s.get(Person, child["id"]),
+            "Private shared observation",
+            "private-reply",
+            parent_id=parent["id"],
+            visibility="family_context",
+            in_app=True,
+        )
+    assert "Private shared observation" in replies(
+        get(client, child, "/api/me/conversation").json()["messages"]
+    )
+    with session_scope() as s:
+        link = s.exec(select(FamilyLink).where(FamilyLink.member_id == child["id"])).one()
+        setattr(link, permission, False)
+        s.add(link)
+    assert "Private shared observation" not in replies(
+        get(client, child, "/api/me/conversation").json()["messages"]
+    )
+
+
+def test_helper_chat_and_offers_are_hidden_after_membership_revocation(client):
+    parent, helper = demo(client, "parent"), demo(client, "responder")
+    chat(client, parent, "Can someone help with groceries?")
+    chat(client, parent, "yes")
+    assert any("groceries" in text for text in replies(chat(client, helper, "what are my tasks?")))
+    with session_scope() as s:
+        member = s.exec(
+            select(CareCircleMember).where(CareCircleMember.responder_id == helper["id"])
+        ).one()
+        member.active = False
+        s.add(member)
+    thread = get(client, helper, "/api/me/conversation").json()["messages"]
+    assert not any("groceries" in text for text in replies(thread))
+    chat(client, helper, "YES")
+    with session_scope() as s:
+        assert s.query(CareRequestRow).one().status == "sent"
+
+
+def test_helper_model_does_not_receive_unscoped_old_conversation(client, monkeypatch):
+    from app.integrations.gemini import responder_agent
+
+    calls = []
+
+    def generate(**kwargs):
+        calls.append(kwargs["contents"])
+        return SimpleNamespace(function_calls=[], text="Current reply", candidates=[])
+
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "test-only")
+    monkeypatch.setattr(
+        responder_agent,
+        "_get_client",
+        lambda: SimpleNamespace(models=SimpleNamespace(generate_content=generate)),
+    )
+    with session_scope() as s:
+        helper = s.get(Person, "responder_001")
+        s.add(ConversationTurn(person_id=helper.id, role="assistant", text="revoked-private-task"))
+        s.flush()
+        assert responder_agent.respond(s, helper, "What is current?")[0] == "Current reply"
+    assert "revoked-private-task" not in str(calls)
+    assert "What is current?" in str(calls)

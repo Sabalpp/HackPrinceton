@@ -11,6 +11,7 @@ os.environ.update(
     PHOTON_AGENT_USER_ID="",
     GEMINI_API_KEY="",
     INGEST_API_KEY="",
+    TIGER_DATABASE_URL="",
     DEMO_MODE="true",
     SEED_DEMO_DATA="true",
     PROACTIVE_CHECKINS_ENABLED="false",

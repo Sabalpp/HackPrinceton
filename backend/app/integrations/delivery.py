@@ -8,8 +8,9 @@ device-delivery guarantee. Provider idempotency retention still applies.
 
 import hashlib
 import math
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
+from types import SimpleNamespace
 
 from sqlmodel import Session, select
 
@@ -29,6 +30,7 @@ VISIBILITIES = {
     "emergency",
     "responder",
     "responder_emergency",
+    "responder_cancellation",
 }
 
 
@@ -128,7 +130,11 @@ def authorization_error(session: Session, person: Person | None, context) -> str
                 or request.parent_id != parent.id
                 or request.responder_id != person.id
                 or not approved
-                or request.status == "cancelled"
+                or (
+                    request.status != "cancelled"
+                    if context.visibility == "responder_cancellation"
+                    else request.status == "cancelled"
+                )
                 or (context.offer_only and request.status not in ("approved", "sent"))
                 or (request.origin == "emergency" and not member.emergency_contact)
                 or (request.origin != "emergency" and request.request_type not in member.categories)
@@ -148,6 +154,54 @@ def authorization_error(session: Session, person: Person | None, context) -> str
     ):
         return "family_consent_revoked"
     return None
+
+
+def message_contexts(session: Session, person: Person, context: dict) -> list[dict]:
+    """Retain grants for app history, including task facts in a helper-agent reply."""
+    contexts = [context]
+    if person.role == "responder" and context["visibility"] == "direct":
+        for task in session.exec(
+            select(CareRequestRow).where(
+                CareRequestRow.responder_id == person.id,
+            )
+        ).all():
+            scope = snapshot_context(
+                session,
+                person,
+                parent_id=task.parent_id,
+                visibility="responder_emergency" if task.origin == "emergency" else "responder",
+                request_id=task.id,
+                offer_only=False,
+            )
+            view = SimpleNamespace(family_link_id=None, care_circle_id=None)
+            view.__dict__.update(scope)
+            if authorization_error(session, person, view) is None:
+                contexts.append(scope)
+    return [
+        {
+            key: value.isoformat() if isinstance(value, datetime) else value
+            for key, value in c.items()
+        }
+        for c in contexts
+    ]
+
+
+def can_read_message(session: Session, person: Person, message: OutboundMessage) -> bool:
+    """Re-check grants on every app read; delivery in the past is not current consent."""
+    if message.person_id != person.id or message.status == "cancelled":
+        return False
+    if not message.access_contexts:
+        # Parents can still read their own legacy thread. Do not infer a parent's
+        # consent for legacy family/helper messages that have no saved scope.
+        return person.role == "parent"
+    for saved in message.access_contexts:
+        context = SimpleNamespace(family_link_id=None, care_circle_id=None)
+        context.__dict__.update(saved)
+        if context.account_created_at:
+            context.account_created_at = datetime.fromisoformat(context.account_created_at)
+        if authorization_error(session, person, context):
+            return False
+    return True
 
 
 def enqueue(session: Session, message: OutboundMessage, person: Person, **context) -> None:
@@ -214,6 +268,12 @@ def dispatch(session: Session, job: DeliveryJob) -> str:
         session.add(job)
         return job.status
     permission_error = authorization_error(session, person, job)
+    if (
+        permission_error is None
+        and message.access_contexts
+        and not can_read_message(session, person, message)
+    ):
+        permission_error = "message_consent_revoked"
     if permission_error is None and person is not None:
         permission_error = route_error(person)
     if permission_error:
