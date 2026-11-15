@@ -70,10 +70,63 @@ def get_engine() -> Engine:
 
 
 def reset_engine() -> None:
-    global _engine
+    global _engine, _tiger_engine
     if _engine is not None:
         _engine.dispose()
     _engine = None
+    if _tiger_engine is not None:
+        _tiger_engine.dispose()
+    _tiger_engine = None
+
+
+_tiger_engine: Engine | None = None
+
+
+def tiger_engine() -> Engine | None:
+    """Separate read-only engine for live watch data, or None to use DATABASE_URL."""
+    global _tiger_engine
+    url = get_settings().tiger_database_url.strip()
+    if not url:
+        return None
+    if _tiger_engine is None:
+        from sqlalchemy import event
+
+        _tiger_engine = create_engine(
+            _normalize_url(url),
+            pool_pre_ping=True,
+            pool_size=2,
+            max_overflow=2,
+            connect_args={"connect_timeout": 5},
+        )
+
+        @event.listens_for(_tiger_engine, "connect")
+        def _read_only(dbapi_connection, _record):  # every pooled connection, every time
+            cursor = dbapi_connection.cursor()
+            cursor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY")
+            cursor.close()
+            dbapi_connection.commit()
+
+    return _tiger_engine
+
+
+@contextmanager
+def watch_data_session(main: Session) -> Iterator[Session]:
+    """Where air_health.* watch data is read from.
+
+    With TIGER_DATABASE_URL: a separate read-only Tiger session, so a slow or failed read
+    never touches the app's own transaction and nothing can be written to Tiger.
+    Without it: the app's own session inside a savepoint (single-database deployments).
+    """
+    engine = tiger_engine()
+    if engine is None:
+        with main.begin_nested():
+            yield main
+        return
+    with Session(engine) as tiger:
+        try:
+            yield tiger
+        finally:
+            tiger.rollback()
 
 
 def init_db() -> None:

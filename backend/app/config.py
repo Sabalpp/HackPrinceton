@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "test", "production"] = "development"
     database_url: str = "sqlite:///./farcare.db"
+    # Optional, READ-ONLY source of live watch data (Tiger Data / TimescaleDB, the database the
+    # collector writes air_health.* into). When blank, watch data is read from DATABASE_URL
+    # (single-database deployments). FarCare never writes to this connection.
+    tiger_database_url: str = ""
     cors_origins: str = "http://localhost:3000"
     background_tasks_enabled: bool = True
     session_hours: int = Field(default=24, ge=1, le=168)

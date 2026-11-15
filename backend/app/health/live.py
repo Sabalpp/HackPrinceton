@@ -19,7 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
-from app.db import utcnow
+from app.db import utcnow, watch_data_session
 from app.health.live_models import WatchSourceLink
 from app.models import Person
 from app.schemas.experience import SensorHealthReport, SensorMetric, SensorPoint
@@ -343,9 +343,10 @@ def read_sensor_health(
                 status="not_linked",
                 message="A verified watch source has not been linked to this parent yet.",
             )
-        # A failed read must not poison the request's surrounding DB transaction.
-        with session.begin_nested():
-            rows = _query_sensor_rows(session, subject_id=link.subject_id, now=clock)
+        # A failed read must not poison the request's surrounding DB transaction; with
+        # TIGER_DATABASE_URL set it runs on a separate read-only Tiger connection.
+        with watch_data_session(session) as watch:
+            rows = _query_sensor_rows(watch, subject_id=link.subject_id, now=clock)
         report = project_sensor_rows(rows, parent=parent, subject_id=link.subject_id, now=clock)
     except (SQLAlchemyError, ValueError, KeyError):
         report = empty_report(
