@@ -25,6 +25,12 @@ export function eventLook(e: TimelineEvent): Look {
   return { Icon: Bell, chip: "bg-neutral-bg text-neutral", label: "Update" };
 }
 
+/** Friendlier wording for system events whose stored summary is technical. */
+const PLAIN: Record<string, string> = {
+  "health.synced": "New daily readings arrived from the watch",
+  "health.pattern_noted": "FarCare noticed a change from the usual and suggested a check-in",
+};
+
 export function FeedItem({ event: e, isNew = false, last = false }: { event: TimelineEvent; isNew?: boolean; last?: boolean }) {
   const look = eventLook(e);
   const body = (
@@ -36,7 +42,7 @@ export function FeedItem({ event: e, isNew = false, last = false }: { event: Tim
         {!last && <span className="w-px flex-1 bg-border" />}
       </span>
       <span className={`flex min-w-0 flex-col gap-0.5 ${last ? "" : "pb-5"}`}>
-        <span className="text-ink">{e.summary}</span>
+        <span className="text-ink">{PLAIN[e.kind] ?? e.summary}</span>
         <span className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
           <span>{look.label}</span>
           <span aria-hidden="true">·</span>

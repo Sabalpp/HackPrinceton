@@ -197,3 +197,26 @@ class OutboundMessage(SQLModel, table=True):
     # Legacy messages without a snapshot are hidden from family/helpers.
     access_contexts: list[dict] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow, sa_column=dt_column(nullable=False))
+
+
+class HeartRateAlertRow(SQLModel, table=True):
+    """A heart-rate limit chosen by the parent or a family member who can see health data.
+
+    These are the family's own numbers, not medical thresholds. Crossing one for the whole
+    window texts family who can see health and/or asks the parent "are you okay?"."""
+
+    __tablename__ = "heart_rate_alerts"
+
+    parent_id: str = Field(primary_key=True, foreign_key="people.id")
+    high_bpm: int | None = None
+    low_bpm: int | None = None
+    sustain_minutes: int = 2
+    notify_family: bool = True
+    check_on_parent: bool = False
+    cooldown_minutes: int = 30
+    enabled: bool = True
+    updated_by: str = Field(foreign_key="people.id")
+    updated_at: datetime = Field(default_factory=utcnow, sa_column=dt_column(nullable=False))
+    next_check_at: datetime | None = Field(default=None, sa_column=dt_column(nullable=True))
+    last_alert_at: datetime | None = Field(default=None, sa_column=dt_column(nullable=True))
+    last_alert_bpm: int | None = None

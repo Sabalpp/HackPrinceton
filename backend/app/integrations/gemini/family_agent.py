@@ -21,7 +21,7 @@ from app.integrations.gemini.agent import (
 )
 from app.models import FamilyLink, Person
 from app.schemas.contracts import AssistanceCategory
-from app.services import family
+from app.services import family, vitals
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +36,14 @@ always asks {parent_name} for consent first, so tell {name} you're checking with
 Never say help is arranged until it is.
 - check_on_parent: when {name} is worried or can't reach {who}. FarCare checks in with \
 {parent_name} and alerts the Care Circle automatically if there's no answer.
+- get_parent_readings: {parent_name}'s latest watch readings (heart rate in bpm, resting heart \
+rate, blood oxygen, HRV, breathing rate, sleep, steps) with their times, if {parent_name} shares \
+health with {name}. Use it whenever {name} asks for a number. Quote values and how long ago \
+exactly as given; if live_now is false, say it's the last reading. Never call a value normal or \
+abnormal. If it returns not_shared, say {parent_name} hasn't chosen to share health data.
+- set_heart_rate_alert: when {name} asks to be told if {who}'s heart rate goes above or below a \
+number. Pass the numbers they gave; minutes defaults to 2. Confirm the limit in your reply and \
+say it's their own limit, not medical guidance.
 
 Never diagnose or give medical advice. If {name} describes an emergency, tell them to call \
 local emergency services for {who}'s location, and use check_on_parent."""
@@ -74,6 +82,39 @@ class FamilyTools:
     def t_check_on_parent(self, reason: str = "") -> dict:
         return family.check_on_parent(self.s, self.member, self.link, self.parent, reason)
 
+    def t_get_parent_readings(self) -> dict:
+        if not self.link.share_health:
+            return {"status": "not_shared"}
+        return vitals.readings_facts(self.s, self.parent)
+
+    def t_set_heart_rate_alert(
+        self,
+        high_bpm: int | None = None,
+        low_bpm: int | None = None,
+        minutes: int = 2,
+        ask_parent: bool = False,
+    ) -> dict:
+        if not self.link.share_health:
+            return {"status": "not_shared"}
+        try:
+            row = vitals.save_alert(
+                self.s,
+                self.parent,
+                self.member,
+                high_bpm=int(high_bpm) if high_bpm is not None else None,
+                low_bpm=int(low_bpm) if low_bpm is not None else None,
+                sustain_minutes=int(minutes),
+                notify_family=True,
+                check_on_parent=bool(ask_parent),
+            )
+        except (TypeError, ValueError) as exc:
+            return {"status": "invalid", "note": str(exc)}
+        return {
+            "status": "saved",
+            "alert": vitals.describe_alert(row),
+            "texts": self.member.display_name,
+        }
+
 
 def _declarations() -> list[Any]:
     return [
@@ -92,6 +133,26 @@ def _declarations() -> list[Any]:
             "check_on_parent",
             "Send the parent a safety check-in; escalates if no answer.",
             {"reason": {"type": "string"}},
+            [],
+        ),
+        _decl(
+            "get_parent_readings",
+            "The parent's latest watch readings with times (only if health is shared).",
+            {},
+            [],
+        ),
+        _decl(
+            "set_heart_rate_alert",
+            "Text this family member if the parent's heart rate stays above/below a limit.",
+            {
+                "high_bpm": {"type": "integer", "description": "Alert above this bpm (60-220)"},
+                "low_bpm": {"type": "integer", "description": "Alert below this bpm (30-100)"},
+                "minutes": {"type": "integer", "description": "How long it must last (1-30)"},
+                "ask_parent": {
+                    "type": "boolean",
+                    "description": "Also ask the parent if they're okay",
+                },
+            },
             [],
         ),
     ]
@@ -162,6 +223,22 @@ def _fallback(
 ) -> str:
     name = family.who(link, parent)
     lower = text.lower()
+    limits = vitals.parse_alert_request(text)
+    if limits is not None:
+        result = tools.run("set_heart_rate_alert", limits)
+        if result.get("status") == "saved":
+            return (
+                f"Done. I'll text you if {name}'s {result['alert']}. "
+                "This is your own limit, not medical guidance."
+            )
+        if result.get("status") == "not_shared":
+            return f"{name} hasn't chosen to share health data with you, so I can't set that up."
+        return f"I couldn't set that limit: {result.get('note', 'please try again')}"
+    if vitals.READINGS_RE.search(text):
+        result = tools.run("get_parent_readings", {})
+        if result.get("status") == "not_shared":
+            return f"{name} hasn't chosen to share health data with you."
+        return vitals.answer(text, result, f"{name}'s readings")
     if CONCERN_RE.search(text):
         result = tools.run("check_on_parent", {"reason": text[:200]})
         if result.get("status") == "already_active":

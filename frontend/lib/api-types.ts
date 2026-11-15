@@ -565,6 +565,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/parents/{parent_id}/heart-rate-alert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alert */
+        get: operations["get_alert_api_parents__parent_id__heart_rate_alert_get"];
+        put?: never;
+        /** Save Alert */
+        post: operations["save_alert_api_parents__parent_id__heart_rate_alert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/parents/{parent_id}/incidents": {
         parameters: {
             query?: never;
@@ -1280,6 +1298,67 @@ export interface components {
              * @enum {string}
              */
             scenario: "decline" | "normal" | "recovering";
+        };
+        /**
+         * HeartRateAlertIn
+         * @description The family's own heart-rate limits. Not medical thresholds.
+         */
+        HeartRateAlertIn: {
+            /** Action Id */
+            action_id: string;
+            /**
+             * Check On Parent
+             * @default false
+             */
+            check_on_parent: boolean;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** High Bpm */
+            high_bpm?: number | null;
+            /** Low Bpm */
+            low_bpm?: number | null;
+            /**
+             * Notify Family
+             * @default true
+             */
+            notify_family: boolean;
+            /**
+             * Sustain Minutes
+             * @default 2
+             */
+            sustain_minutes: number;
+        };
+        /** HeartRateAlertInfo */
+        HeartRateAlertInfo: {
+            /** Check On Parent */
+            check_on_parent: boolean;
+            /** Configured */
+            configured: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** High Bpm */
+            high_bpm: number | null;
+            /** Last Alert At */
+            last_alert_at: string | null;
+            /** Last Alert Bpm */
+            last_alert_bpm: number | null;
+            /** Low Bpm */
+            low_bpm: number | null;
+            /** Notify Family */
+            notify_family: boolean;
+            /** Parent Id */
+            parent_id: string;
+            /** Sustain Minutes */
+            sustain_minutes: number;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By Name */
+            updated_by_name: string | null;
+            /** Watch Linked */
+            watch_linked: boolean;
         };
         /** HelpIn */
         HelpIn: {
@@ -3011,6 +3090,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthSummary"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alert_api_parents__parent_id__heart_rate_alert_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartRateAlertInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_alert_api_parents__parent_id__heart_rate_alert_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                parent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartRateAlertIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartRateAlertInfo"];
                 };
             };
             /** @description Validation Error */

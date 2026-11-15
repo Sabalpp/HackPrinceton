@@ -1217,6 +1217,189 @@
         "title": "HealthSyncDemoIn",
         "type": "object"
       },
+      "HeartRateAlertIn": {
+        "additionalProperties": false,
+        "description": "The family's own heart-rate limits. Not medical thresholds.",
+        "properties": {
+          "action_id": {
+            "maxLength": 80,
+            "minLength": 16,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "check_on_parent": {
+            "default": false,
+            "title": "Check On Parent",
+            "type": "boolean"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "high_bpm": {
+            "anyOf": [
+              {
+                "maximum": 220.0,
+                "minimum": 60.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Bpm"
+          },
+          "low_bpm": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Bpm"
+          },
+          "notify_family": {
+            "default": true,
+            "title": "Notify Family",
+            "type": "boolean"
+          },
+          "sustain_minutes": {
+            "default": 2,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Sustain Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action_id"
+        ],
+        "title": "HeartRateAlertIn",
+        "type": "object"
+      },
+      "HeartRateAlertInfo": {
+        "properties": {
+          "check_on_parent": {
+            "title": "Check On Parent",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "high_bpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Bpm"
+          },
+          "last_alert_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Alert At"
+          },
+          "last_alert_bpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Alert Bpm"
+          },
+          "low_bpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Bpm"
+          },
+          "notify_family": {
+            "title": "Notify Family",
+            "type": "boolean"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "sustain_minutes": {
+            "title": "Sustain Minutes",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By Name"
+          },
+          "watch_linked": {
+            "title": "Watch Linked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "parent_id",
+          "configured",
+          "enabled",
+          "high_bpm",
+          "low_bpm",
+          "sustain_minutes",
+          "notify_family",
+          "check_on_parent",
+          "updated_by_name",
+          "updated_at",
+          "last_alert_at",
+          "last_alert_bpm",
+          "watch_linked"
+        ],
+        "title": "HeartRateAlertInfo",
+        "type": "object"
+      },
       "HelpIn": {
         "additionalProperties": false,
         "properties": {
@@ -4800,6 +4983,130 @@
         "summary": "Health Summary",
         "tags": [
           "family dashboard"
+        ]
+      }
+    },
+    "/api/parents/{parent_id}/heart-rate-alert": {
+      "get": {
+        "operationId": "get_alert_api_parents__parent_id__heart_rate_alert_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartRateAlertInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Alert",
+        "tags": [
+          "heart-rate alerts"
+        ]
+      },
+      "post": {
+        "operationId": "save_alert_api_parents__parent_id__heart_rate_alert_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parent_id",
+            "required": true,
+            "schema": {
+              "title": "Parent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartRateAlertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartRateAlertInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Alert",
+        "tags": [
+          "heart-rate alerts"
         ]
       }
     },

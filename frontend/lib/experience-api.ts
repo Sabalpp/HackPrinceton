@@ -20,6 +20,8 @@ export type SensorHealthReport = Schemas["SensorHealthReport"];
 export type SensorMetric = Schemas["SensorMetric"];
 export type ChatThread = Schemas["ChatThread"];
 export type ChatMessage = Schemas["ChatMessage"];
+export type HeartRateAlert = Schemas["HeartRateAlertInfo"];
+export type HeartRateAlertInput = Schemas["HeartRateAlertIn"];
 const post = <T>(path: string, body?: unknown) => request<T>(path, null, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 export const experience = {
   session: () => request<Session>("/api/auth/session", null),
@@ -44,5 +46,7 @@ export const experience = {
   sensorHealth: (id: string) => request<SensorHealthReport | null>(`/api/parents/${encodeURIComponent(id)}/sensor-health`, null),
   conversation: () => request<ChatThread>("/api/me/conversation", null),
   sendMessage: (text: string) => post<ChatThread>("/api/me/conversation", { text }),
+  heartRateAlert: (id: string) => request<HeartRateAlert>(`/api/parents/${encodeURIComponent(id)}/heart-rate-alert`, null),
+  saveHeartRateAlert: (id: string, body: HeartRateAlertInput) => post<HeartRateAlert>(`/api/parents/${encodeURIComponent(id)}/heart-rate-alert`, body),
   reference: (id: string, body: Schemas["ReferenceIn"]) => post<Schemas["ReferenceInfo"]>(`/api/parents/${encodeURIComponent(id)}/reference`, body),
 };

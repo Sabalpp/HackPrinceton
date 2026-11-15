@@ -1,50 +1,51 @@
 @import "tailwindcss";
 
 /*
- * Dark dashboard surfaces with semantic accents.
- * Mint marks primary actions and progress; amber marks items needing a look.
- * Red is reserved for urgent items. Use on-primary text over bright mint,
- * and danger-ink for red text on dark surfaces.
+ * Light, calm surfaces: white cards on a soft off-white page.
+ * Teal marks primary actions and progress; amber marks items needing a look.
+ * Red is reserved for urgent items. Every text token meets WCAG AA on white.
  */
 @theme {
-  --color-bg: #0a0d0e;
-  --color-side: #0e1213;
-  --color-surface: #131819;
-  --color-inset: #1a2022;
-  --color-border: #252d30;
-  --color-ink: #f1f4f4;
-  --color-muted: #8b979a;
-  --color-body: #c4cdcf;
-  --color-primary: #3ddcb0;
-  --color-primary-hover: #6be6c4;
-  --color-primary-tint: #0f2e27;
-  --color-on-tint: #86edcf;
-  --color-on-primary: #03241b;
-  --color-sun: #ff8a65; /* coral accent: marks and dots only */
-  --color-coral-tint: #33190f;
-  --color-coral-ink: #ffb39a;
-  --color-hero: #101a1a;
-  --color-ring-track: #1f2729;
-  --color-live: #3ddcb0;
+  --color-bg: #f6f8f7;
+  --color-side: #ffffff;
+  --color-surface: #ffffff;
+  --color-inset: #f0f4f2;
+  --color-border: #e2e8e5;
+  --color-ink: #16211d;
+  --color-muted: #5f6c67;
+  --color-body: #3a4742;
+  --color-primary: #0e7c66;
+  --color-primary-hover: #0b6855;
+  --color-primary-tint: #e3f3ee;
+  --color-on-tint: #0b5546;
+  --color-on-primary: #ffffff;
+  --color-sun: #e0743f; /* coral accent: marks and dots only */
+  --color-coral-tint: #fdeee6;
+  --color-coral-ink: #9c4519;
+  --color-hero: #e8f4ef;
+  --color-ring-track: #e4ebe8;
+  --color-live: #12a37f;
 
-  --color-watch-bg: #2a2210;
-  --color-watch-border: #4a3b17;
-  --color-watch-label: #f4c35a;
-  --color-watch-heading: #ffe3a3;
-  --color-watch-body: #e6cc8c;
-  --color-good-bg: #0f2a1f;
-  --color-good: #5fdb9d;
-  --color-good-strong: #a9f2cc;
-  --color-good-border: #1f4a36;
-  --color-danger: #c93a3f;
-  --color-danger-ink: #ff6b6f;
-  --color-danger-tint: #2e1214;
-  --color-danger-light: #fff4f4;
-  --color-danger-lighter: #fff4f4;
-  --color-info-bg: #132235;
-  --color-info: #93bdf5;
-  --color-neutral-bg: #1c2426;
-  --color-neutral: #c3ccce;
+  --color-watch-bg: #fff8e8;
+  --color-watch-border: #f0dba8;
+  --color-watch-label: #8a5b00;
+  --color-watch-heading: #5a3c00;
+  --color-watch-body: #6b5016;
+  --color-good-bg: #e9f7ef;
+  --color-good: #1e8a52;
+  --color-good-strong: #13643a;
+  --color-good-border: #c3e6d1;
+  --color-danger: #c62f36;
+  --color-danger-ink: #b3262c;
+  --color-danger-tint: #fdeced;
+  --color-danger-light: #fff3f3;
+  --color-danger-lighter: #ffe8e8;
+  --color-info-bg: #e9f1fc;
+  --color-info: #1f5fae;
+  --color-neutral-bg: #eef2f0;
+  --color-neutral: #4a5753;
+
+  --shadow-card: 0 1px 2px rgb(22 33 29 / 0.05), 0 1px 3px rgb(22 33 29 / 0.04);
 }
 
 @theme inline {
@@ -54,7 +55,7 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {

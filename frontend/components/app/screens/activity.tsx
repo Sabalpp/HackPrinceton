@@ -72,8 +72,8 @@ function ActivityView({ name }: { name: string }) {
       ) : (
         groups.map(([day, events]) => (
           <section key={day} className="flex flex-col gap-3" aria-label={day}>
-            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">{day}</h2>
-            <div className="rounded-2xl border border-border bg-surface p-5">
+            <h2 className="text-base font-semibold text-ink">{day}</h2>
+            <div className="rounded-2xl border border-border bg-surface p-5 shadow-card">
               <Feed events={events} newIds={newIds} />
             </div>
           </section>
