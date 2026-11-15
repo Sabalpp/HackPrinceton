@@ -148,6 +148,10 @@ async function run() {
   }
   const mobileLogin = await rolePage({width:375,height:812});
   await mobileLogin.getByRole('heading',{name:'Welcome back',exact:true,level:1}).waitFor();
+  const loginIdentifier = mobileLogin.getByRole('textbox',{name:'Email or username',exact:true});
+  await loginIdentifier.fill('caregiver');
+  check('Sign-in accepts a username without browser email validation',
+    await loginIdentifier.evaluate(input=>input.checkValidity()));
   const signIn = await mobileLogin.getByRole('button',{name:'Sign in',exact:true}).boundingBox();
   check('Phone sign-in is visible without scrolling past a marketing hero',
     signIn!==null && signIn.y>=0 && signIn.y+signIn.height<=812);
