@@ -10,7 +10,7 @@ import { experience, type InvitationPreview, type Session } from "@/lib/experien
 import { AuthFrame, inputClass, PortalButton, PortalMessage } from "./ui";
 
 const home = (s: Session) => s.person?.role === "child" && (s.parent_ids ?? []).length === 0 ? "/setup" : s.person ? roleHome(s.person.role) : "/login";
-const DEMO_ROLES = [
+const CARE_ROLES = [
   { role: "parent", label: "Parent", Icon: Heart, who: "Check in, ask for help, choose who sees what" },
   { role: "child", label: "Family", Icon: Users, who: "See how your parent is doing from far away" },
   { role: "responder", label: "Helper", Icon: HandHeart, who: "A nearby neighbor who accepts tasks" },
@@ -20,6 +20,8 @@ const failure = (e: unknown) => e instanceof ApiError ? e.message : "We couldn�
 export function LoginScreen() {
   const auth = useSession();
   const router = useRouter();
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<(typeof CARE_ROLES)[number] | null>(null);
   const [registering, setRegistering] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +40,34 @@ export function LoginScreen() {
     try { router.replace(home(await auth.demo(role))); }
     catch (err) { setError(failure(err)); } finally { setBusy(false); }
   }
-  return <AuthFrame title={registering ? "Bring your family closer" : "Welcome back"} description={registering ? "Create your family account, then invite your parent to choose what they share." : "Sign in to the place your family comes together."}>
+  function chooseRole(choice: (typeof CARE_ROLES)[number]) {
+    if (auth.session?.demo_available) {
+      void demo(choice.role);
+      return;
+    }
+    setSelectedRole(choice);
+    setRegistering(false);
+    setError(null);
+    setShowSignIn(true);
+  }
+  const title = !showSignIn ? "Who are you?" : registering ? "Bring your family closer" : selectedRole ? `${selectedRole.label} sign in` : "Welcome back";
+  const description = !showSignIn
+    ? auth.session?.demo_available ? "Explore FarCare with a sample family. Demo accounts use simulated messages." : "Choose how you use FarCare. Your own account keeps your family connected."
+    : registering ? "Create your family account, then invite your parent to choose what they share." : "Sign in to your account. We’ll open the view linked to it.";
+  return <AuthFrame title={title} description={description}>
     {auth.session?.authenticated && <div className="mb-5 rounded-xl bg-primary-tint p-4"><p className="text-on-tint">Signed in as {auth.session.person?.display_name}.</p><Link href={home(auth.session)} className="mt-2 inline-flex items-center gap-1 font-bold text-primary">Open my FarCare <ArrowRight size={17} aria-hidden="true" /></Link></div>}
     {(error || auth.error) && <div className="mb-5"><PortalMessage error>{error || auth.error}</PortalMessage></div>}
+    {!showSignIn ? <>
+      <div aria-label="Choose your role" className="flex flex-col gap-3">
+        {CARE_ROLES.map(choice => {
+          const { role, label, Icon, who } = choice;
+          return <button key={role} type="button" aria-label={label} disabled={busy || auth.loading} onClick={() => chooseRole(choice)} className="flex min-h-20 items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 text-left shadow-card hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-tint text-primary"><Icon size={22} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block font-bold text-ink">{label}</span><span className="block text-sm text-muted">{who}</span></span><ArrowRight size={18} className="shrink-0 text-primary" aria-hidden="true" /></button>;
+        })}
+      </div>
+      {busy && <p role="status" className="mt-3 text-sm text-muted">Opening your FarCare…</p>}
+      <button type="button" onClick={() => { setSelectedRole(null); setShowSignIn(true); }} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-2 font-semibold text-primary hover:underline">Sign in with your account</button>
+    </> : <>
+    <button type="button" disabled={busy} onClick={() => { setShowSignIn(false); setSelectedRole(null); setRegistering(false); setError(null); }} className="mb-4 inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-primary hover:underline">Back to role choices</button>
     <form onSubmit={submit} aria-busy={busy} className="flex flex-col gap-4">
       {registering && <label className="flex flex-col gap-1.5 font-semibold">Your name<input name="name" autoComplete="name" required maxLength={80} className={inputClass} /></label>}
       <label className="flex flex-col gap-1.5 font-semibold">{registering ? "Email" : "Email or username"}<input name="email" type={registering ? "email" : "text"} inputMode={registering ? "email" : "text"} autoCapitalize="none" spellCheck={false} autoComplete="username" required maxLength={254} className={inputClass} /></label>
@@ -48,9 +75,10 @@ export function LoginScreen() {
       {registering && <p className="text-sm leading-relaxed text-muted">This creates a family member account. Parents and helpers join through a private invitation; their permissions are not selected here.</p>}
       <PortalButton type="submit" disabled={busy || auth.loading} className="mt-1 w-full">{busy ? "Please wait…" : registering ? "Create family account" : "Sign in"}<ArrowRight size={19} aria-hidden="true" /></PortalButton>
     </form>
-    {auth.session?.registration_available && <p className="mt-5 text-center text-sm text-muted">{registering ? "Already have an account?" : "Setting up your family?"} <button type="button" onClick={() => { setRegistering(!registering); setError(null); }} className="min-h-11 font-bold text-primary hover:underline">{registering ? "Sign in" : "Create an account"}</button></p>}
+    {auth.session?.registration_available && (!selectedRole || selectedRole.role === "child") && <p className="mt-5 text-center text-sm text-muted">{registering ? "Already have an account?" : "Setting up your family?"} <button type="button" onClick={() => { setRegistering(!registering); setError(null); }} className="min-h-11 font-bold text-primary hover:underline">{registering ? "Sign in" : "Create an account"}</button></p>}
+    {selectedRole && selectedRole.role !== "child" && <p className="mt-4 text-sm text-muted">New to FarCare? Use the invitation code your family shared to set up your {selectedRole.label.toLowerCase()} account.</p>}
+    </>}
     <p className="mt-2 text-center text-sm"><Link href="/join" className="inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-primary hover:underline">I have an invitation</Link></p>
-    {auth.session?.demo_available && <section aria-labelledby="who-title" className="mt-7 border-t border-border pt-5"><h2 id="who-title" className="text-lg font-bold text-ink">Who are you?</h2><p className="mb-3 mt-0.5 text-sm text-muted">Try FarCare as one of our sample family. Each role sees its own screen.</p><div className="flex flex-col gap-2">{DEMO_ROLES.map(({ role,label,Icon,who }) => <button key={role} type="button" aria-label={label} disabled={busy} onClick={() => void demo(role)} className="flex min-h-16 items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 text-left shadow-card hover:border-primary disabled:opacity-50"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-tint text-primary"><Icon size={22} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block font-bold text-ink">{label}</span><span className="block text-sm text-muted">{who}</span></span><ArrowRight size={18} className="shrink-0 text-primary" aria-hidden="true" /></button>)}</div></section>}
   </AuthFrame>;
 }
 

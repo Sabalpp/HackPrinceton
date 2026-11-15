@@ -115,7 +115,7 @@ async function run() {
   await ready(web, webChild);
 
   browser = await chromium.launch({headless:true});
-  async function rolePage(viewport={width:1440,height:1000}) {
+  async function rolePage(viewport={width:1440,height:1000}, {withoutDemo=false}={}) {
     const context = await browser.newContext({viewport});
     await context.route('**/*', route => {
       const origin = new URL(route.request().url()).origin;
@@ -135,6 +135,11 @@ async function run() {
     tab.on('requestfailed', request => {
       if(!closing && !request.failure()?.errorText?.includes('ERR_ABORTED')) browserErrors.push(`Request failed: ${new URL(request.url()).pathname}`);
     });
+    if (withoutDemo) await tab.route(`${api}/api/auth/session`, async route => {
+      const response = await route.fetch();
+      const session = await response.json();
+      await route.fulfill({response,json:{...session,demo_available:false,registration_available:false}});
+    });
     await tab.goto(`${web}/`, {waitUntil:'domcontentloaded'});
     await tab.waitForURL(`${web}/login`);
     return tab;
@@ -147,7 +152,30 @@ async function run() {
         await tab.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
     }
   }
+  // Match the production session flags while keeping all API traffic synthetic.
+  // Selecting a role must never sign in to a demo account or grant that role.
+  const roleChooser = await rolePage({width:390,height:844},{withoutDemo:true});
+  let chooserAuthMutations = 0;
+  roleChooser.on('request', request => {
+    if (request.method()==='POST' && request.url().startsWith(`${api}/api/auth/`)) chooserAuthMutations++;
+  });
+  await roleChooser.getByRole('heading',{name:'Who are you?',exact:true,level:1}).waitFor();
+  await roleChooser.getByRole('button',{name:'Helper',exact:true}).waitFor();
+  await phoneWidths(roleChooser,'Production role chooser');
+  await roleChooser.screenshot({path:path.join(artifacts,'role-chooser-production-mobile.png'),fullPage:true});
+  for (const label of ['Parent','Family','Helper']) {
+    await roleChooser.getByRole('button',{name:label,exact:true}).click();
+    await roleChooser.getByRole('heading',{name:`${label} sign in`,exact:true,level:1}).waitFor();
+    await roleChooser.getByRole('textbox',{name:'Email or username',exact:true}).waitFor();
+    check(`${label} selection requires credentials without granting a session`,
+      chooserAuthMutations===0 && !(await roleChooser.context().cookies()).some(cookie=>cookie.name==='farcare_session'));
+    await roleChooser.getByRole('button',{name:'Back to role choices',exact:true}).click();
+  }
+  await roleChooser.getByRole('link',{name:'I have an invitation',exact:true}).click();
+  await roleChooser.getByRole('textbox',{name:'Invitation code',exact:true}).waitFor();
+  check('Production role chooser retains invitation entry',true);
   const mobileLogin = await rolePage({width:375,height:812});
+  await mobileLogin.getByRole('button',{name:'Sign in with your account',exact:true}).click();
   await mobileLogin.getByRole('heading',{name:'Welcome back',exact:true,level:1}).waitFor();
   const loginIdentifier = mobileLogin.getByRole('textbox',{name:'Email or username',exact:true});
   await loginIdentifier.fill('caregiver');
