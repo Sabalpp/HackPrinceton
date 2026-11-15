@@ -89,6 +89,24 @@ Removing historical data is a separate deliberate account/data-retention action.
 
 ## Dashboard contract
 
+The sensor query resolves candidate event revisions in one batch before choosing the latest
+values. Resolving revisions separately for every event caused the hosted three-second query
+deadline to expire on compressed history and made existing Google and BLE data look unavailable.
+Keep canonical revision ordering and subject isolation when optimizing this read.
+
+The expanded Google readout includes 31 scalar metric types: activity intervals, sleep-session
+details, oxygen summaries, reported HRV, temperature, breathing rate and exercise summaries.
+Exercise heart-rate zone durations remain dimensioned archive data; the scalar view does not
+choose an arbitrary zone. Dates and interval/session bounds remain visible. The panel is open
+by default on the Health page and distinguishes a database read failure from missing data.
+
+For daily metrics with two valid reported dates from the same stream, reading details show
+`change = latest - previous` and, where meaningful, `relative change = change / previous × 100`.
+Oxygen differences use percentage points; Celsius differences have no relative percentage.
+Conflicting, invalid, simulated or cross-stream records cannot supply the previous value.
+These are transparent two-day comparisons, not learned baselines, anomaly scores or clinical
+thresholds. Existing multi-day health trends remain separate. No shared response fields changed.
+
 `GET /api/parents/{parent_id}/sensor-health` requires authenticated parent access
 or an authorized family membership with `share_health`. Nearby responders cannot
 read this endpoint, even if a malformed family membership exists. With sharing
@@ -116,8 +134,14 @@ stale after two days. Stale values stay dated. Missing or invalid values stay
 Instantaneous BPM is never called resting HR and is never used to infer HRV,
 blood pressure, SpO2, a fall or a raw waveform. Cloud steps are explicitly an
 interval value in this endpoint, not an invented daily total. Daily summaries use
-the existing stricter projection, excluding today's incomplete step totals and
-ambiguous overlapping streams.
+the stricter projection, excluding today's incomplete step totals and ambiguous
+overlapping streams. A daily step total requires contiguous intervals covering
+the entire source-local day. Gaps, unknown source offsets, or conflicting clock
+metadata leave the daily total missing; they never become zero steps or an
+activity-decline alert. Source offsets and actual timezone boundaries preserve
+23-hour and 25-hour daylight-saving days. A complete explicit zero-step day is
+still valid. This conservative rule may omit daily totals from sparse exports;
+the individual reported step intervals remain available above.
 
 ## Daily synchronization and messages
 
@@ -137,6 +161,12 @@ asks the family to check in and labels itself as a wellbeing prompt. It does not
 declare an emergency or diagnose a condition. The rules do not alert from a
 short, stale, simulated or missing history.
 
+The daily worker uses the same candidate-first canonical revision strategy as the
+live readout. It includes intervals that overlap the requested dates, resolves
+corrections globally, then reapplies the wearer/date/metric scope. A large Google
+backfill must not require sorting every unrelated heart-rate record before the
+worker can update steps, resting HR and sleep trends.
+
 Only family members with health sharing receive the health notice. The normal
 outbound gateway enforces permissions and opt-out checks again at delivery. The
 outbox records `queued`, `available`, failure and provider delivery states
@@ -151,7 +181,12 @@ Live queries use indexed, bounded candidate lookups against
 `air_health.measurement_versions` and resolve the newest eligible revision per
 event by `source_revision_at`, `received_at`, then `version_hash`. This has the
 same identity/revision rule as `measurements_current`, avoiding a full canonical
-view sort for every dashboard refresh. Candidate limits are 600 BLE versions and
+view sort for every dashboard refresh. An `OFFSET 0` planner boundary keeps the
+global eligible-revision scan unordered, allowing a hash join to discard unrelated
+events before sorting revisions. Without it, the observed Timescale plan sorted
+compressed history first and exceeded the deadline. Global revision resolution
+still scans history; a maintained current-record table is the next scaling step,
+not a reason to weaken identity checks. Candidate limits are 600 BLE versions and
 20 versions per cloud metric. Sparse older measurements beyond the 7-day BLE or
 35-day cloud search windows are reported missing, not silently substituted.
 

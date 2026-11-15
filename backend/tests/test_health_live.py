@@ -575,6 +575,63 @@ def test_postgresql_canonical_query_and_revision_order(client):
                     attributes="{}",
                 ),
             ]
+            # Canonical identity corrections must be resolved globally before
+            # filtering the requesting wearer or time range. The old eligible
+            # revision must not reappear from a bounded candidate probe.
+            for event_id, correction in (
+                ("moved_subject", {"subject_id": "other_wearer"}),
+                ("moved_time", {"observed_at": NOW - timedelta(days=60)}),
+                ("moved_metric", {"metric": "unknown_metric"}),
+            ):
+                for version, revision, changes in (
+                    ("old", NOW - timedelta(minutes=1), {}),
+                    ("new", NOW, correction),
+                ):
+                    rows.append(
+                        sample(
+                            event_id=event_id,
+                            version_hash=version,
+                            source_revision_at=revision,
+                            received_at=NOW,
+                            canonical_eligible=True,
+                            value=160,
+                            attributes="{}",
+                            **changes,
+                        )
+                    )
+            for event_id, correction in (
+                ("cloud_moved_subject", {"subject_id": "other_wearer"}),
+                (
+                    "cloud_moved_day",
+                    {
+                        "observed_at": NOW - timedelta(days=60),
+                        "local_date": (NOW - timedelta(days=60)).date(),
+                    },
+                ),
+                ("cloud_moved_metric", {"metric": "unknown_metric"}),
+            ):
+                for version, revision, changes in (
+                    ("old", NOW - timedelta(minutes=1), {}),
+                    ("new", NOW, correction),
+                ):
+                    fields = {
+                        "source": "google_health",
+                        "metric": "resting_heart_rate_bpm",
+                        "kind": "daily",
+                        **changes,
+                    }
+                    rows.append(
+                        sample(
+                            event_id=event_id,
+                            version_hash=version,
+                            source_revision_at=revision,
+                            received_at=NOW,
+                            canonical_eligible=True,
+                            value=160,
+                            attributes="{}",
+                            **fields,
+                        )
+                    )
             insert_sample = text("""
                 INSERT INTO air_health.measurement_versions
                     (observed_at,event_id,version_hash,subject_id,source,source_stream,metric,
@@ -598,6 +655,16 @@ def test_postgresql_canonical_query_and_revision_order(client):
                 next(m for m in output.cloud_metrics if m.metric == "resting_heart_rate_bpm").value
                 == 61
             )
+            daily_rows = session.execute(
+                text(tiger.CURRENT_MEASUREMENTS_SQL),
+                {
+                    "subject_id": "wearer_a",
+                    "start_date": NOW.date(),
+                    "end_date": NOW.date(),
+                    "start_label": NOW.date().isoformat(),
+                },
+            ).mappings()
+            assert [(row["event_id"], row["value"]) for row in daily_rows] == [("daily_rhr", 61)]
             # A new collected sample must appear on the next read, without an
             # aggregate refresh or worker cycle. It remains the same wearer.
             next_clock = NOW + timedelta(seconds=2)
