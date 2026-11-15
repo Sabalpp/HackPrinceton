@@ -136,7 +136,7 @@ async function run() {
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.getByRole('status').filter({hasText:/^Connected$/}).waitFor();
   check('Dashboard renders Sita and establishes the real SSE connection',true);
-  await page.getByTestId('live-sensors').getByText('Watch not linked',{exact:true}).waitFor();
+  await page.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   const sensors = await (await page.context().request.get(`${api}/api/parents/parent_001/sensor-health`)).json();
   check('An unlinked profile never displays invented live sensor readings',
     sensors.connection_status==='not_linked' && sensors.live_heart_rate.value===null && sensors.recent_heart_rate.length===0);
@@ -157,7 +157,7 @@ async function run() {
     recent_heart_rate:[]};
   const sensorRoute = route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pulseFixture)});
   await page.route(sensorUrl,sensorRoute);
-  const pulsePanel = page.getByTestId('live-sensors');
+  const pulsePanel = page.locator('[data-testid="live-sensors"]:visible');
   await pulsePanel.getByText('Live · Fitbit BLE',{exact:true}).waitFor();
   await pulsePanel.getByText('73 bpm',{exact:true}).waitFor();
   pulseFixture = {...pulseFixture,live_heart_rate:{...pulseFixture.live_heart_rate,value:74,observed_at:new Date().toISOString()}};
@@ -172,7 +172,7 @@ async function run() {
   await page.screenshot({path:path.join(artifacts,'health.png'),fullPage:true});
   await nav.getByRole('link',{name:'Care Circle',exact:true}).click();
   await page.waitForURL(`${web}/circle`);
-  await page.getByText('Asha',{exact:true}).first().waitFor();
+  await page.locator('span:text-is("Asha"):visible').first().waitFor();
   check('Care Circle route displays the seeded authorized responder',true);
   await page.screenshot({path:path.join(artifacts,'circle.png'),fullPage:true});
 
@@ -191,7 +191,7 @@ async function run() {
     (await savedCheck.json()).latest_checkin.summary.includes('okay') &&
     Boolean(savedCheck.request().headers()['x-csrf-token']));
   await parent.getByText('Your check-in is saved.',{exact:true}).waitFor();
-  await parent.getByTestId('live-sensors').getByText('Watch not linked',{exact:true}).waitFor();
+  await parent.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   check('Parent mobile layout has no horizontal overflow',await parent.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
   await parent.screenshot({path:path.join(artifacts,'parent-mobile.png'),fullPage:true});
 
@@ -264,4 +264,4 @@ try {
   await fs.rm(scratch,{recursive:true,force:true});
   await fs.writeFile(path.join(artifacts,'result.json'),JSON.stringify({...evidence,browserErrors,responses},null,2)+'\n');
 }
-console.log(JSON.stringify({status:evidence.status,checks:evidence.checks.length,artifacts}));
+console.log(JSON.stringify({status:evidence.status,checks:evidence.checks.length,artifacts,failure:evidence.failure}));
