@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreActive = !dock.some((i) => active(i.href));
 
   return (
-    <div className="flex min-h-screen flex-1 bg-bg">
+    <div className="flex min-h-dvh flex-1 bg-bg">
       <a
         href="#main"
         className="sr-only z-50 rounded-[10px] bg-primary px-4 py-3 font-bold text-on-primary focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
@@ -173,7 +173,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </header>
 
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-32 pt-5 outline-none sm:px-6 md:px-10 md:pb-12 md:pt-8">
+        <main id="main" tabIndex={-1} className="mx-auto min-w-0 w-full max-w-[1180px] flex-1 px-4 pb-32 pt-5 outline-none [overflow-wrap:anywhere] sm:px-6 md:px-10 md:pb-12 md:pt-8">
           {process.env.NEXT_PUBLIC_LOCAL_PREVIEW === "true" && (
             <aside className="mb-6 rounded-2xl border border-border bg-inset px-5 py-4 text-sm text-body" role="status">
               <strong className="font-semibold text-ink">Local preview.</strong> Saved Fitbit readings with their original dates.
@@ -266,7 +266,7 @@ function AccountControls() {
   };
   return (
     <div className="border-t border-border pt-3">
-      <p className="px-3 text-sm font-semibold text-ink">{session?.person?.display_name}</p>
+      <p className="px-3 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{session?.person?.display_name}</p>
       <p className="px-3 text-xs text-muted">Family view{session?.demo_session ? " · demo account" : ""}</p>
       <button
         type="button"
@@ -338,7 +338,7 @@ function MoreSheet({ items, active, onClose }: { items: NavItem[]; active: (h: s
         role="dialog"
         aria-modal="true"
         aria-label="More"
-        className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-5 overflow-y-auto rounded-t-3xl border-t border-border bg-side px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3"
+        className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col gap-5 overflow-y-auto overscroll-contain rounded-t-3xl border-t border-border bg-side px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3"
       >
         <span className="mx-auto h-1.5 w-12 rounded-full bg-border" aria-hidden="true" />
         <div className="flex items-center justify-between">

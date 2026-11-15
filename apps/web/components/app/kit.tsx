@@ -72,7 +72,7 @@ export function EmptyBlock({ title, children, icon: Icon }: { title: string; chi
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border bg-inset p-5">
       {Icon && <Icon size={22} className="mt-0.5 shrink-0 text-muted" aria-hidden="true" />}
-      <div>
+      <div className="min-w-0 [overflow-wrap:anywhere]">
         <p className="font-semibold text-ink">{title}</p>
         {children && <div className="mt-0.5 text-body">{children}</div>}
       </div>
