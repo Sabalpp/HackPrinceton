@@ -56,8 +56,10 @@ neighbor's help still follow the parent-approval workflow below.
 
 For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
-For the simplest deployment of this repository, use [the native Render Blueprint](docs/render-deployment.md):
-API, worker and dashboard run without Docker and use your existing Tiger database.
+For a free hackathon host, use [the one-service Render Blueprint](docs/free-deployment.md):
+the API, worker and dashboard run without Docker and use your existing Tiger database.
+It sleeps when idle, so care timers are not always active. The separate
+[paid native Render Blueprint](docs/render-deployment.md) keeps a standalone worker running.
 For Cloudflare, the existing [Workers + Containers settings](docs/cloudflare-deployment.md) remain available.
 The app needs a running Next.js server and Python backend; it has no static Pages
 output directory. The deployment guide explains how to replace a failing
