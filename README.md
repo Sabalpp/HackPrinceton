@@ -82,6 +82,7 @@ Start reading the code in this order:
 | --- | --- | --- |
 | Dashboard | `apps/web/app/(app)/`, `apps/web/lib/dashboard.tsx` | Family screens, loading, and live timeline updates |
 | API connection | `apps/web/lib/api.ts`, `apps/api/app/main.py` | Typed browser requests and API startup |
+| Sensor collection | `apps/collector/farcare_collector/` | BLE recording, Google exports, normalization, durable outbox and Tiger delivery |
 | Health data | `apps/api/app/health/tiger.py`, `sync_tiger.py`, `trends.py` | Tiger daily records, authenticated ingestion, and personal comparisons |
 | Live watch data | `apps/api/app/health/live.py`, `sources.py`, `live_sync.py` | Authorized watch mapping, bounded live queries, and daily synchronization |
 | Care workflows | `apps/api/app/services/family.py`, `care_requests.py`, `safety.py` | Family questions, parent approval, neighbor responses, and safety checks |
@@ -89,8 +90,12 @@ Start reading the code in this order:
 | Integrations and automation | `apps/api/app/integrations/`, `.github/workflows/` | Photon/Gemini adapters and CI/deployment verification |
 
 `apps/web/app/(web)/` contains older concept screens; the connected family app is
-under `(app)`. The sensor collector and private recorded exports can run outside
-this repository; the app consumes their Tiger projection through the health adapter.
+under `(app)`. Collector source lives in `apps/collector`; its private recordings,
+OAuth tokens and database state remain in the local data workspace. The app consumes
+their Tiger projection through the health adapter. [The codebase guide](docs/codebase-organization.md)
+maps every former root Python file to its new home and explains collector setup,
+local launchers, research boundaries and tests. Existing application routes and
+integrations are unchanged by this cleanup.
 
 `main` is the production branch. Feature work goes through a PR and the full CI
 suite before an ordinary merge commit; this preserves the team's branch history.
@@ -107,6 +112,7 @@ Console mode and synthetic demo accounts do not establish real SMS delivery.
 
 - [CLAUDE.md](CLAUDE.md): project context, verified integration facts, key decisions
 - [AGENTS.md](AGENTS.md): collaboration and engineering rules
+- [Codebase organization](docs/codebase-organization.md): file map, collector commands, private data and research
 - [CI and browser verification](docs/local-ci.md): checks, screenshots, and deployment gates
 - [Tiger health integration](docs/tiger-health-pipeline.md): real data mapping and limitations
 - [docs/architecture.md](docs/architecture.md) · [docs/api-contracts.md](docs/api-contracts.md) · [docs/demo-plan.md](docs/demo-plan.md)

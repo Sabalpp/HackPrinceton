@@ -16,6 +16,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  collector:
+    name: Collector (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+    env:
+      PYTHONPATH: ${{ github.workspace }}/apps/collector:${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/collector/pyproject.toml
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install collector and development checks
+        run: |
+          uv venv --python '${{ matrix.python-version }}' .venv-collector
+          uv pip install --python .venv-collector/bin/python -e './apps/collector[dev]'
+      - name: Lint and format collector, research tools, and local scripts
+        run: |
+          .venv-collector/bin/ruff check --config apps/collector/pyproject.toml \
+            apps/collector research/fitbit_air scripts/local scripts/verification
+          .venv-collector/bin/ruff format --check --config apps/collector/pyproject.toml \
+            apps/collector research/fitbit_air scripts/local scripts/verification
+      - name: Python syntax and synthetic unit tests
+        run: |
+          .venv-collector/bin/python -m compileall -q \
+            apps/collector/farcare_collector scripts/local scripts/verification research/fitbit_air
+          .venv-collector/bin/python -m unittest discover -s apps/collector/tests -p 'test_*.py' -v
+          .venv-collector/bin/python -m unittest discover -s research/fitbit_air/tests -p 'test_*.py' -v
+      - name: Local launcher lifecycle (disposable fixtures only)
+        run: .venv-collector/bin/python scripts/verification/verify_launchers.py
+      - name: Node publisher and Google refresh tests (no external connections)
+        run: |
+          node apps/collector/tests/test_tiger_publisher.cjs
+          node apps/collector/tests/test_google_refresh.cjs
+      - name: Build collector wheel and verify bundled SQL
+        run: |
+          uv build apps/collector --wheel --out-dir "$RUNNER_TEMP/collector-wheels"
+          .venv-collector/bin/python - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = list((Path(os.environ["RUNNER_TEMP"]) / "collector-wheels").glob("*.whl"))
+          assert len(wheels) == 1, "Expected one collector wheel"
+          with ZipFile(wheels[0]) as wheel:
+              names = set(wheel.namelist())
+              for name in ("schema.sql", "archive.sql"):
+                  asset = "farcare_collector/integrations/sql/" + name
+                  assert asset in names and wheel.read(asset), "Missing packaged SQL: " + asset
+              assert "farcare_collector/services/health_pipeline.py" in names
+              assert not any(name.startswith(("tests/", "research/")) for name in names)
+          print("Collector wheel includes the runtime modules and SQL assets.")
+          PY
+
   api:
     name: API (lint, test, contracts)
     runs-on: ubuntu-latest
