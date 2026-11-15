@@ -8,6 +8,43 @@ channel. Family members see consented health trends; trusted nearby helpers see 
 assigned tasks. Gemini supports conversation. Deterministic code handles consent, safety
 checks, and escalation. A supervised worker processes messages and retries across restarts.
 
+## For judges
+
+**Live app:** https://collector-bkxg.vercel.app (sign-in details are in our Devpost submission;
+there is no public sign-up). Healthcare track · Photon · Gemini · Tiger Data.
+
+**In one minute:** a parent texts FarCare or taps *I'm OK* / *Ask for help* / *I need urgent
+help*. FarCare asks the parent's permission, then asks an authorized nearby helper. When the
+helper replies YES, the parent and the far-away child are told, and the dashboard updates.
+If a check-in goes unanswered, a fixed rule (not the AI) escalates to the Care Circle and family.
+
+**Try it:**
+
+1. **Family view, Today:** status at a glance, *Last 5 days vs usual*, the watch's heart rate,
+   the latest check-in, and which helpers are ready.
+2. **Ask in the app chat** (or by text where Photon is enabled): "How is Mom doing?",
+   "what's her bpm?", "how did she sleep?". Gemini calls our tools and answers with the real reading and how long ago it was
+   taken. It never calls a value normal or abnormal.
+3. **Health → Heart-rate alerts:** for example, *above 120 bpm for 2 minutes*. It fires only if
+   every reading in that window is past the limit with no gaps, so one spike never triggers.
+   Family who can see health get a text. Optionally the parent is asked "Are you okay?", and
+   nearby helpers are asked only if there's no reply. Helpers never see health numbers.
+4. **Parent view:** *Ask for help* → approve → a helper accepts → the family is notified.
+
+**How we use each technology:**
+
+| Tech | What it does in FarCare |
+| --- | --- |
+| **Photon 2.0** | 1:1 iMessage/SMS threads for parent, child and each helper; opt-in by first text; STOP/START/HELP; idempotent sends; durable retries |
+| **Gemini** | Function-calling agents for parent, family and helper. Tools act only for the signed-in sender. A rule-based fallback keeps working when the free quota runs out |
+| **Tiger Data** | TimescaleDB hypertable of watch readings with full revision history, a continuous 1-minute heart-rate aggregate, and a separate **read-only** app connection |
+| **Google Health API** | Fitbit steps, sleep, resting heart rate, blood oxygen, HRV and breathing rate, with original timestamps |
+
+**Honest limits:** not a medical device; FarCare never contacts emergency services itself; it
+tells people to. Demo people are synthetic, and simulated readings are always labeled
+`simulated`. Fitbit exposes no raw motion data, so fall detection runs on labeled synthetic
+traces.
+
 The code is organized into two main folders:
 
 ```text
