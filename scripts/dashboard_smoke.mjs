@@ -136,6 +136,8 @@ async function run() {
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.getByRole('status').filter({hasText:/^Connected$/}).waitFor();
   check('Dashboard renders Sita and establishes the real SSE connection',true);
+  await page.locator('span:text-is("Simulated"):visible').first().waitFor();
+  check('API-provided synthetic readings remain labeled when frontend mocks are disabled',true);
   await page.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   const sensors = await (await page.context().request.get(`${api}/api/parents/parent_001/sensor-health`)).json();
   check('An unlinked profile never displays invented live sensor readings',
@@ -237,6 +239,7 @@ async function run() {
   check('Mobile family navigation opens the authenticated setup screen',true);
   await page.goto(`${web}/family`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
+  await page.locator('span:text-is("Simulated"):visible').first().waitFor();
   check('Family mobile layout has no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
   await page.screenshot({path:path.join(artifacts,'family-mobile.png'),fullPage:true});
   await page.getByRole('button',{name:'More',exact:true}).click();
