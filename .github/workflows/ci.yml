@@ -221,6 +221,33 @@ jobs:
             ${{ runner.temp }}/farcare-dashboard-smoke/*.log
           if-no-files-found: ignore
           retention-days: 7
+      - name: Build for the Vercel mounted API entrypoint
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: /backend
+          FARCARE_API_ORIGIN: http://127.0.0.1:18000/backend
+          NEXT_PUBLIC_USE_MOCKS: 'false'
+          NEXT_PUBLIC_LOCAL_PREVIEW: 'false'
+          NEXT_TELEMETRY_DISABLED: '1'
+      - name: Verify Vercel API routing, sessions and care flows
+        working-directory: .
+        env:
+          PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
+          SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/farcare-vercel-smoke
+          SMOKE_API_PROXY: 'true'
+          SMOKE_VERCEL_ENTRY: 'true'
+        run: node scripts/dashboard_smoke.mjs
+      - name: Upload synthetic Vercel entrypoint evidence
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: synthetic-vercel-smoke
+          path: |
+            ${{ runner.temp }}/farcare-vercel-smoke/*.png
+            ${{ runner.temp }}/farcare-vercel-smoke/*.json
+            ${{ runner.temp }}/farcare-vercel-smoke/*.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   secrets:
     name: Secret scan
