@@ -119,7 +119,7 @@ function Hero({ o, viewerName }: { o: ParentOverview; viewerName: string }) {
 
         {health ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-inset/60 p-5">
-            <div className="flex w-full items-center justify-between gap-3">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted">Last 5 days vs usual</p>
               {health.data_mode === "simulated" && <SimulatedPill />}
               {health.data_mode === "mixed" && <span className="rounded-full bg-watch-bg px-3 py-1 text-sm font-semibold text-watch-heading">Mixed sources</span>}

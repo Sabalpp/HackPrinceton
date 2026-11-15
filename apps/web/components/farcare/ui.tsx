@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { USE_MOCKS } from "@/lib/api";
 
 /* Shared primitives. Flat: 1px borders, no shadows, no gradients. */
 
@@ -64,9 +63,8 @@ export function StatusPill({ tone, children }: { tone: PillTone; children: React
   );
 }
 
-/** Rule 15: synthetic data is always labeled. Shown only in mock mode. */
+/** Callers select this badge from the record's data_mode, not the transport. */
 export function SimulatedPill() {
-  if (!USE_MOCKS) return null;
   return (
     <span className="inline-flex items-center whitespace-nowrap rounded-full border border-dashed border-muted/50 px-2.5 py-0.5 text-xs font-semibold text-muted">
       Simulated
