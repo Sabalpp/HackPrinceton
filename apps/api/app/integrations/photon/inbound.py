@@ -29,6 +29,8 @@ class InboundText:
     simulated: bool = False  # True for /api/demo/inbound (never overwrites Photon routing)
     channel: str = "text"  # "voice" when spoken on a (browser) voice call
     platform: str | None = None  # Photon transport; absent for older/demo messages
+    # Set only by FarCare's own authenticated app-chat endpoint, never from provider payloads.
+    person_id: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

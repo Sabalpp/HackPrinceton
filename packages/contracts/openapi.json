@@ -504,6 +504,98 @@
         "title": "CareRequestStatus",
         "type": "string"
       },
+      "ChatIn": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ChatIn",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "description": "One message in a person's conversation with FarCare (any channel).",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "channel": {
+            "description": "imessage | sms | voice | app | in_app | console | ...",
+            "title": "Channel",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "in",
+              "out"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "text",
+          "channel",
+          "status",
+          "at"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "ChatThread": {
+        "properties": {
+          "connected_by_text": {
+            "description": "True once this person has texted their FarCare number (iMessage/SMS)",
+            "title": "Connected By Text",
+            "type": "boolean"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "messaging": {
+            "enum": [
+              "console",
+              "photon"
+            ],
+            "title": "Messaging",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messages",
+          "connected_by_text",
+          "messaging"
+        ],
+        "title": "ChatThread",
+        "type": "object"
+      },
       "CheckIn": {
         "additionalProperties": false,
         "properties": {
@@ -3756,6 +3848,124 @@
         "summary": "Me",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/me/conversation": {
+      "get": {
+        "operationId": "get_conversation_api_me_conversation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThread"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "conversation"
+        ]
+      },
+      "post": {
+        "operationId": "send_message_api_me_conversation_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThread"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Message",
+        "tags": [
+          "conversation"
         ]
       }
     },

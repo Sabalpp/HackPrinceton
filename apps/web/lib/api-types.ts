@@ -326,6 +326,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Conversation */
+        get: operations["get_conversation_api_me_conversation_get"];
+        put?: never;
+        /** Send Message */
+        post: operations["send_message_api_me_conversation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/onboarding/invites": {
         parameters: {
             query?: never;
@@ -924,6 +942,53 @@ export interface components {
          * @enum {string}
          */
         CareRequestStatus: "created" | "awaiting_approval" | "approved" | "sent" | "accepted" | "completed" | "declined" | "cancelled" | "expired" | "failed";
+        /** ChatIn */
+        ChatIn: {
+            /** Text */
+            text: string;
+        };
+        /**
+         * ChatMessage
+         * @description One message in a person's conversation with FarCare (any channel).
+         */
+        ChatMessage: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Channel
+             * @description imessage | sms | voice | app | in_app | console | ...
+             */
+            channel: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "in" | "out";
+            /** Id */
+            id: string;
+            /** Status */
+            status: string;
+            /** Text */
+            text: string;
+        };
+        /** ChatThread */
+        ChatThread: {
+            /**
+             * Connected By Text
+             * @description True once this person has texted their FarCare number (iMessage/SMS)
+             */
+            connected_by_text: boolean;
+            /** Messages */
+            messages: components["schemas"]["ChatMessage"][];
+            /**
+             * Messaging
+             * @enum {string}
+             */
+            messaging: "console" | "photon";
+        };
         /** CheckIn */
         CheckIn: {
             /** Checkin Id */
@@ -2401,6 +2466,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_conversation_api_me_conversation_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThread"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_message_api_me_conversation_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatThread"];
                 };
             };
             /** @description Validation Error */

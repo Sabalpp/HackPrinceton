@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # auto: real Photon when PHOTON_API_KEY + PHOTON_PROJECT_ID are set, otherwise simulated.
     # console: always simulate (keep your keys in .env but run with mock people).
     messaging_channel: Literal["auto", "photon", "console"] = "auto"
+    # Public web address of the app (e.g. https://farcare.example). When set, texts include
+    # short links back to the right app screen (/parent, /respond, /). Leave blank to omit.
+    public_app_url: str = ""
     photon_poll_interval_seconds: float = 2.0
 
     # --- Gemini -------------------------------------------------------------

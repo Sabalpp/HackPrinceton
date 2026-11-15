@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { FarCareChat } from "./chat";
 import { useRouter } from "next/navigation";
 import { Check, HandHeart, ShieldCheck } from "lucide-react";
 import { RequireRole, useSession } from "@/lib/session";
@@ -38,6 +39,7 @@ function ResponderContent() {
     {result.data && <>
       {active.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-surface px-6 py-10 text-center"><span className="mx-auto grid size-16 place-items-center rounded-full bg-primary-tint text-primary"><HandHeart size={31} aria-hidden="true" /></span><h2 className="mt-4 text-2xl font-bold">Nothing assigned right now</h2><p className="mx-auto mt-2 max-w-md text-body">New requests will appear here after the parent has approved your membership and asked for your help.</p></div>}
       {active.map(task => <TaskCard key={`${task.request_id}:${task.status}`} task={task} busy={action.busy} onReply={(decision,eta,note) => void reply(task,decision,eta,note)} />)}
+      <FarCareChat role="responder" onActivity={() => void result.refresh()} />
       {done.length > 0 && <details className="rounded-2xl border border-border bg-surface p-5"><summary className="min-h-10 cursor-pointer font-bold">Past requests ({done.length})</summary><div className="mt-4 flex flex-col gap-3">{done.map(task => <article key={task.request_id} className="rounded-xl bg-inset p-4"><p className="flex items-center gap-2 font-semibold"><Check size={18} className="text-primary" aria-hidden="true" />{CATEGORY_LABEL[task.request_type]} for {task.parent_first_name}</p><p className="mt-1 text-sm text-muted">{REQUEST_STATUS[task.status].label}</p></article>)}</div></details>}
       <p className="text-sm text-muted">This page refreshes every 10 seconds while it is open. In-app requests work here; phone messages require a connected messaging account.</p>
       <AgentStatusLine agent={result.data.agent} />

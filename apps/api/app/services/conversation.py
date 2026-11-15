@@ -15,10 +15,10 @@ from sqlmodel import Session, select
 
 from app.db import session_scope, utcnow
 from app.integrations.gemini import agent
-from app.integrations.messaging import send_to_person, show_typing
+from app.integrations.messaging import replying_in_app, send_to_person, show_typing
 from app.integrations.photon.inbound import InboundText, normalize_handle
 from app.integrations.photon.routing import matches_channel
-from app.models import ConversationTurn, InboundMessageRow, Person
+from app.models import ConversationTurn, InboundMessageRow, OutboundMessage, Person
 from app.services import care_requests, safety, timeline
 from app.services.replies import (
     looks_like_emergency,
@@ -127,13 +127,16 @@ def _reply(
         parent_id=parent_id,
         visibility=visibility,
         request_id=request_id,
+        in_app=msg.channel == "app",
     )
     _turn(s, person, "assistant", text)
 
 
 def handle(s: Session, msg: InboundText) -> str:
-    handle_ = normalize_handle(msg.sender_handle)
-    person = s.exec(select(Person).where(Person.handle == handle_)).first()
+    person = s.get(Person, msg.person_id) if msg.person_id else None
+    if person is None and msg.sender_handle:
+        handle_ = normalize_handle(msg.sender_handle)
+        person = s.exec(select(Person).where(Person.handle == handle_)).first()
     if person is None:
         log.info("Ignoring message from unknown handle")
         return "ignored"
@@ -192,14 +195,15 @@ def handle(s: Session, msg: InboundText) -> str:
             )
             return "done"
 
-    if person.role == "parent":
-        _handle_parent(s, person, msg)
-    elif person.role == "responder":
-        _handle_responder(s, person, msg, first_contact)
-    elif person.role == "child":
-        _handle_child(s, person, msg, first_contact)
-    else:
+    handlers = {"parent": _handle_parent, "responder": _handle_responder, "child": _handle_child}
+    handler = handlers.get(person.role)
+    if handler is None:
         return "ignored"
+    with replying_in_app(person.id if msg.channel == "app" else None):
+        if person.role == "parent":
+            _handle_parent(s, person, msg)
+        else:
+            handler(s, person, msg, first_contact)  # type: ignore[call-arg]
     return "done"
 
 
@@ -269,7 +273,7 @@ def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
             return
 
     show_typing(parent)
-    result = agent.respond(s, parent, text)
+    result = agent.respond(s, parent, text, channel=msg.channel)
     timeline.record(
         s,
         parent.id,
@@ -282,45 +286,33 @@ def _handle_parent(s: Session, parent: Person, msg: InboundText) -> None:
 
 
 def _handle_responder(s: Session, responder: Person, msg: InboundText, first_contact: bool) -> None:
+    from app.integrations.gemini import responder_agent
+
+    _turn(s, responder, "user", _as_turn(msg))
     req = care_requests.active_request_for_responder(s, responder.id)
-    if req is None:
-        if first_contact:
-            _reply(
-                s,
-                responder,
-                msg,
-                f"Hi {responder.display_name}, you're connected to FarCare as a trusted "
-                "contact. We'll only message you when someone in your care circle asks for "
-                "help.",
-            )
-        else:
-            _reply(
-                s,
-                responder,
-                msg,
-                f"Thanks, {responder.display_name}! Nothing needs your help right now.",
-            )
-        return
-    intent = parse_responder_reply(msg.text, req.status)
-    if intent is None:
-        intent = agent.classify_responder_reply(msg.text, req.status)  # type: ignore[assignment]
-    if intent is None:
-        hint = (
-            "Reply YES if you can help, or NO if you can't."
-            if req.status == "sent"
-            else "Reply DONE when you've finished, or NEED HELP if more help is needed."
-        )
+    if (
+        req is None
+        and first_contact
+        and msg.text.strip().lower() in ("join", "hi", "hello", "start")
+    ):
         _reply(
             s,
             responder,
             msg,
-            f"Sorry, I didn't catch that. {hint}",
-            parent_id=req.parent_id,
-            visibility="responder_emergency" if req.origin == "emergency" else "responder",
-            request_id=req.id,
+            f"Hi {responder.display_name}, you're connected to FarCare as a trusted "
+            "contact. We'll only message you when someone in your care circle asks for "
+            "help.",
         )
         return
-    care_requests.apply_responder_reply(s, req, responder, intent, msg.text)
+    # Safety-relevant replies about the current task are parsed deterministically first.
+    intent = parse_responder_reply(msg.text, req.status) if req is not None else None
+    if req is not None and intent is not None:
+        care_requests.apply_responder_reply(s, req, responder, intent, msg.text)
+        return
+    # Questions ("what do I need to do?") and task-specific replies go to the helper agent,
+    # whose tools call the same actions as the app's helper screen.
+    reply, mode = responder_agent.respond(s, responder, msg.text, channel=msg.channel)
+    _reply(s, responder, msg, reply)
 
 
 def _handle_child(s: Session, child: Person, msg: InboundText, first_contact: bool) -> None:
@@ -353,3 +345,60 @@ def _handle_child(s: Session, child: Person, msg: InboundText, first_contact: bo
         visibility=timeline.PARENT_ONLY,
     )
     _reply(s, child, msg, intro + reply, parent_id=parent.id, visibility="family_context")
+
+
+# --------------------------------------------------------------------------- app thread
+
+
+def thread(s: Session, person: Person, limit: int = 60) -> list[dict]:
+    """This person's conversation with FarCare across iMessage/SMS, voice and the app,
+    oldest first. Only their own messages and FarCare's replies to them."""
+    items: list[dict] = []
+    for row in s.exec(
+        select(InboundMessageRow)
+        .order_by(InboundMessageRow.received_at.desc())  # type: ignore[union-attr]
+        .limit(1000)
+    ).all():
+        payload = row.payload or {}
+        if payload.get("kind") == "photon_receipt":
+            continue
+        mine = payload.get("person_id") == person.id or (
+            person.handle and normalize_handle(payload.get("sender_handle") or "") == person.handle
+        )
+        if not mine:
+            continue
+        channel = payload.get("channel") or "text"
+        if channel == "text":
+            channel = payload.get("platform") or (
+                "simulated" if payload.get("simulated") else "imessage"
+            )
+        items.append(
+            {
+                "id": f"in:{row.id}",
+                "direction": "in",
+                "text": payload.get("text", ""),
+                "channel": channel,
+                "status": row.status,
+                "at": row.received_at,
+            }
+        )
+    for m in s.exec(
+        select(OutboundMessage)
+        .where(OutboundMessage.person_id == person.id)
+        .order_by(OutboundMessage.created_at.desc())  # type: ignore[union-attr]
+        .limit(limit)
+    ).all():
+        if m.status == "cancelled":
+            continue
+        items.append(
+            {
+                "id": f"out:{m.id}",
+                "direction": "out",
+                "text": m.text,
+                "channel": m.channel,
+                "status": m.status,
+                "at": m.created_at,
+            }
+        )
+    items.sort(key=lambda i: i["at"])
+    return items[-limit:]

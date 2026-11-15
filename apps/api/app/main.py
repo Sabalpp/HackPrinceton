@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db import init_db, session_scope
 from app.routes import (
     accounts,
+    chat,
     console,
     demo,
     experience,
@@ -92,6 +93,7 @@ async def privacy_headers(request: Request, call_next):
 app.include_router(system.router)
 app.include_router(accounts.router)
 app.include_router(experience.router)
+app.include_router(chat.router)
 app.include_router(personal_health.router)
 app.include_router(parents.router)
 app.include_router(ingest.router)

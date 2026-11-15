@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { FarCareChat } from "./chat";
 import { useRouter } from "next/navigation";
 import { Check, HeartPulse, HandHeart, Settings2, ArrowRight, TriangleAlert } from "lucide-react";
 import { RequireRole, useSession } from "@/lib/session";
@@ -73,6 +74,7 @@ function ParentContent() {
         {urgentAction}
         {data.requests.filter(isRequestOpen).length > 0 && <section aria-label="Your help requests" className="flex flex-col gap-4"><h2 className="text-2xl font-bold">Your help requests</h2>{data.requests.filter(isRequestOpen).map(request => <ParentRequest key={request.request_id} request={request} busy={action.busy} onDecision={(id, approve) => void decision(id, approve)} />)}</section>}
         {data.requests.some(request => !isRequestOpen(request)) && <details className="rounded-2xl border border-border bg-surface p-5"><summary className="min-h-10 cursor-pointer text-lg font-semibold">Past requests</summary><div className="mt-3 flex flex-col gap-3">{data.requests.filter(request => !isRequestOpen(request)).slice(0, 3).map(request => <ParentRequest key={request.request_id} request={request} busy={action.busy} onDecision={() => {}} />)}</div></details>}
+        <FarCareChat role="parent" onActivity={() => void result.refresh()} />
         <LiveSensorPanel parentId={data.parent.parent_id} compact />
         <AgentStatusLine agent={data.agent} />
         <button type="button" onClick={() => changeView("settings")} className="inline-flex min-h-12 items-center gap-2 self-start rounded-lg px-2 text-base font-semibold text-primary hover:bg-primary-tint"><Settings2 size={21} aria-hidden="true" />My sharing & Care Circle</button>
