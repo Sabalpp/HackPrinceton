@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, HeartHandshake, LogOut, ShieldCheck } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { DemoSwitch } from "./demo-switch";
 
 export const inputClass = "min-h-13 min-w-0 w-full max-w-full rounded-xl border border-border bg-surface px-4 py-3 text-lg text-ink placeholder:text-muted focus:border-primary";
 
@@ -36,7 +37,7 @@ export function PortalShell({ children, name, roleLabel, onLogout, preview = fal
         </div>
       </header>
       <main id="portal-main" tabIndex={-1} className={`mx-auto flex min-w-0 w-full flex-col gap-6 px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 [overflow-wrap:anywhere] sm:pt-10 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
-        {preview && <p role="status" className="rounded-xl border border-watch-border bg-watch-bg px-4 py-3 text-sm text-watch-body"><strong>Demo account.</strong> A sample family for trying FarCare.</p>}
+        {preview && <DemoSwitch />}
         {children}
         <footer className="mt-6 flex items-start gap-2 border-t border-border pt-5 text-sm text-muted"><ShieldCheck size={19} className="shrink-0" aria-hidden="true" /><p>You choose who can help. FarCare coordinates care; it is not a medical service and does not contact emergency services.</p></footer>
       </main>

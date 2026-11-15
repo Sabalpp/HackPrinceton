@@ -10,6 +10,11 @@ import { experience, type InvitationPreview, type Session } from "@/lib/experien
 import { AuthFrame, inputClass, PortalButton, PortalMessage } from "./ui";
 
 const home = (s: Session) => s.person?.role === "child" && (s.parent_ids ?? []).length === 0 ? "/setup" : s.person ? roleHome(s.person.role) : "/login";
+const DEMO_ROLES = [
+  { role: "parent", label: "Parent", Icon: Heart, who: "Check in, ask for help, choose who sees what" },
+  { role: "child", label: "Family", Icon: Users, who: "See how your parent is doing from far away" },
+  { role: "responder", label: "Helper", Icon: HandHeart, who: "A nearby neighbor who accepts tasks" },
+] as const;
 const failure = (e: unknown) => e instanceof ApiError ? e.message : "We couldn’t complete that. Please try again.";
 
 export function LoginScreen() {
@@ -45,7 +50,7 @@ export function LoginScreen() {
     </form>
     {auth.session?.registration_available && <p className="mt-5 text-center text-sm text-muted">{registering ? "Already have an account?" : "Setting up your family?"} <button type="button" onClick={() => { setRegistering(!registering); setError(null); }} className="min-h-11 font-bold text-primary hover:underline">{registering ? "Sign in" : "Create an account"}</button></p>}
     <p className="mt-2 text-center text-sm"><Link href="/join" className="inline-flex min-h-11 items-center rounded-lg px-2 font-semibold text-primary hover:underline">I have an invitation</Link></p>
-    {auth.session?.demo_available && <section className="mt-7 border-t border-border pt-5"><p className="text-sm font-bold text-ink">Explore a development demo</p><p className="mb-3 mt-1 text-sm text-muted">Sample people, simulated messages. Each role has its own view.</p><div className="grid grid-cols-3 gap-2">{([{ role:"parent", label:"Parent", Icon:Heart },{ role:"child", label:"Family", Icon:Users },{ role:"responder", label:"Helper", Icon:HandHeart }] as const).map(({ role,label,Icon }) => <button key={role} type="button" disabled={busy} onClick={() => void demo(role)} className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-surface text-sm font-semibold text-primary hover:border-primary disabled:opacity-50"><Icon size={22} aria-hidden="true" />{label}</button>)}</div></section>}
+    {auth.session?.demo_available && <section aria-labelledby="who-title" className="mt-7 border-t border-border pt-5"><h2 id="who-title" className="text-lg font-bold text-ink">Who are you?</h2><p className="mb-3 mt-0.5 text-sm text-muted">Try FarCare as one of our sample family. Each role sees its own screen.</p><div className="flex flex-col gap-2">{DEMO_ROLES.map(({ role,label,Icon,who }) => <button key={role} type="button" aria-label={label} disabled={busy} onClick={() => void demo(role)} className="flex min-h-16 items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 text-left shadow-card hover:border-primary disabled:opacity-50"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary-tint text-primary"><Icon size={22} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block font-bold text-ink">{label}</span><span className="block text-sm text-muted">{who}</span></span><ArrowRight size={18} className="shrink-0 text-primary" aria-hidden="true" /></button>)}</div></section>}
   </AuthFrame>;
 }
 
