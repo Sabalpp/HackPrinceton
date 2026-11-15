@@ -4,7 +4,7 @@ The production UI signs in through `/api/auth/*` and uses an HttpOnly session co
 
 | Route | Role | What the screen does |
 | --- | --- | --- |
-| `/login` | Public | Sign in; account creation only when the API enables registration |
+| `/login` | Public | Choose Parent, Family or Helper, then sign in; account creation only when the API enables registration |
 | `/join#token=…` | Invited person | Look up a private invitation, create an account with the server-assigned role, and choose parent sharing permissions |
 | `/setup` | Family or parent | Create a parent profile/invitation and invite a helper; the parent approves helpers |
 | `/parent` | Parent | Large check-in/help/BP actions, explicit request approval, sharing controls, helper approval, and provisional personal references |
@@ -15,7 +15,16 @@ The API is the authorization boundary. Client role gates route people to the cor
 
 Invitations remain in memory and use a URL fragment, so the invitation token is not sent in the page URL to the web server. Copying an invitation is an explicit user action. No account, session, or invitation credential is stored in localStorage. Registration is not described as email verification; delivery and account recovery require their own configured services.
 
-Development role previews appear only when the API advertises `demo_available`. The API's `demo_session` flag labels the current account as a demo; it does not relabel real health records as simulated. Real, mixed, and simulated health sources remain visibly distinct. Old concepts are accessible separately under `/concept` and have a concept banner; they are absent from real account navigation.
+The role chooser is visible in production even when `demo_available` is false.
+Choosing a role opens the credential form; it does not create a session, send a
+role to the API, or change an account's access. Sign-in always routes using the
+role returned by the API. Parents and helpers can use the invitation entry to
+create their server-assigned account. Existing users can also go straight to
+the credential form with **Sign in with your account**.
+
+Development role previews run only when the API advertises `demo_available`;
+in that mode the chooser explicitly describes sample accounts and simulated
+messages. Production demo guards remain unchanged. The API's `demo_session` flag labels the current account as a demo; it does not relabel real health records as simulated. Real, mixed, and simulated health sources remain visibly distinct. Old concepts are accessible separately under `/concept` and have a concept banner; they are absent from real account navigation.
 
 ## Closed-loop interaction
 
