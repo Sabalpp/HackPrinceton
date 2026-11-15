@@ -28,6 +28,16 @@ observations; the dashboard reads current records, without waiting for the
 one-minute `ble_hr_1m` aggregate to refresh. Google metrics appear only after a
 successful authorized Google data pull and collector import.
 
+Run one `health_pipeline watch` process per local outbox. When switching from a
+managed-session collector to a Terminal collector, stop the old ingester first;
+keep the separate BLE reader running. Restarting the pipeline resumes its durable
+outbox and delivery checkpoints, so recorded samples can catch up after an outage.
+An acknowledged Tiger upload is already committed even if a later local status
+write fails. Status and report snapshots use private, unique temporary files in
+the destination directory before atomic replacement, so overlapping writers cannot
+remove each other's temporary file. A healthy uploader does not imply that the
+band is connected: check the BLE timestamp as well as the delivery backlog.
+
 ## Explicit account and source registration
 
 The API and worker must use the same PostgreSQL `DATABASE_URL` as the collector's
