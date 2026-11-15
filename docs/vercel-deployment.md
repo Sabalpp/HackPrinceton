@@ -33,7 +33,9 @@ Selecting `frontend` alone only deploys the dashboard. Do not add a fake server 
 the collector or put Tiger credentials in frontend environment variables.
 
 Services routes `/backend/*` to `app.vercel_entry:app` and all other paths to the
-dashboard. The mounted API preserves that prefix, cookies and the existing app
+dashboard. Keep an explicit `/` service rewrite: a working `/login` alone does not
+prove the bare homepage is routed. The final web fallback uses Vercel's documented
+`/(.*)` service-routing pattern. The mounted API preserves that prefix, cookies and the existing app
 lifecycle. The daemon runs `python -m app.vercel_worker` and is production-only;
 preview deployments do not have an independent worker. Use a separate test database
 for previews instead of pointing branch deployments at the production family data.
@@ -62,9 +64,11 @@ Vercel supplies `VERCEL_GIT_COMMIT_SHA`; the entrypoints expose that revision th
 the existing health endpoint. If system environment variables were disabled in
 the project, enable them or explicitly set `GIT_COMMIT` to the deployed revision.
 
-After deploying, verify both endpoints:
+After deploying, verify the bare homepage as well as the sign-in and API endpoints:
 
 ```bash
+curl -fsS https://YOUR-PROJECT.vercel.app/ -o /dev/null
+curl -fsS https://YOUR-PROJECT.vercel.app/login -o /dev/null
 curl -fsS https://YOUR-PROJECT.vercel.app/backend/health
 curl -fsS https://YOUR-PROJECT.vercel.app/backend/ready
 ```
@@ -72,6 +76,13 @@ curl -fsS https://YOUR-PROJECT.vercel.app/backend/ready
 Require the expected revision, `environment: production`, `database: ok`,
 `demo_mode: false`, and readiness HTTP 200. Readiness checks the worker heartbeat;
 a rendered login page alone does not prove Tiger connectivity or active messaging.
+
+For a custom domain, adding it to the Vercel project proves ownership but does not
+replace the registrar's DNS records. Set the apex A records and `www` CNAME to the
+values shown by that project's Domains page, then wait for Vercel to report valid
+configuration. Add each serving HTTPS origin to `CORS_ORIGINS` before using login;
+keep existing origins until all clients have moved. Test `/`, `/login` and the API
+on the custom hostname too. Do not use wildcard CORS or disable TLS checks.
 
 ## Connect real watch readings
 

@@ -135,7 +135,8 @@ async function run() {
     tab.on('requestfailed', request => {
       if(!closing && !request.failure()?.errorText?.includes('ERR_ABORTED')) browserErrors.push(`Request failed: ${new URL(request.url()).pathname}`);
     });
-    await tab.goto(`${web}/login`, {waitUntil:'domcontentloaded'});
+    await tab.goto(`${web}/`, {waitUntil:'domcontentloaded'});
+    await tab.waitForURL(`${web}/login`);
     return tab;
   }
   const mutation = (tab, path) => tab.waitForResponse(r => r.url()===`${api}${path}` && r.request().method()==='POST' && r.ok());
