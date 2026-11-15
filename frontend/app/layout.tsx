@@ -20,6 +20,8 @@ const devanagari = localFont({
 export const metadata: Metadata = {
   title: "FarCare",
   description: "Private check-ins, personal health patterns, and trusted help for families living apart.",
+  applicationName: "FarCare",
+  appleWebApp: { capable: true, title: "FarCare", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

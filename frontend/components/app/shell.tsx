@@ -21,6 +21,7 @@ import { useDashboard, type Connection } from "@/lib/dashboard";
 import { useSession } from "@/lib/session";
 import { isRequestOpen } from "@/lib/summary";
 import { Logo } from "@/components/farcare/sidebar";
+import { DemoSwitch } from "@/components/portal/demo-switch";
 
 const CONNECTION: Record<Connection, { label: string; dot: string }> = {
   live: { label: "Connected", dot: "bg-primary animate-pulse" },
@@ -180,6 +181,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               Sample family; messages are simulated. Cloud sync is paused.
             </aside>
           )}
+          <div className="mb-6 empty:hidden"><DemoSwitch /></div>
           <p className="sr-only" aria-live="polite">
             {lastEvent?.summary ?? ""}
           </p>
