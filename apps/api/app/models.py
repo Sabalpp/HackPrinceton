@@ -21,6 +21,8 @@ class Person(SQLModel, table=True):
     # Photon routing, learned from the person's first inbound message (= opt-in).
     photon_space_id: str | None = None
     photon_agent_user_id: str | None = None
+    photon_platform: str | None = None
+    messaging_opted_out_at: datetime | None = Field(default=None, sa_column=dt_column())
     reachable_since: datetime | None = Field(default=None, sa_column=dt_column())
     created_at: datetime = Field(default_factory=utcnow, sa_column=dt_column(nullable=False))
 

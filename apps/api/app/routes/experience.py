@@ -13,7 +13,7 @@ from app.auth import current_person, hash_token, resolve_parent_access
 from app.config import get_settings
 from app.db import get_session, new_id, utcnow
 from app.experience_models import AccessAudit, Account, ActionReceipt, CareProfile, Invitation
-from app.integrations.messaging import is_reachable
+from app.integrations.messaging import photon_routed
 from app.models import CareCircleMember, CareRequestRow, CheckInRow, FamilyLink, Person
 from app.mutations import action_session
 from app.routes.parents import _requests, overview
@@ -60,7 +60,9 @@ def agent_status(session: Session, person: Person) -> AgentStatus:
         status=status,
         last_heartbeat_at=last,
         messaging=messaging,
-        messaging_ready=settings.use_photon and is_reachable(person),
+        messaging_ready=settings.use_photon and photon_routed(person),
+        messaging_platform=settings.photon_platform if settings.use_photon else None,
+        messaging_opted_out=person.messaging_opted_out_at is not None,
         detail=(
             "The worker completed a recent cycle. An accepted message is not a delivery receipt."
             if healthy

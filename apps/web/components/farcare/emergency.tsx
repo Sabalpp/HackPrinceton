@@ -57,7 +57,7 @@ function EmergencyView({ state: s }: { state: FarCareState }) {
           type="button"
           onClick={() => setHandling(true)}
           disabled={handling}
-          className="inline-flex min-h-14 items-center justify-center gap-2 self-start rounded-[10px] bg-white px-6 text-lg font-bold text-danger hover:bg-danger-light disabled:opacity-90"
+          className="inline-flex min-h-14 items-center justify-center gap-2 self-start rounded-[10px] bg-white px-6 text-lg font-bold text-danger hover:bg-danger-tint disabled:opacity-90"
         >
           {handling && <Check size={22} aria-hidden="true" />}
           {handling ? "You're handling it" : "I'm handling it"}

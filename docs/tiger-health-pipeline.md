@@ -1,142 +1,177 @@
-# Tiger health-data integration
+# Fitbit and Tiger health data in FarCare
 
-This work extends the latest `feature/sumit-core` backend (`444bb85`), on
-`feature/sabal-fitbit`. `main` was older when the integration started. The newer
-`feature/saksham-ui` client (`7c969f5`) is now integrated on this feature branch.
-
-## Existing backend, reused
-
-FarCare already uses SQLModel/PostgreSQL through `DATABASE_URL`, with SQLite for
-tests. The same Tiger database can hold ordinary application tables and the
-`air_health` sensor schema. `HealthObservationRow` stays an ordinary table: its
-single-column primary key and `session.get()` behavior should not be changed into
-a time-partitioned key without a coordinated migration.
-
-The flow is:
+FarCare reads the collector's real, canonical sensor records from Tiger. The app
+does not generate replacement measurements when a watch, Google sync, or database
+is unavailable.
 
 ```text
-BLE + authorized Google Health exports → durable sensor collector → Tiger air_health
-  → app.health.tiger daily projection → authenticated POST /api/health/observations
-  → health_observations + health.synced timeline → existing authorized REST/SSE → UI
+Fitbit Air -- BLE notifications --> Mac collector --> Tiger measurement_versions
+Google Health -- authorized sync ------------------> Tiger measurement_versions
+                                                         |
+                          explicit wearer/parent link ---+
+                                                         |
+                  +--------------------------------------+------------------+
+                  |                                                         |
+        authenticated sensor-health API                         durable worker (every minute)
+                  |                                                         |
+        parent / permitted family UI                           dated daily health observations
+        latest values + 300-point HR history                   + existing personal trend rules
+                                                                            |
+                                                               permission-checked message queue
+                                                                            |
+                                                               Photon SMS + reply processing
 ```
 
-The collector runs outside the web request path. Its canonical view resolves
-revisions before the adapter reads. All reads bind an explicit upstream subject.
-The ingest route validates the target parent and key; family reads keep existing
-`resolve_parent_access`/sharing checks.
+The BLE collector still runs on a computer physically near the watch. Cloudflare
+cannot directly receive the watch's radio signal. The collector writes individual
+observations; the dashboard reads current records, without waiting for the
+one-minute `ble_hr_1m` aggregate to refresh. Google metrics appear only after a
+successful authorized Google data pull and collector import.
 
-## Run
+## Explicit account and source registration
 
-Configure the API's private `.env` (never commit credentials):
+The API and worker must use the same PostgreSQL `DATABASE_URL` as the collector's
+`air_health` schema. Keep database credentials in the deployment secret store.
+No connection string or health history belongs in the web bundle or Git.
 
-```dotenv
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/tsdb?sslmode=require&connect_timeout=10
-INGEST_API_KEY=YOUR_PRIVATE_INGEST_KEY
-SEED_HEALTH_DATA=false
+Create the real family account and parent care profile in FarCare first. Then an
+operator runs, from `apps/api` using the deployment environment:
+
+```sh
+.venv/bin/python -m app.health.sources link \
+  --parent-id REAL_PARENT_ID \
+  --actor-id REGISTERED_ACCOUNT_OWNER_ID \
+  --subject-id COLLECTOR_WEARER_SUBJECT_ID \
+  --consent-confirmed
 ```
 
-For a controlled local demo, use `MESSAGING_CHANNEL=console`,
-`BACKGROUND_TASKS_ENABLED=true`, `PROACTIVE_CHECKINS_ENABLED=false`, and
-`PHOTON_DELIVERY=off`. Console delivery keeps messages simulated while the
-background tick processes care/safety timeouts. Isolated automated tests disable
-the loop and invoke a tick directly. Bind the local API to loopback.
+`--consent-confirmed` records that the wearer authorized this use of their data.
+The actor must be the registered parent or the registered account that created
+their care profile. The command verifies existing eligible Tiger records and
+creates an audited `watch_source_links` mapping. It rejects demo seed profiles,
+unknown accounts, reassignment to another wearer, and a subject already linked to
+a different parent. Repeating the same active link is safe. A browser never
+supplies an upstream subject ID.
 
-```bash
-cd apps/api
-uv sync
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
-# In a second Terminal, with the same .env:
-uv run python -m app.health.sync_tiger \
-  --subject-id YOUR_AUTHORIZED_UPSTREAM_SUBJECT \
-  --parent-id YOUR_EXISTING_PARENT_ID \
-  --days 35 \
-  --api-url http://127.0.0.1:8000 --watch-seconds 60
+To pause app access and worker synchronization without deleting measurements:
+
+```sh
+.venv/bin/python -m app.health.sources disable \
+  --parent-id REAL_PARENT_ID --actor-id REGISTERED_ACCOUNT_OWNER_ID
 ```
 
-The sender needs a nonempty ingest key, allows unencrypted HTTP only for loopback,
-does not follow redirects, uses bounded requests, and retries without advancing
-its successful-payload digest on failure. Restart replay uses stable observation
-IDs. It posts through the route so receipts and SSE events retain their current
-behavior. A successful unchanged replay creates no extra health timeline event.
-Daily projection and completed-step comparisons both use the selected parent's
-profile timezone. If supplied, `--timezone` must match that profile; conflicting
-calendars are rejected before reading measurements. A longer lookback does not
-invent missing history.
+Disabling a source leaves previous dated daily observations in the account.
+Removing historical data is a separate deliberate account/data-retention action.
 
-The sensor collector must already supply `air_health.measurements_current` with
-event identity, subject/source/stream, metric, times/date, value/unit/kind and
-attributes. This adapter is not another Google OAuth implementation. The older
-`google_health.fetch_daily` direct-Google stub is not used by this Tiger path.
+## Dashboard contract
 
-## Preserved contract and limits
+`GET /api/parents/{parent_id}/sensor-health` requires authenticated parent access
+or an authorized family membership with `share_health`. Nearby responders cannot
+read this endpoint, even if a malformed family membership exists. With sharing
+off it returns `null`, consistent with the existing health endpoints.
 
-| Existing field | Actual source/handling |
-| --- | --- |
-| `steps` | One unambiguous stream of non-overlapping step intervals; recorded total, not proof of full-day wear; today remains null |
-| `resting_heart_rate` | Explicit Google daily resting-HR measurement, rounded half-up to the contract's integer; never live BLE BPM |
-| `sleep_minutes` | Exactly one explicit main, non-nap session's reported minutes asleep, assigned to wake date |
-| `timestamp` | Source local-date label encoded as UTC day-start, as required by the existing contract |
-| `data_mode` / `source` | `live` / `fitbit`; Tiger is storage, not a sensor type |
+The response provides:
 
-Missing and ambiguous values remain null. Alternative devices are not added
-together. Cross-midnight steps are not allocated proportionally. The trend engine
-uses actual calendar windows, deduplicates identical same-day values, excludes
-conflicts, and refuses to compare across real/simulated sources or a zero baseline.
-Live Fitbit step comparisons end at the parent's local yesterday. Today's null
-steps no longer make every otherwise-complete comparison fail. A missing/stale
-completed day still blocks the comparison; an invalid parent timezone also blocks
-step comparison. Sleep and reported resting HR retain their existing behavior.
+- Connection state: `not_linked`, `available`, or `unavailable`. `available` means
+  the database query succeeded; it does not mean the watch is currently connected.
+- Live BLE heart rate: source, exact value, unit, timestamp, age and freshness.
+- Reported Google metrics: heart rate, resting HR, steps in the latest interval,
+  sleep in the latest session, SpO2, HRV, respiratory rate and skin temperature,
+  where those records actually exist.
+- At most 300 recent HR points within 15 minutes, newest watch stream only. This
+  is a bounded preview, not guaranteed complete 15-minute coverage. It never
+  interpolates gaps or silently combines simultaneous watches.
+- Last successful daily-sync time and pending/ok/unavailable worker status.
 
-The shared API currently has no fields for instantaneous BPM, SpO2, HRV, skin
-temperature, source coverage, or raw sleep stages. Those remain in Tiger. Adding
-them requires the shared-contract generation/review process and Saksham's UI
-integration; do not send unsupported fields to the existing endpoint.
+Freshness is an engineering availability policy, not a clinical threshold: live
+BLE samples become stale after 20 seconds; cloud samples and intervals use
+metric-specific windows; daily metrics use their source calendar date and become
+stale after two days. Stale values stay dated. Missing or invalid values stay
+`null`; no absent value turns into zero. Genuine reported zero steps are retained.
 
-The UI real-mode client already uses these endpoints and SSE. Set
-`NEXT_PUBLIC_USE_MOCKS=false` and `NEXT_PUBLIC_API_URL` to the API origin. Rich
-sensor panels and clear mixed/missing-data presentation remain coordinated UI
-work. Sumit's proactive-service direction wording also needs review before using
-notable upward trends to trigger outreach; this integration leaves check-ins off
-in its local verification configuration.
+Instantaneous BPM is never called resting HR and is never used to infer HRV,
+blood pressure, SpO2, a fall or a raw waveform. Cloud steps are explicitly an
+interval value in this endpoint, not an invented daily total. Daily summaries use
+the existing stricter projection, excluding today's incomplete step totals and
+ambiguous overlapping streams.
 
-## Verification and ownership
+## Daily synchronization and messages
 
-An authorized family status query now reports the latest dated available steps,
-reported resting HR and main-sleep record, even when no trend is notable. Missing
-values, conflicting same-date records, live/simulated provenance and insufficient
-baseline history remain explicit. This query is read-only and requires no parent
-message or contact with a neighbor. `share_health=false` suppresses these details.
-Ordinary help requests retain their existing parent-approval requirement.
+Run the existing durable worker: `python -m app.worker`. Its singleton maintenance
+transaction calls `sync_linked_sources`. Each cycle checks at most one due link;
+each link is retried no sooner than 60 seconds later. The worker projects up to
+35 dates of existing Google steps, declared resting HR and main sleep. Stable
+observation IDs and a digest prevent duplicate history, timeline events and
+messages. Source corrections can clear a previously stored value; null-only dates
+are not inserted as evidence that data was collected.
 
-Normalization/projector fixtures are synthetic and offline. Actual canonical
-records were independently queried from Tiger, projected, accepted by the real
-FastAPI route in an isolated temporary SQLite database, replayed idempotently,
-and hidden when sharing was disabled. No real values/fixtures are committed here.
+The existing descriptive trend rules compare five recent dates with at least
+seven baseline dates. Their relative-change defaults are product heuristics,
+not medically validated danger thresholds. A new, recent live daily change can
+record one family check-in prompt per parent, recipient and local day. The text
+asks the family to check in and labels itself as a wellbeing prompt. It does not
+declare an emergency or diagnose a condition. The rules do not alert from a
+short, stale, simulated or missing history.
 
-The agent Python environment could not resolve the Tiger hostname. Therefore a
-long-running Python API-to-Tiger connection is configured but not claimed as
-verified. The sensor uploader's separate permitted network runtime connected over
-TLS, stored actual data, and verified archive hashes against the local outbox.
+Only family members with health sharing receive the health notice. The normal
+outbound gateway enforces permissions and opt-out checks again at delivery. The
+outbox records `queued`, `available`, failure and provider delivery states
+accurately; recording a notice does not mean an SMS was delivered. Actual SMS
+requires configured Photon credentials, a working number/route, the worker and
+an authenticated inbound webhook. Registered users without a ready Photon route
+have the notice available in the app.
 
-Current verification: **219 backend tests passed**; `ruff check .` passed and
-`ruff format --check .` reported 63 formatted files. The TestClient emits one
-upstream timeout-deprecation warning; no check was disabled. The real-data
-handoff produced eight daily records, preserved nulls, labeled them live, replayed
-with zero changed rows, emitted one health sync event and enforced sharing.
-The separate private whole-workflow verifier passed **107 checks**, including
-passive son queries before any parent message, exact dated values from the real
-cached projection, consent, responder acceptance/completion, timeouts and fresh
-sharing checks. It made no external network calls and sent only console messages.
-This does not verify live Photon delivery, browser rendering or revocation during
-an already-open SSE connection.
+## Query cost and failures
 
-Health changes are in Sabal-owned modules/tests. The user's passive-monitoring
-request also requires a narrowly scoped read-only change to `family.status_lines`,
-included for the core owner's review. No shared contract, route, model, outbound
-messaging or care-request state-machine behavior was changed. The latest frontend
-now lives in this checkout, with bundled licensed fonts, an explicit local-preview
-banner, an SSE connection label that does not imply fresh sensor data, and corrected
-upward-step wording. CI exercises the real dashboard/API with synthetic fixtures;
-see [browser checks](local-ci.md). The adapter and trend fixes were implemented independently, then integrated with the
-existing backend test suite. This branch includes the latest core branch ancestry;
-review/merge that upstream work before promoting a draft PR into main.
+Live queries use indexed, bounded candidate lookups against
+`air_health.measurement_versions` and resolve the newest eligible revision per
+event by `source_revision_at`, `received_at`, then `version_hash`. This has the
+same identity/revision rule as `measurements_current`, avoiding a full canonical
+view sort for every dashboard refresh. Candidate limits are 600 BLE versions and
+20 versions per cloud metric. Sparse older measurements beyond the 7-day BLE or
+35-day cloud search windows are reported missing, not silently substituted.
+
+The collector schema already defines these useful indexes:
+
+```sql
+-- Existing collector indexes; do not recreate them on every app startup.
+-- measurement_versions_lookup_idx:
+--   (subject_id, metric, observed_at DESC)
+-- measurement_versions_identity_idx:
+--   (event_id, source_revision_at DESC, received_at DESC)
+```
+
+Use `EXPLAIN (ANALYZE, BUFFERS)` against a safe bounded read to evaluate additional
+indexing with actual service size. If the plan scans many BLE rows while looking
+for a Google heart-rate record, consider an operator-managed index on
+`(subject_id, source, metric, observed_at DESC)` restricted to eligible versions;
+the extra `source` key separates those two streams. Schedule any index creation
+through the collector's database migrations. This change does not alter retention or
+compression settings and does not create continuous aggregates at request time.
+
+Live reads have a 3-second PostgreSQL statement limit; daily reads have a
+5-second limit. Savepoints contain missing-table/statement errors so normal
+messages can proceed. A lost database connection propagates to the worker's
+transaction boundary for rollback/reconnection. No raw driver error, secret,
+subject identifier or health record is included in operational warnings.
+
+## Verification
+
+From `apps/api`:
+
+```sh
+.venv/bin/python -m pytest tests/test_health_live.py tests/test_health_tiger.py -q
+.venv/bin/ruff check app/health app/routes/personal_health.py app/schemas/experience.py tests/test_health_live.py
+```
+
+Fixtures cover identity isolation, authentication, revoked sharing, neighbor
+privacy, invalid values, stale signals, duplicate/conflicting readings, consent,
+idempotent updates, null corrections, local calendar dates, message deduplication
+and transaction recovery. A PostgreSQL-only test runs the exact production
+LATERAL query against synthetic version rows in the disposable CI PostgreSQL
+service. It skips on SQLite. **Never point `TEST_DATABASE_URL` at a production
+database:** the existing test harness resets application tables.
+
+Deployment still requires an actual collector connection and an explicit real
+wearer link. Passing fixture tests is not evidence that the live watch, Tiger
+credentials or Photon provider are connected.

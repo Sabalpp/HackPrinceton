@@ -9,6 +9,7 @@ import { Ready } from "../shell";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "../kit";
 import { METRIC, MetricChart, TrendTile, type Metric } from "../health";
 import { PersonalHealthPanel } from "@/components/portal/personal-health";
+import { LiveSensorPanel } from "@/components/portal/live-sensors";
 
 const RANGES = [14, 35, 60] as const;
 const fetchers = Object.fromEntries(
@@ -38,7 +39,7 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
                 type="button"
                 onClick={() => setDays(d)}
                 aria-pressed={days === d}
-                className={`min-h-9 rounded-lg px-3 text-sm font-semibold ${days === d ? "bg-primary text-white" : "text-body hover:bg-inset"}`}
+                className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${days === d ? "bg-primary text-on-primary" : "text-body hover:bg-inset"}`}
               >
                 {d} days
               </button>
@@ -57,6 +58,7 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
 
       {data && (
         <>
+          <LiveSensorPanel parentId={parentId} />
           <PersonalHealthPanel parentId={parentId} />
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
             {data.data_mode === "simulated" && <SimulatedPill />}
@@ -98,7 +100,7 @@ function Health({ name, parentId }: { name: string; parentId:string }) {
                       role="tab"
                       aria-selected={metric === t.metric}
                       onClick={() => setMetric(t.metric)}
-                      className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${
+                      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${
                         metric === t.metric ? "bg-primary-tint text-on-tint" : "bg-inset text-body hover:text-ink"
                       }`}
                     >

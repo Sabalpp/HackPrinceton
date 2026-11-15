@@ -1,6 +1,7 @@
 """Photon 2.0 (Beta) project setup for the FarCare demo. Reads apps/api/.env.
 
     uv run python scripts/photon_setup.py status
+    uv run python scripts/photon_setup.py sms-status        # read-only sender/campaign check
     uv run python scripts/photon_setup.py assign            # shared line for each DEMO_*_HANDLE
     uv run python scripts/photon_setup.py webhook --url https://<api-host>/webhooks/photon
 
@@ -17,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from photon_api import ApiError  # noqa: E402
+from photon_api.errors import TransportError  # noqa: E402
 from photon_api.generated.models import (  # noqa: E402
     CreateSharedLineAssignmentRequest,
     CreateWebhookDestinationRequest,
@@ -28,7 +30,9 @@ from photon_api.rpc_generated import (  # noqa: E402
     CreateWebhookDestinationHeader,
     CreateWebhookDestinationInput,
     CreateWebhookDestinationPath,
+    GetSmsLineCampaignAssignmentInput,
     ListSharedLineAssignmentsInput,
+    ListUsersInput,
     ListWebhookApiVersionsInput,
     ListWebhookDestinationsInput,
 )
@@ -59,6 +63,9 @@ def assignments(project: str) -> list[dict]:
 
 def status(project: str) -> None:
     settings = get_settings()
+    if settings.photon_platform == "sms":
+        sms_status(project)
+        return
     by_handle = {
         normalize_handle(a.get("handle") or a.get("email") or ""): a
         for a in assignments(project)
@@ -80,6 +87,8 @@ def status(project: str) -> None:
 
 def assign(project: str) -> None:
     settings = get_settings()
+    if settings.photon_platform != "imessage":
+        raise SystemExit("assign is only for shared iMessage lines. Use sms-status for SMS.")
     existing = {
         normalize_handle(a.get("handle") or "")
         for a in assignments(project)
@@ -108,6 +117,48 @@ def assign(project: str) -> None:
     print("Next: each person texts their number once (e.g. 'JOIN').")
 
 
+def sms_status(project: str) -> None:
+    """Read existing SMS sender identities and eligibility; never buy/register a number."""
+    settings = get_settings()
+    query = {"platform": "sms", "pageSize": 100}
+    found = False
+    while True:
+        page = _dump(
+            get_client().projects.list_users(
+                ListUsersInput.model_validate({"path": {"id": project}, "query": query})
+            )
+        )
+        for user in page.get("items", []):
+            if user.get("kind") != "agent" or user.get("platform") != "sms":
+                continue
+            found = True
+            selected = " [configured]" if user.get("id") == settings.photon_agent_user_id else ""
+            print(f"SMS agent {user['id']}{selected} ({_mask(user.get('handle', ''))})")
+            resource = (user.get("details") or {}).get("resourceId")
+            if resource:
+                state = _dump(
+                    get_client().projects.get_sms_line_campaign_assignment(
+                        GetSmsLineCampaignAssignmentInput.model_validate(
+                            {"path": {"id": project, "resourceId": resource}}
+                        )
+                    )
+                )
+                print(f"  Campaign eligibility: {state.get('eligibility', 'unknown')}")
+            else:
+                print("  No SMS line resource in this user; verify the sender in Photon dashboard.")
+        token = page.get("nextPageToken")
+        if not token:
+            break
+        query["pageToken"] = token
+    if not found:
+        print("No SMS agent found. Set up an eligible SMS sender in the Photon dashboard first.")
+    print("Set PHOTON_PLATFORM=sms and PHOTON_AGENT_USER_ID to the selected sender ID.")
+    print(
+        "Recipients must authorize the sender, then text JOIN from their registered FarCare number."
+    )
+    print("Campaign eligibility is not recipient consent or proof of delivery.")
+
+
 def webhook(project: str, url: str) -> None:
     if not url.startswith("https://") or not url.endswith("/webhooks/photon"):
         raise SystemExit("URL must be https://<public-host>/webhooks/photon")
@@ -132,7 +183,12 @@ def webhook(project: str, url: str) -> None:
                 name="FarCare API",
                 url=url,
                 apiVersion=version,
-                enabledEvents=["message.received"],
+                enabledEvents=[
+                    "message.received",
+                    "message.dispatched",
+                    "message.delivered",
+                    "message.failed",
+                ],
             ),
         )
     )
@@ -151,6 +207,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     sub.add_parser("assign")
+    sub.add_parser("sms-status")
     wh = sub.add_parser("webhook")
     wh.add_argument("--url", required=True)
     args = ap.parse_args()
@@ -164,8 +221,17 @@ def main() -> int:
             status(project)
         elif args.cmd == "assign":
             assign(project)
+        elif args.cmd == "sms-status":
+            sms_status(project)
         else:
             webhook(project, args.url)
+    except TransportError:
+        print(
+            "Photon network request failed. Check DNS/connectivity and retry; "
+            "SMS eligibility was not verified.",
+            file=sys.stderr,
+        )
+        return 1
     except ApiError as err:
         print(
             f"Photon API error {err.status} (request {err.request_id or 'unknown'})",

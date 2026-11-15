@@ -7,6 +7,8 @@ os.environ.update(
     PHOTON_API_KEY="",
     PHOTON_PROJECT_ID="",
     PHOTON_WEBHOOK_SECRET="",
+    PHOTON_PLATFORM="imessage",
+    PHOTON_AGENT_USER_ID="",
     GEMINI_API_KEY="",
     INGEST_API_KEY="",
     DEMO_MODE="true",

@@ -4,6 +4,7 @@ export const SECRET_KEYS = [
 ];
 export const APP_KEYS = [
   'SESSION_HOURS', 'MESSAGING_CHANNEL', 'PROACTIVE_CHECKINS_ENABLED', 'GEMINI_MODEL',
+  'PHOTON_PLATFORM', 'PHOTON_AGENT_USER_ID',
   'WORKER_INTERVAL_SECONDS', 'WORKER_BATCH_SIZE', 'WORKER_MAX_DELIVERY_ATTEMPTS',
   'WORKER_RETRY_BASE_SECONDS', 'WORKER_RETRY_MAX_SECONDS', 'WORKER_HEARTBEAT_STALE_SECONDS',
   'TIGER_SYNC_ENABLED', 'TIGER_SUBJECT_ID', 'TIGER_PARENT_ID', 'TIGER_SYNC_SECONDS',
@@ -33,6 +34,8 @@ export function validateSettings(settings, {secrets = true} = {}) {
   }
   if (!['always_on', 'on_demand'].includes(s.CARE_AGENT_MODE)) errors.push('CARE_AGENT_MODE must be always_on or on_demand.');
   if (!['console', 'photon'].includes(s.MESSAGING_CHANNEL)) errors.push('MESSAGING_CHANNEL must be console or photon.');
+  if (!['sms', 'imessage'].includes(s.PHOTON_PLATFORM)) errors.push('PHOTON_PLATFORM must be sms or imessage.');
+  if (s.MESSAGING_CHANNEL === 'photon' && s.PHOTON_PLATFORM === 'sms' && !s.PHOTON_AGENT_USER_ID?.trim()) errors.push('SMS requires PHOTON_AGENT_USER_ID for your provisioned Photon SMS sender.');
   if (s.MESSAGING_CHANNEL === 'photon' && s.CARE_AGENT_MODE !== 'always_on') errors.push('Photon delivery requires always_on so due care work is not suspended.');
   if (s.PROACTIVE_CHECKINS_ENABLED === 'true' && (s.MESSAGING_CHANNEL !== 'photon' || s.CARE_AGENT_MODE !== 'always_on')) errors.push('Proactive check-ins require Photon and always_on.');
   const ranges = {

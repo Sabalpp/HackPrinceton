@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     photon_api_key: str = ""
     photon_project_id: str = ""
     photon_webhook_secret: str = ""
+    # iMessage shared assignments can have different agents. SMS uses one explicit sender.
+    photon_platform: Literal["imessage", "sms"] = "imessage"
+    photon_agent_user_id: str = ""
     # webhook: Photon POSTs to /webhooks/photon (needs public HTTPS)
     # poll:    backend polls list_messages (local dev without a tunnel)
     # off:     no inbound delivery
@@ -108,6 +111,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _production_guards(self) -> "Settings":
+        if self.use_photon and self.photon_platform == "sms" and not self.photon_agent_user_id:
+            raise ValueError("SMS delivery requires PHOTON_AGENT_USER_ID for the approved sender.")
         if self.app_env == "production":
             if self.messaging_channel == "photon" and not self.photon_enabled:
                 raise ValueError(

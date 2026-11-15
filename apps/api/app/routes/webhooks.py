@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.integrations.photon.inbound import (
     WebhookVerificationError,
     from_webhook_event,
+    receipt_from_webhook_event,
     verify_webhook,
 )
 from app.services import conversation
@@ -46,17 +47,24 @@ async def photon_webhook(request: Request, background: BackgroundTasks) -> Respo
         raise HTTPException(400, "Invalid event")
     try:
         msg = from_webhook_event(event, settings.photon_project_id or None)
+        receipt = receipt_from_webhook_event(event, settings.photon_project_id or None)
     except (AttributeError, TypeError, ValueError):
         raise HTTPException(400, "Invalid event structure") from None
-    if msg is None:
+    if msg is None and receipt is None:
         return Response(status_code=204)  # other event types are acknowledged and ignored
     try:
-        is_new = conversation.enqueue(msg)
+        if receipt is not None:
+            message_id = f"photon_receipt:{event['id']}"
+            is_new = conversation.enqueue_payload(message_id, receipt)
+        else:
+            assert msg is not None
+            message_id = msg.message_id
+            is_new = conversation.enqueue(msg)
     except Exception:
         log.exception("Could not persist Photon event")
         raise HTTPException(503, "Temporarily unavailable") from None
     # Production acknowledges only durable intake. A separate worker owns all
     # processing; a request-local task is not a durable queue.
     if is_new and settings.app_env != "production":
-        background.add_task(conversation.process, msg.message_id)
+        background.add_task(conversation.process, message_id)
     return Response(status_code=204)

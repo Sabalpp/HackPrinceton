@@ -17,6 +17,7 @@ from app.db import session_scope, utcnow
 from app.integrations.gemini import agent
 from app.integrations.messaging import send_to_person, show_typing
 from app.integrations.photon.inbound import InboundText, normalize_handle
+from app.integrations.photon.routing import matches_channel
 from app.models import ConversationTurn, InboundMessageRow, Person
 from app.services import care_requests, safety, timeline
 from app.services.replies import (
@@ -34,11 +35,16 @@ log = logging.getLogger(__name__)
 
 def enqueue(msg: InboundText) -> bool:
     """Persist an inbound message once (dedupe by Photon message id). True if new."""
+    return enqueue_payload(msg.message_id, msg.to_dict())
+
+
+def enqueue_payload(message_id: str, payload: dict) -> bool:
+    """Persist either a normalized text or signed delivery receipt exactly once."""
     try:
         with session_scope() as s:
-            if s.get(InboundMessageRow, msg.message_id) is not None:
+            if s.get(InboundMessageRow, message_id) is not None:
                 return False
-            s.add(InboundMessageRow(id=msg.message_id, payload=msg.to_dict()))
+            s.add(InboundMessageRow(id=message_id, payload=payload))
         return True
     except IntegrityError:
         return False
@@ -58,7 +64,7 @@ def process(message_id: str) -> None:
         with session_scope() as s:
             row = s.get(InboundMessageRow, message_id)
             assert row is not None
-            outcome = handle(s, InboundText(**row.payload))
+            outcome = handle_payload(s, row.payload)
             row.status = outcome
             s.add(row)
     except Exception as exc:
@@ -67,13 +73,21 @@ def process(message_id: str) -> None:
             row = s.get(InboundMessageRow, message_id)
             if row is not None:
                 row.status = "failed" if row.attempts >= 3 else "pending"
-                row.error = f"{type(exc).__name__}: {exc}"[:500]
+                row.error = type(exc).__name__[:100]
                 s.add(row)
 
 
 def receive(msg: InboundText) -> None:
     if enqueue(msg):
         process(msg.message_id)
+
+
+def handle_payload(s: Session, payload: dict) -> str:
+    if payload.get("kind") == "photon_receipt":
+        from app.integrations import delivery
+
+        return delivery.apply_receipt(s, payload)
+    return handle(s, InboundText(**payload))
 
 
 # --------------------------------------------------------------------------- routing
@@ -126,12 +140,57 @@ def handle(s: Session, msg: InboundText) -> str:
 
     first_contact = False
     if not msg.simulated and msg.space_id and msg.agent_user_id:
+        if not matches_channel(msg.platform, msg.agent_user_id):
+            return "ignored"
         person.photon_space_id = msg.space_id
         person.photon_agent_user_id = msg.agent_user_id
+        person.photon_platform = msg.platform or "imessage"
         if person.reachable_since is None:
             person.reachable_since = utcnow()
             first_contact = True
         s.add(person)
+
+    if not msg.simulated and msg.platform == "sms":
+        command = msg.text.strip().upper()
+        if command in {
+            "STOP",
+            "STOPALL",
+            "UNSUBSCRIBE",
+            "CANCEL",
+            "END",
+            "QUIT",
+            "REVOKE",
+            "OPT OUT",
+        }:
+            from app.integrations import delivery
+
+            delivery.opt_out(s, person)
+            # Do not queue a new SMS after opt-out; carrier/provider handles its acknowledgement.
+            return "done"
+        if command in {"START", "UNSTOP"}:
+            person.messaging_opted_out_at = None
+            s.add(person)
+            _reply(
+                s,
+                person,
+                msg,
+                "FarCare messages are on. Reply STOP to pause messages or HELP for guidance.",
+            )
+            return "done"
+        if person.messaging_opted_out_at is not None:
+            return "ignored"  # Ordinary inbound text is not permission to restart alerts.
+        if command == "HELP" and not (
+            person.role == "parent" and safety.active_incident(s, person.id) is not None
+        ):
+            _reply(
+                s,
+                person,
+                msg,
+                "FarCare connects your care circle. Tell me what you need, or reply YES, NO or "
+                "DONE to an active request. Reply STOP to pause SMS, START to resume. "
+                "For immediate danger, call local emergency services; FarCare does not dispatch them.",
+            )
+            return "done"
 
     if person.role == "parent":
         _handle_parent(s, person, msg)

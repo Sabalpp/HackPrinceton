@@ -52,6 +52,8 @@ def send_text(*, space_id: str, sender_id: str, text: str, idempotency_key: str)
     202 from Photon means "accepted for async dispatch", not delivered.
     """
     settings = get_settings()
+    if settings.photon_platform == "sms" and sender_id != settings.photon_agent_user_id:
+        raise ValueError("SMS sender must match PHOTON_AGENT_USER_ID")
     sent = get_client().projects.send_message(
         SendMessageInput(
             path=SendMessagePath(id=settings.photon_project_id),
@@ -71,6 +73,8 @@ def set_typing(*, space_id: str, sender_id: str, typing: bool = True) -> None:
     """Show/hide the typing indicator. Transient: Photon expects callers to refresh it during
     long work; one call covers a short agent turn."""
     settings = get_settings()
+    if settings.photon_platform == "sms":
+        return  # SMS has no typing indicator.
     get_client().projects.set_space_typing(
         SetSpaceTypingInput(
             path=SetSpaceTypingPath.model_validate(
@@ -87,6 +91,7 @@ def list_received_since(created_since: datetime) -> list[dict]:
     query: dict = {
         "createdSince": created_since.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
         "direction": "received",
+        "platform": settings.photon_platform,
         "order": "asc",
         "pageSize": 100,
     }

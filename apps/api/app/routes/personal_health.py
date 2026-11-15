@@ -9,7 +9,7 @@ from app import accounts
 from app.auth import current_person, resolve_parent_access
 from app.db import get_session, new_id, utcnow
 from app.experience_models import AccessAudit, BloodPressureReading, PersonalReference
-from app.health import personal
+from app.health import live, personal
 from app.health.service import recent
 from app.integrations.messaging import send_to_person
 from app.models import FamilyLink, Person
@@ -24,10 +24,28 @@ from app.schemas.experience import (
     PersonalMetric,
     ReferenceIn,
     ReferenceInfo,
+    SensorHealthReport,
 )
 from app.services import timeline
 
 router = APIRouter(prefix="/api", tags=["personal health"])
+
+
+@router.get("/parents/{parent_id}/sensor-health", response_model=SensorHealthReport | None)
+def get_sensor_health(
+    parent_id: str,
+    viewer: Person = Depends(current_person),
+    session: Session = Depends(get_session),
+):
+    access = resolve_parent_access(session, viewer, parent_id)
+    if not access.share_health:
+        return None
+    # Nearby helpers receive task details, never a sensor-health feed.
+    if viewer.role not in ("parent", "child", "family", "admin"):
+        raise HTTPException(404, "Parent not found")
+    parent = session.get(Person, parent_id)
+    assert parent
+    return live.read_sensor_health(session, parent)
 
 
 def bp_record(row: BloodPressureReading) -> dict:

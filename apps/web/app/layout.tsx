@@ -23,7 +23,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f2f7f6",
+  themeColor: "#0a0d0e",
+  viewportFit: "cover", // lets the phone dock pad itself for the home indicator (env(safe-area-inset-*))
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

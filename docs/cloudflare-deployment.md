@@ -14,7 +14,7 @@ not start the API or care worker.
 | Dashboard field | Value |
 | --- | --- |
 | Product | Workers, connected to `Sabalpp/HackPrinceton` |
-| Production branch | `main` after this PR is reviewed and merged |
+| Production branch | `main` |
 | Root directory | `/` (repository root) |
 | Build command | `npm --prefix deploy/cloudflare ci && npm --prefix deploy/cloudflare test && npm --prefix deploy/cloudflare run build` |
 | Deploy command | `npm --prefix deploy/cloudflare run deploy` |
@@ -54,15 +54,25 @@ its ignored `.env`. The example file lists all supported parameters.
 | `API_INSTANCE_TYPE` / `WEB_INSTANCE_TYPE` | `basic` / `basic` | Each starts with 1 GiB; `standard-1` gives 4 GiB; `standard-2` gives 6 GiB |
 | `CARE_AGENT_MODE` | `always_on` | Minute cron keeps/restarts the API/worker container. `on_demand` sleeps after five idle minutes and is only for demonstrations without active care or Photon |
 | `MESSAGING_CHANNEL` | `console` or `photon` | Console mode labels provider messages simulated; Photon requires all three provider fields and participant opt-in |
+| `PHOTON_PLATFORM` | `sms` or `imessage` | Selects the provisioned messaging channel; the choice alone does not provision a number |
+| `PHOTON_AGENT_USER_ID` | Photon sender user ID | Required for SMS; an eligible SMS sender, not a shared iMessage assignment |
 | `SESSION_HOURS` | `24`; range 1–168 | Browser session lifetime |
 | `PROACTIVE_CHECKINS_ENABLED` | `false` | Turn on only after validating opt-in, delivery and each parent's timezone |
-| `TIGER_SYNC_ENABLED` | `false` | Enable after creating the parent and setting the two IDs below |
+| `TIGER_SYNC_ENABLED` | `false` | Optional legacy single-profile importer; leave off when using the worker's watch-source registry |
 | `TIGER_SUBJECT_ID` / `TIGER_PARENT_ID` | Upstream subject / actual FarCare parent ID | Explicit authorized mapping; never guess from a sample person |
 | `TIGER_SYNC_SECONDS` | `60` | Refresh app daily projections; raw BLE still arrives through the existing local one-second uploader |
 | `TIGER_LOOKBACK_DAYS` | `35` | Historical projection window |
 
 Worker batch size, retry bounds, heartbeat tolerance and the Gemini model are
 also in the example. The configurator validates all values before deployment.
+
+For the live app, register the wearer with `python -m app.health.sources link`
+using the actual parent, account-owner and collector subject IDs, as documented
+in [Tiger setup](tiger-health-pipeline.md). This enables the authenticated live
+reading endpoint and the worker's durable daily synchronization. Each subject is
+assigned to one parent; there is no automatic link to a demo profile. Existing
+database installations receive additive columns during startup; existing records
+and sharing preferences are retained.
 
 Cloudflare Containers require the Workers Paid plan and charge separately for
 running compute. The plan fee is not the full hosting cost. Always-on API compute

@@ -47,13 +47,17 @@ test('production rejects unsafe origins, plaintext database transport, bad sizes
 
 test('Photon cannot silently fall back, sleep through care work, or accept unsigned webhooks', () => {
   assert.ok(validateSettings({...settings, MESSAGING_CHANNEL: 'photon'}).some(x => x.includes('PHOTON_WEBHOOK_SECRET')));
-  const live = {...settings, MESSAGING_CHANNEL: 'photon', PHOTON_API_KEY: 'synthetic', PHOTON_PROJECT_ID: 'synthetic', PHOTON_WEBHOOK_SECRET: 'synthetic'};
+  const live = {...settings, MESSAGING_CHANNEL: 'photon', PHOTON_API_KEY: 'synthetic', PHOTON_PROJECT_ID: 'synthetic', PHOTON_WEBHOOK_SECRET: 'synthetic', PHOTON_AGENT_USER_ID: 'synthetic-sms-sender'};
   assert.deepEqual(validateSettings(live), []);
   assert.deepEqual(wranglerConfig(live, 'test').secrets.required, [
     'DATABASE_URL', 'INGEST_API_KEY', 'PHOTON_API_KEY', 'PHOTON_PROJECT_ID', 'PHOTON_WEBHOOK_SECRET',
   ]);
   assert.ok(validateSettings({...live, CARE_AGENT_MODE: 'on_demand'}).length);
   assert.equal(apiEnvironment(live).PHOTON_DELIVERY, 'webhook');
+  assert.equal(apiEnvironment(live).PHOTON_PLATFORM, 'sms');
+  assert.equal(apiEnvironment(live).PHOTON_AGENT_USER_ID, 'synthetic-sms-sender');
+  assert.ok(validateSettings({...live, PHOTON_AGENT_USER_ID: ''}).some(x => x.includes('SMS requires')));
+  assert.deepEqual(validateSettings({...live, PHOTON_PLATFORM: 'imessage', PHOTON_AGENT_USER_ID: ''}), []);
   assert.equal(apiEnvironment({...live, MESSAGING_CHANNEL: 'console'}).PHOTON_DELIVERY, 'off');
 });
 

@@ -104,9 +104,10 @@ intent); callers must not use it as a device receipt. Existing care state names
 such as `sent` are workflow states, not delivery proof. Provider idempotency has
 its own retention and guarantees; this worker does not promise exactly-once
 network delivery. Automated recovery after a long provider outage needs a review
-of that retention window before replay. Delivery receipts and dispatch-failure
-escalation policy remain separate work; an accepted message is not proof that a
-human can respond.
+of that retention window before replay. Signed Photon receipts now update the
+durable outbox to `delivered` or `failed`, with matching sender, channel, Space and
+message identity. A delivered receipt still does not prove that a human read the
+message or can respond. Additional dispatch-failure escalation remains separate.
 
 Photon's [webhook guide](https://photon.codes/docs/beta/message-delivery/webhook)
 requires signature verification, prompt durable acceptance and duplicate
@@ -122,12 +123,12 @@ application's retry schedule.
    Keep public registration disabled; onboard only consenting invited users.
    Never ship a `NEXT_PUBLIC_VIEWER_TOKEN` or development bearer token as auth.
 2. Back up the PostgreSQL database and verify restore access. API and worker must
-   use the same database/schema. `init_db` creates fresh runtime tables but does
-   not add columns to existing ones. A prior preview database with `delivery_jobs`
-   needs [001_delivery_context.sql](../deploy/migrations/001_delivery_context.sql)
-   in a stopped-worker maintenance window. Old pending jobs have no trustworthy
-   consent context and remain `unscoped`; they cancel instead of guessing grants.
-   Existing business tables are not altered by this migration.
+   use the same database/schema. `init_db` creates new tables and applies additive
+   upgrades for the SMS columns and delivery context under a PostgreSQL advisory
+   lock. Old pending jobs have no trustworthy consent context and remain
+   `unscoped`; they cancel instead of guessing grants. Existing people and
+   business records are retained. Stop the previous API and worker during rollout
+   so their older routing behavior cannot race the new processor.
 3. Stop legacy API background processing during rollout. Inspect pre-upgrade
    `inbound_messages.status='processing'` rows. They lack a trustworthy claim
    timestamp and are deliberately not stolen. Requeue only after confirming the
@@ -135,8 +136,11 @@ application's retry schedule.
    reset failed outbound records: historical rows lack an immutable request
    snapshot, and an earlier network send may have succeeded.
 4. Configure real Photon project credentials and a signing secret server-side.
-   Assign the shared line to each consenting participant and have each message
-   it first, as required by the [official iMessage guide](https://photon.codes/docs/beta/get-started/imessage).
+   For SMS, select `PHOTON_PLATFORM=sms` and a provisioned `PHOTON_AGENT_USER_ID`;
+   check the eligible sender/campaign with `photon_setup.py sms-status` and have
+   registered participants text first. For iMessage, assign the shared line and
+   have each participant message it, as required by the
+   [official iMessage guide](https://photon.codes/docs/beta/get-started/imessage).
    Configure the public HTTPS webhook as `/backend/webhooks/photon` through this
    gateway. Do not register the internal HTTP listener with Photon.
 5. Configure Gemini if AI replies are intended. Otherwise label deterministic

@@ -16,6 +16,8 @@ export type BPReadingInput = Schemas["BPReadingIn"];
 export type BPReadingInfo = Schemas["BPReadingInfo"];
 export type PersonalMetric = Schemas["PersonalMetric"];
 export type PersonalHealthReport = Schemas["PersonalHealthReport"];
+export type SensorHealthReport = Schemas["SensorHealthReport"];
+export type SensorMetric = Schemas["SensorMetric"];
 const post = <T>(path: string, body?: unknown) => request<T>(path, null, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 export const experience = {
   session: () => request<Session>("/api/auth/session", null),
@@ -36,5 +38,6 @@ export const experience = {
   sharing: (body: Schemas["SharingIn"]) => post<SharingMember>("/api/parent/sharing", body),
   bloodPressure: (body: BPReadingInput) => post<BPReadingInfo>("/api/parent/blood-pressure", body),
   personalHealth: (id: string) => request<PersonalHealthReport | null>(`/api/parents/${encodeURIComponent(id)}/personal-health`, null),
+  sensorHealth: (id: string) => request<SensorHealthReport | null>(`/api/parents/${encodeURIComponent(id)}/sensor-health`, null),
   reference: (id: string, body: Schemas["ReferenceIn"]) => post<Schemas["ReferenceInfo"]>(`/api/parents/${encodeURIComponent(id)}/reference`, body),
 };

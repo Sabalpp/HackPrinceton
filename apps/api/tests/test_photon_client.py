@@ -138,5 +138,41 @@ def test_setup_webhook_subscribes_to_message_received(monkeypatch):
     setup.webhook("pho_prj_test", "https://api.example.com/webhooks/photon")
     [inp] = fake.webhooks
     body = inp.body.model_dump(by_alias=True, exclude_none=True)
-    assert body["enabledEvents"] == ["message.received"] and body["apiVersion"] == "2026-07-01"
+    assert (
+        body["enabledEvents"]
+        == ["message.received", "message.dispatched", "message.delivered", "message.failed"]
+        and body["apiVersion"] == "2026-07-01"
+    )
     assert body["url"] == "https://api.example.com/webhooks/photon"
+
+
+def test_setup_sms_status_handles_transport_error_without_leaking_details(monkeypatch, capsys):
+    from photon_api.errors import TransportError
+
+    setup = _load_setup_script()
+    settings = get_settings()
+    monkeypatch.setattr(settings, "photon_api_key", "offline-test-key")
+    monkeypatch.setattr(settings, "photon_project_id", "pho_prj_test")
+    monkeypatch.setattr(setup.sys, "argv", ["photon_setup.py", "sms-status"])
+
+    def unavailable(_):
+        raise TransportError(
+            "DNS failed for https://private.example.test/path?token=private-token; "
+            "Authorization: Bearer private-token; body=private-body",
+            operation_id="private-operation",
+            request_id="private-request",
+        )
+
+    monkeypatch.setattr(
+        setup,
+        "get_client",
+        lambda: SimpleNamespace(projects=SimpleNamespace(list_users=unavailable)),
+    )
+    assert setup.main() == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "Photon network request failed. Check DNS/connectivity and retry; "
+        "SMS eligibility was not verified.\n"
+    )
+    assert "private" not in captured.err and "Traceback" not in captured.err
