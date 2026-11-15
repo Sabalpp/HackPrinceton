@@ -575,6 +575,30 @@ def test_postgresql_canonical_query_and_revision_order(client):
                     attributes="{}",
                 ),
             ]
+            # Canonical identity corrections must be resolved globally before
+            # filtering the requesting wearer or time range. The old eligible
+            # revision must not reappear from a bounded candidate probe.
+            for event_id, correction in (
+                ("moved_subject", {"subject_id": "other_wearer"}),
+                ("moved_time", {"observed_at": NOW - timedelta(days=60)}),
+                ("moved_metric", {"metric": "unknown_metric"}),
+            ):
+                for version, revision, changes in (
+                    ("old", NOW - timedelta(minutes=1), {}),
+                    ("new", NOW, correction),
+                ):
+                    rows.append(
+                        sample(
+                            event_id=event_id,
+                            version_hash=version,
+                            source_revision_at=revision,
+                            received_at=NOW,
+                            canonical_eligible=True,
+                            value=160,
+                            attributes="{}",
+                            **changes,
+                        )
+                    )
             insert_sample = text("""
                 INSERT INTO air_health.measurement_versions
                     (observed_at,event_id,version_hash,subject_id,source,source_stream,metric,

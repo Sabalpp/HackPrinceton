@@ -2,8 +2,9 @@
 
 The latest eligible revision is resolved by event identity, matching
 air_health.measurements_current. Candidate lookups use the existing
-(subject_id, metric, observed_at) index, then the event revision index. This
-avoids sorting the entire canonical view on every dashboard refresh.
+(subject_id, metric, observed_at) index, then resolve their revisions in one
+batch. This avoids sorting the entire canonical view or repeatedly scanning
+compressed chunks for each sample on every dashboard refresh.
 No medical thresholds, interpolated samples, or inferred sensor values live here.
 """
 
@@ -52,6 +53,73 @@ CLOUD_METRICS = (
     MetricSpec(
         "skin_temp_baseline_c", "Reported skin-temperature baseline", "degC", "daily", 172800
     ),
+    MetricSpec("distance_m", "Distance in latest reported interval", "m", "interval", 3600),
+    MetricSpec(
+        "active_zone_minutes", "Active zone minutes in latest interval", "min", "interval", 3600
+    ),
+    MetricSpec("non_rem_heart_rate_bpm", "Non-REM heart rate", "bpm", "daily", 172800),
+    MetricSpec(
+        "skin_temp_relative_stddev30d_c",
+        "Skin-temperature variation (30 days)",
+        "degC",
+        "daily",
+        172800,
+    ),
+    MetricSpec(
+        "spo2_daily_lower_bound_percent", "Daily blood oxygen lower bound", "%", "daily", 172800
+    ),
+    MetricSpec(
+        "spo2_daily_upper_bound_percent", "Daily blood oxygen upper bound", "%", "daily", 172800
+    ),
+    MetricSpec(
+        "spo2_daily_stddev_percent", "Daily blood oxygen standard deviation", "%", "daily", 172800
+    ),
+    MetricSpec(
+        "sleep_minutes_awake", "Time awake in latest sleep session", "min", "session", 172800
+    ),
+    MetricSpec("sleep_period_minutes", "Length of latest sleep session", "min", "session", 172800),
+    MetricSpec(
+        "sleep_minutes_after_wake",
+        "Minutes after waking in latest sleep session",
+        "min",
+        "session",
+        172800,
+    ),
+    MetricSpec(
+        "sleep_minutes_to_fall_asleep",
+        "Minutes to fall asleep in latest session",
+        "min",
+        "session",
+        172800,
+    ),
+    MetricSpec("exercise_duration_seconds", "Latest exercise duration", "s", "session", 172800),
+    MetricSpec(
+        "exercise_active_duration_seconds",
+        "Latest exercise active duration",
+        "s",
+        "session",
+        172800,
+    ),
+    MetricSpec("exercise_calories_kcal", "Latest exercise energy", "kcal", "session", 172800),
+    MetricSpec("exercise_steps", "Latest exercise steps", "count", "session", 172800),
+    MetricSpec("exercise_distance_m", "Latest exercise distance", "m", "session", 172800),
+    MetricSpec(
+        "exercise_average_pace_s_per_m", "Latest exercise average pace", "s/m", "session", 172800
+    ),
+    MetricSpec(
+        "exercise_average_heart_rate_bpm",
+        "Latest exercise average heart rate",
+        "bpm",
+        "session",
+        172800,
+    ),
+    MetricSpec(
+        "exercise_active_zone_minutes",
+        "Latest exercise active zone minutes",
+        "min",
+        "session",
+        172800,
+    ),
 )
 
 # Only static allowlisted metric names enter this SQL. No subject/parent/request
@@ -60,38 +128,36 @@ _WANTED = ",\n".join(
     ["('ble', 'heart_rate_bpm', 600, 300, 7)"]
     + [f"('google_health', '{spec.metric}', 20, 2, 35)" for spec in CLOUD_METRICS]
 )
+# Resolve candidate revisions in one batch. Per-event LATERAL lookups repeatedly
+# scan compressed Timescale chunks and can exceed the live-read timeout.
+# Resolve globally before filtering identity/metric so corrections cannot leak
+# an old revision after an event changes subject, metric or timestamp.
+# OFFSET 0 is an intentional planner boundary: Timescale otherwise chooses an
+# identity-ordered merge join that sorts/decompresses the whole revision history
+# before applying the small candidate set. Keep the revision scan unordered so
+# the candidate hash join runs before DISTINCT ON sorts the matching revisions.
+# This changes no connection-wide planner settings and preserves global identity.
 SENSOR_ROWS_SQL = f"""
-WITH wanted(source, metric, raw_limit, result_limit, lookback_days) AS (VALUES {_WANTED})
-SELECT current_records.*
-FROM wanted w
-CROSS JOIN LATERAL (
-    WITH candidates AS (
-        SELECT DISTINCT event_id FROM (
-            SELECT event_id
-            FROM air_health.measurement_versions
-            WHERE subject_id = :subject_id AND source = w.source AND metric = w.metric
-              AND canonical_eligible
-              AND observed_at >= CAST(:now AS timestamptz) - w.lookback_days * INTERVAL '1 day'
-              AND observed_at <= CAST(:now AS timestamptz) + INTERVAL '1 day'
-            ORDER BY observed_at DESC
-            LIMIT w.raw_limit
-        ) recent_candidates
-    ), resolved AS (
-        SELECT v.* FROM candidates c
-        CROSS JOIN LATERAL (
-            SELECT * FROM air_health.measurement_versions
-            WHERE event_id = c.event_id AND canonical_eligible
-            ORDER BY source_revision_at DESC, received_at DESC, version_hash DESC
-            LIMIT 1
-        ) v
-    )
-    SELECT event_id, subject_id, source, source_stream, metric, observed_at,
-           ended_at, local_date, value, unit, kind, attributes
-    FROM resolved
-    WHERE subject_id = :subject_id AND source = w.source AND metric = w.metric
-      AND observed_at >= CAST(:now AS timestamptz) - w.lookback_days * INTERVAL '1 day'
-    ORDER BY observed_at DESC, event_id
-    LIMIT w.result_limit
+WITH wanted(source, metric, raw_limit, result_limit, lookback_days) AS (VALUES {_WANTED}),
+candidates AS MATERIALIZED (
+ SELECT DISTINCT recent.event_id FROM wanted w CROSS JOIN LATERAL (
+  SELECT event_id FROM air_health.measurement_versions
+  WHERE subject_id=:subject_id AND source=w.source AND metric=w.metric AND canonical_eligible
+  AND observed_at >= CAST(:now AS timestamptz)-w.lookback_days*INTERVAL '1 day'
+  AND observed_at <= CAST(:now AS timestamptz)+INTERVAL '1 day'
+  ORDER BY observed_at DESC LIMIT w.raw_limit
+ ) recent
+), resolved AS MATERIALIZED (
+ SELECT DISTINCT ON (v.event_id) v.*
+ FROM (SELECT * FROM air_health.measurement_versions WHERE canonical_eligible OFFSET 0) v
+ JOIN candidates c ON c.event_id=v.event_id
+ ORDER BY v.event_id,v.source_revision_at DESC,v.received_at DESC,v.version_hash DESC
+)
+SELECT current_records.* FROM wanted w CROSS JOIN LATERAL (
+ SELECT event_id,subject_id,source,source_stream,metric,observed_at,ended_at,local_date,value,unit,kind,attributes
+ FROM resolved WHERE subject_id=:subject_id AND source=w.source AND metric=w.metric
+ AND observed_at >= CAST(:now AS timestamptz)-w.lookback_days*INTERVAL '1 day'
+ ORDER BY observed_at DESC,event_id LIMIT w.result_limit
 ) current_records
 """  # noqa: S608
 
@@ -225,6 +291,57 @@ def empty_report(parent_id: str, *, now: datetime, status: str, message: str) ->
     )
 
 
+def daily_change_message(
+    current: SensorMetric,
+    latest_row: Mapping[str, Any] | None,
+    records: list[Mapping[str, Any]],
+    spec: MetricSpec,
+    *,
+    now: datetime,
+    timezone: str,
+) -> str:
+    """Describe two reported days, never substitute this for a personal baseline."""
+    if spec.kind != "daily" or current.value is None or latest_row is None:
+        return current.message
+    previous = [
+        row
+        for row in records
+        if row.get("source_stream") == latest_row.get("source_stream")
+        and _day(row.get("local_date")) is not None
+        and _day(row.get("local_date")) < _day(current.local_date)
+    ]
+    if not previous:
+        return current.message
+    previous_day = max(_day(row.get("local_date")) for row in previous)
+    candidates = [row for row in previous if _day(row.get("local_date")) == previous_day]
+    # Conflicting same-day summaries cannot define a unique comparison.
+    projected = [
+        project_metric(row, spec, source="google_health", now=now, timezone=timezone)
+        for row in candidates
+    ]
+    if any(row.value is None for row in projected) or len({row.value for row in projected}) != 1:
+        return current.message
+    prior = projected[0]
+    change = current.value - prior.value
+    if not isfinite(change):
+        return current.message
+    unit = "percentage points" if spec.unit == "%" else "°C" if spec.unit == "degC" else spec.unit
+    text = (
+        f" Previous reported day ({previous_day}): {prior.value:g} {spec.unit}. "
+        f"Change = {current.value:g} − {prior.value:g} = {change:+.2f} {unit}."
+    )
+    # Celsius has an arbitrary zero; a relative percentage is not meaningful.
+    if prior.value > 0 and spec.unit not in ("degC", "%"):
+        percent = 100 * (change / prior.value)
+        if isfinite(percent):
+            text += f" Relative change = change / previous × 100 = {percent:+.1f}%."
+    return (
+        current.message
+        + text
+        + " Two reported days are not a learned personal baseline or a medical assessment."
+    )
+
+
 def project_sensor_rows(
     rows: Iterable[Mapping[str, Any]], *, parent: Person, subject_id: str, now: datetime
 ) -> SensorHealthReport:
@@ -250,6 +367,23 @@ def project_sensor_rows(
         if len({(r.get("source_stream"), r.get("value")) for r in tied}) > 1:
             return {**first, "value": None}
         return first
+
+    def cloud_metric(spec):
+        row = latest("google_health", spec.metric)
+        metric = project_metric(
+            row, spec, source="google_health", now=now, timezone=parent.timezone
+        )
+        metric.message = daily_change_message(
+            metric,
+            row,
+            by_metric.get(("google_health", spec.metric), []),
+            spec,
+            now=now,
+            timezone=parent.timezone,
+        )
+        if spec.kind == "interval" and metric.value is not None:
+            metric.message += " This is the latest reported interval, not a complete daily total."
+        return metric
 
     hr = project_metric(
         latest("ble", "heart_rate_bpm"),
@@ -302,16 +436,7 @@ def project_sensor_rows(
         connection_status="available",
         generated_at=now,
         live_heart_rate=hr,
-        cloud_metrics=[
-            project_metric(
-                latest("google_health", spec.metric),
-                spec,
-                source="google_health",
-                now=now,
-                timezone=parent.timezone,
-            )
-            for spec in CLOUD_METRICS
-        ],
+        cloud_metrics=[cloud_metric(spec) for spec in CLOUD_METRICS],
         recent_heart_rate=history,
         message="Read directly from the linked Tiger source. Missing values remain missing; no raw waveform, blood pressure or HRV is inferred from BPM.",
     )
