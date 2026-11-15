@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
 import {spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
+import {createServer} from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -15,16 +16,17 @@ const install = process.env.PLAYWRIGHT_INSTALL_DIR;
 if (!install) throw new Error('Set PLAYWRIGHT_INSTALL_DIR to the temporary playwright@1.56.1 installation.');
 const require = createRequire(path.join(path.resolve(install), 'package.json'));
 const {chromium} = require('playwright');
-const backend = 'http://127.0.0.1:18000';
+const nativeHost = process.env.SMOKE_NATIVE_HOST === 'true';
+const backend = nativeHost ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:18000';
 const web = 'http://127.0.0.1:13000';
-const proxy = process.env.SMOKE_API_PROXY === 'true';
+const proxy = nativeHost || process.env.SMOKE_API_PROXY === 'true';
 const api = proxy ? `${web}/backend` : backend;
 const apiPrefix = new URL(api).pathname.replace(/\/$/, '');
 const children = [];
 const streams = [];
 const browserErrors = [];
 const responses = [];
-const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy};
+const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy,native_host:nativeHost};
 let browser, page, closing = false;
 await fs.mkdir(artifacts, {recursive:true});
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'farcare-smoke-db-'));
@@ -59,7 +61,7 @@ async function stop(child) {
   const exited = new Promise(resolve => child.once('exit', resolve));
   child.kill('SIGTERM');
   let timeout;
-  await Promise.race([exited, new Promise(resolve => {timeout=setTimeout(resolve, 4000);})]);
+  await Promise.race([exited, new Promise(resolve => {timeout=setTimeout(resolve, nativeHost ? 25000 : 4000);})]);
   clearTimeout(timeout);
   if (child.exitCode === null && child.signalCode === null) {
     child.kill('SIGKILL');
@@ -73,6 +75,14 @@ function check(name, condition) {
 }
 
 async function run() {
+  // Never connect these synthetic workflows to an already-running local app.
+  for (const endpoint of [backend, web]) {
+    await new Promise((resolve,reject) => {
+      const server=createServer();
+      server.once('error',reject);
+      server.listen(Number(new URL(endpoint).port),'127.0.0.1',()=>server.close(resolve));
+    });
+  }
   const apiEnv = {...process.env,
     APP_ENV:'test',DATABASE_URL:`sqlite:///${path.join(scratch, 'synthetic.sqlite3')}`,
     BACKGROUND_TASKS_ENABLED:'false',PROACTIVE_CHECKINS_ENABLED:'false',
@@ -85,16 +95,19 @@ async function run() {
     DEMO_EMERGENCY_NUMBER:'',CORS_ORIGINS:web,GIT_COMMIT:process.env.GITHUB_SHA || 'local-smoke',
   };
   delete apiEnv.TEST_DATABASE_URL;
-  const apiChild = launch(path.join(root,'apps/api/.venv/bin/python'),
+  const apiChild = nativeHost ? launch(path.join(root,'apps/api/.venv/bin/python'),
+    ['deploy/render/run.py'],root,{...apiEnv,PORT:'13000'},'native-host.log') :
+    launch(path.join(root,'apps/api/.venv/bin/python'),
     ['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
     path.join(root,'apps/api'), apiEnv, 'api.log');
   await ready(`${backend}/health`, apiChild);
   const health = await (await fetch(`${backend}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
-    health.database === 'ok' && health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
-  launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
+    health.database === 'ok' && health.environment === 'test' && health.demo_mode === true &&
+    health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
+  if (!nativeHost) launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
     path.join(root,'apps/api'), apiEnv, 'worker.log');
-  const webChild = launch(process.execPath,
+  const webChild = nativeHost ? apiChild : launch(process.execPath,
     [path.join(root,'apps/web/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],
     path.join(root,'apps/web'), {...process.env,NEXT_TELEMETRY_DISABLED:'1'}, 'web.log');
   await ready(web, webChild);

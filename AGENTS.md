@@ -79,6 +79,9 @@ checks, not general CI fixtures.
   `research/fitbit_air/`. Tests belong alongside their owning application or experiment.
 - The collector's Python 3.9 environment is separate from the API's Python 3.12 environment.
   Do not add macOS BLE dependencies to the backend production lockfile.
+- Hosting-only supervisors belong in `deploy/`, not the collector. The free native host is
+  `deploy/render/free.yaml`; it sleeps with its worker. Keep production guards, parent consent,
+  durable queues and the distinction between console and delivered SMS intact.
 - Keep credentials, recordings, exports, SQLite outboxes, logs and downloaded SDKs outside
   tracked source. `FARCARE_WORKSPACE` selects the local data workspace; relocation must not
   silently create a new token cache or data store.

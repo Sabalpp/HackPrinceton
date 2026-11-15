@@ -1,5 +1,9 @@
 # Deploy FarCare on Render
 
+For the one-service **free hackathon option**, use [the free deployment guide](free-deployment.md)
+and Blueprint path `deploy/render/free.yaml`. It sleeps when idle. The guide below is the
+separate paid deployment with a continuously running worker.
+
 [render.yaml](../render.yaml) runs the existing API, durable worker and Next.js dashboard
 as three native services. Docker is not needed for this route. Tiger stays the existing
 external PostgreSQL database; no new database, queue or storage service is provisioned.

@@ -112,6 +112,12 @@ jobs:
           uv run ruff check --isolated --select E,F,I --line-length 100 ../../deploy/cloudflare/*.py
           uv run ruff format --isolated --check ../../deploy/cloudflare/*.py
           uv run python -m unittest discover -s ../../deploy/cloudflare -p 'test_*.py' -v
+      - name: Native free host lifecycle
+        run: |
+          uv run ruff check --isolated --select E,F,I --line-length 100 ../../deploy/render/*.py
+          uv run ruff format --isolated --check ../../deploy/render/*.py
+          uv run python -m unittest discover -s ../../deploy/render -p 'test_*.py' -v
+          bash -n ../../deploy/render/build.sh
       - name: Python syntax check
         run: uv run python -m compileall -q app scripts
       - name: Tests (SQLite)
@@ -179,7 +185,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: /backend
-          FARCARE_API_ORIGIN: http://127.0.0.1:18000
+          FARCARE_API_ORIGIN: http://127.0.0.1:8000
           NEXT_PUBLIC_USE_MOCKS: 'false'
           NEXT_PUBLIC_LOCAL_PREVIEW: 'false'
           NEXT_TELEMETRY_DISABLED: '1'
@@ -202,6 +208,7 @@ jobs:
           PLAYWRIGHT_INSTALL_DIR: ${{ runner.temp }}/farcare-playwright
           SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/farcare-dashboard-smoke
           SMOKE_API_PROXY: 'true'
+          SMOKE_NATIVE_HOST: 'true'
         run: node scripts/dashboard_smoke.mjs
       - name: Upload synthetic dashboard evidence
         if: always()

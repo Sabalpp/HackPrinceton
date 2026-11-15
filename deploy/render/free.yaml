@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# One free native web service. Sleeps after 15 idle minutes; not always-on care.
+# Use this Blueprint path explicitly; root render.yaml is the paid deployment.
+services:
+  - type: web
+    name: farcare-demo
+    runtime: python
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: bash deploy/render/build.sh
+    startCommand: apps/api/.venv/bin/python deploy/render/run.py
+    healthCheckPath: /backend/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.12"
+      - key: NODE_VERSION
+        value: "24.14.0"
+      - key: UV_VERSION
+        value: "0.13.7"
+      - key: DATABASE_URL
+        sync: false
+      - key: INGEST_API_KEY
+        generateValue: true
+      - key: APP_ENV
+        value: production
+      - key: BACKGROUND_TASKS_ENABLED
+        value: "false"
+      - key: DEMO_MODE
+        value: "false"
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: SEED_HEALTH_DATA
+        value: "false"
+      - key: REGISTRATION_ENABLED
+        value: "false"
+      - key: PROACTIVE_CHECKINS_ENABLED
+        value: "false"
+      # Configure a real eligible sender + signed webhook before changing these.
+      - key: MESSAGING_CHANNEL
+        value: console
+      - key: PHOTON_PLATFORM
+        value: sms
+      - key: PHOTON_DELIVERY
+        value: "off"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+previews:
+  generation: "off"
