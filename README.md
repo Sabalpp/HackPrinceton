@@ -56,6 +56,10 @@ neighbor's help still follow the parent-approval workflow below.
 
 For individual accounts, production deployment, and device mapping, follow
 [the invited-pilot setup](docs/pilot-setup.md) and [the worker runbook](docs/production-runbook.md).
+For one Vercel project containing the dashboard, Tiger API and care worker, use
+[the Vercel deployment guide](docs/vercel-deployment.md). Import the **repository
+root**, not `apps/collector` or `apps/web`; the root `vercel.json` defines both web
+services and a quota-limited background daemon. The BLE collector stays on the Mac.
 For a free hackathon host, use [the one-service Render Blueprint](docs/free-deployment.md):
 the API, worker and dashboard run without Docker and use your existing Tiger database.
 It sleeps when idle, so care timers are not always active. The separate
@@ -117,6 +121,7 @@ Console mode and synthetic demo accounts do not establish real SMS delivery.
 - [CLAUDE.md](CLAUDE.md): project context, verified integration facts, key decisions
 - [AGENTS.md](AGENTS.md): collaboration and engineering rules
 - [Codebase organization](docs/codebase-organization.md): file map, collector commands, private data and research
+- [Vercel deployment](docs/vercel-deployment.md): one project, authenticated Tiger API, care daemon and production settings
 - [Native Render deployment](docs/render-deployment.md): build settings, Tiger connection, accounts and optional real SMS
 - [CI and browser verification](docs/local-ci.md): checks, screenshots, and deployment gates
 - [Tiger health integration](docs/tiger-health-pipeline.md): real data mapping and limitations

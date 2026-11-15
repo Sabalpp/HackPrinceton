@@ -82,6 +82,10 @@ checks, not general CI fixtures.
 - Hosting-only supervisors belong in `deploy/`, not the collector. The free native host is
   `deploy/render/free.yaml`; it sleeps with its worker. Keep production guards, parent consent,
   durable queues and the distinction between console and delivered SMS intact.
+- Vercel imports the repository root using `vercel.json`. Keep its small API/worker
+  adapters in `apps/api/app/vercel_*.py`; the collector stays local. Preserve `/backend`
+  routing, private response headers and server-only secrets. Vercel's production-only
+  daemon has Hobby quotas; do not promise unlimited free background monitoring.
 - Keep credentials, recordings, exports, SQLite outboxes, logs and downloaded SDKs outside
   tracked source. `FARCARE_WORKSPACE` selects the local data workspace; relocation must not
   silently create a new token cache or data store.

@@ -50,6 +50,8 @@ scripts/                 setup-github.sh (admin, once), smoke_test.sh, sync-afte
 research/fitbit_air/      existing proprietary-BLE probe and candidate-key experiment
 render.yaml              native Render API + worker + dashboard, using external Tiger
 deploy/render/           optional one-service free demo Blueprint + native supervisor
+vercel.json              Next.js + mounted Python API services and production care daemon
+deploy/vercel/           server environment template; no secret values
 docs/                    architecture, contracts, demo plan, per-developer instructions
 ```
 
@@ -140,6 +142,12 @@ Don't send `temperature` (deprecated for Gemini 3+).
   senders/recipients. STOP cancels pending texts, START does not replay them.
 - Existing databases receive additive schema upgrades at startup. No upgrade
   infers consent, maps real readings to demo people, or deletes existing rows.
+- Root `vercel.json` deploys the existing dashboard and Python API as Vercel Services
+  plus the existing worker as a production-only daemon. `app.vercel_entry` mounts
+  the API under `/backend`; `app.vercel_runtime` applies conservative host defaults.
+  This preserves business logic and Tiger permissions. Import the repository root,
+  not the collector. Hobby daemon quotas limit continuous operation; see
+  `docs/vercel-deployment.md`. CI is not proof of a public Vercel deployment or SMS delivery.
 - `render.yaml` provides a native deployment without Docker: Python API, separate worker,
   and Next.js web service use the existing Tiger database. See `docs/render-deployment.md`.
   It starts with console messaging; real Photon requires configured sender, secrets and opt-in.

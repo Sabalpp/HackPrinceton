@@ -17,7 +17,9 @@ if (!install) throw new Error('Set PLAYWRIGHT_INSTALL_DIR to the temporary playw
 const require = createRequire(path.join(path.resolve(install), 'package.json'));
 const {chromium} = require('playwright');
 const nativeHost = process.env.SMOKE_NATIVE_HOST === 'true';
-const backend = nativeHost ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:18000';
+const vercelEntry = process.env.SMOKE_VERCEL_ENTRY === 'true';
+if (nativeHost && vercelEntry) throw new Error('Select one deployment entrypoint per smoke run.');
+const backend = nativeHost ? 'http://127.0.0.1:8000' : `http://127.0.0.1:18000${vercelEntry ? '/backend' : ''}`;
 const web = 'http://127.0.0.1:13000';
 const proxy = nativeHost || process.env.SMOKE_API_PROXY === 'true';
 const api = proxy ? `${web}/backend` : backend;
@@ -26,7 +28,7 @@ const children = [];
 const streams = [];
 const browserErrors = [];
 const responses = [];
-const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy,native_host:nativeHost};
+const evidence = {data_mode:'simulated',status:'running',checks:[],network:'loopback API and web only',api_proxy:proxy,native_host:nativeHost,vercel_entry:vercelEntry};
 let browser, page, closing = false;
 await fs.mkdir(artifacts, {recursive:true});
 const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'farcare-smoke-db-'));
@@ -98,14 +100,14 @@ async function run() {
   const apiChild = nativeHost ? launch(path.join(root,'apps/api/.venv/bin/python'),
     ['deploy/render/run.py'],root,{...apiEnv,PORT:'13000'},'native-host.log') :
     launch(path.join(root,'apps/api/.venv/bin/python'),
-    ['-m','uvicorn','app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
+    ['-m','uvicorn',vercelEntry ? 'app.vercel_entry:app' : 'app.main:app','--host','127.0.0.1','--port','18000','--timeout-graceful-shutdown','2'],
     path.join(root,'apps/api'), apiEnv, 'api.log');
   await ready(`${backend}/health`, apiChild);
   const health = await (await fetch(`${backend}/health`)).json();
   check('Synthetic API is healthy, console-only, and uses fallback AI',
     health.database === 'ok' && health.environment === 'test' && health.demo_mode === true &&
     health.messaging === 'console' && health.ai === 'fallback' && health.photon_delivery === 'off');
-  if (!nativeHost) launch(path.join(root,'apps/api/.venv/bin/python'), ['-m','app.worker'],
+  if (!nativeHost) launch(path.join(root,'apps/api/.venv/bin/python'), ['-m',vercelEntry ? 'app.vercel_worker' : 'app.worker'],
     path.join(root,'apps/api'), apiEnv, 'worker.log');
   const webChild = nativeHost ? apiChild : launch(process.execPath,
     [path.join(root,'apps/web/node_modules/next/dist/bin/next'),'start','--hostname','127.0.0.1','--port','13000'],

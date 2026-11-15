@@ -575,16 +575,14 @@ def test_postgresql_canonical_query_and_revision_order(client):
                     attributes="{}",
                 ),
             ]
-            session.execute(
-                text("""
+            insert_sample = text("""
                 INSERT INTO air_health.measurement_versions
                     (observed_at,event_id,version_hash,subject_id,source,source_stream,metric,
                      ended_at,local_date,value,unit,kind,attributes,source_revision_at,received_at,canonical_eligible)
                 VALUES (:observed_at,:event_id,:version_hash,:subject_id,:source,:source_stream,:metric,
                         :ended_at,:local_date,:value,:unit,:kind,CAST(:attributes AS jsonb),:source_revision_at,:received_at,:canonical_eligible)
-            """),
-                rows,
-            )
+            """)
+            session.execute(insert_sample, rows)
             sources.link_source(
                 session,
                 parent_id=parent.id,
@@ -600,6 +598,26 @@ def test_postgresql_canonical_query_and_revision_order(client):
                 next(m for m in output.cloud_metrics if m.metric == "resting_heart_rate_bpm").value
                 == 61
             )
+            # A new collected sample must appear on the next read, without an
+            # aggregate refresh or worker cycle. It remains the same wearer.
+            next_clock = NOW + timedelta(seconds=2)
+            session.execute(
+                insert_sample,
+                sample(
+                    event_id="next_live_sample",
+                    version_hash="one",
+                    value=84,
+                    observed_at=next_clock,
+                    source_revision_at=next_clock,
+                    received_at=next_clock,
+                    canonical_eligible=True,
+                    attributes="{}",
+                ),
+            )
+            refreshed = live.read_sensor_health(session, parent, now=next_clock)
+            assert refreshed.live_heart_rate.value == 84
+            assert refreshed.live_heart_rate.freshness == "fresh"
+            assert [point.value for point in refreshed.recent_heart_rate] == [81, 84]
             assert session.execute(text("SELECT 1")).scalar() == 1
         finally:
             fixture.rollback()
