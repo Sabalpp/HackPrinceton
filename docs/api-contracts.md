@@ -164,7 +164,7 @@ all request/response types. These endpoints never require a public shared token.
 | Group | Endpoints and behavior |
 | --- | --- |
 | Accounts | GET `/api/auth/session`; POST `/api/auth/login`, `/register`, `/logout`, `/invitation`; `/demo` exists only outside production |
-| Onboarding | POST `/api/onboarding/parents`, `/onboarding/invites`; create one-time role-bound invitations; both require an action_id |
+| Onboarding | POST `/api/onboarding/parents`, `/onboarding/invites`; create one-time role-bound invitations. POST `/onboarding/invites/renew` replaces an unclaimed invitation for its creator. All require an action_id |
 | Parent | GET `/api/parent/home`; POST `/parent/check-in`, `/parent/requests`, `/parent/requests/{id}/decision` |
 | Consent | POST `/api/parent/sharing`, `/parent/responders/{id}/approve`; parent-only |
 | Helper | GET `/api/responder/tasks`; POST `/responder/tasks/{id}/reply`; current assigned/authorized tasks only |
@@ -183,6 +183,13 @@ retries. Reusing one for different input yields 409; repeating the same complete
 returns its receipt. A new action still checks current consent and assignment. A helper
 can replay their successful decline after reassignment, but cannot perform a new action
 on the reassigned task. Consumed/expired invitation responses cannot be revived.
+
+New `InviteIssued.invitation_token` values are eight numeric characters, including any
+leading zeroes, and expire in 30 minutes. Treat them as strings. `InvitationLookup.token`,
+`RegisterIn.invitation_token` and `RenewInviteIn.invitation_token` accept the code with
+spaces or hyphens, as well as previously issued 32–128 character URL-safe tokens.
+Renewal checks the authenticated creator and preserves the recipient and role; it never
+creates an additional person. Existing long links keep their original expiration.
 
 `PersonalMetric` exposes coverage, descriptive median/MAD, exclusions, a provisional
 reference and an optional observational comparison. No comparison denotes a safe range.

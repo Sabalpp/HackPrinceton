@@ -36,6 +36,7 @@ export const experience = {
   responderReply: (id: string, body: Schemas["ResponderReplyIn"]) => post<ResponderTask>(`/api/responder/tasks/${encodeURIComponent(id)}/reply`, body),
   createParent: (body: Schemas["CreateParentIn"]) => post<InviteIssued>("/api/onboarding/parents", body),
   invite: (body: Schemas["CreateInviteIn"]) => post<InviteIssued>("/api/onboarding/invites", body),
+  renewInvite: (body: Schemas["RenewInviteIn"]) => post<InviteIssued>("/api/onboarding/invites/renew", body),
   approveResponder: (id: string, active: boolean, emergency_contact: boolean) => post<{ approved:boolean }>(`/api/parent/responders/${encodeURIComponent(id)}/approve`, { active, emergency_contact }),
   sharing: (body: Schemas["SharingIn"]) => post<SharingMember>("/api/parent/sharing", body),
   bloodPressure: (body: BPReadingInput) => post<BPReadingInfo>("/api/parent/blood-pressure", body),

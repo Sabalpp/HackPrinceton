@@ -123,6 +123,7 @@ Don't send `temperature` (deprecated for Gemini 3+).
 | Pydantic contracts → JSON Schema/OpenAPI → generated TS types | One source of truth; CI fails on drift |
 | Safety + approvals + responder replies parsed **deterministically first** | The LLM can escalate but never suppress or decide an emergency |
 | Explicit `console` or `photon` gateway | Development/CI can simulate delivery; live Photon failures never silently become success |
+| Eight-digit, one-use invitations with a 30-minute expiry | Easier phone entry; persisted attempt limits and creator-only renewal preserve role and sharing checks; old long links remain valid |
 | DB-backed timeline + SSE that tails it | Real-time dashboard that survives restarts; no extra infra |
 | Standalone worker with PostgreSQL mutex and durable queues | Timers, sensor sync, inbound messages and retries survive process restarts |
 | App chat and Photon use the same conversation/actions | Approval, cancellation and task responses agree across both interfaces; app replies are not SMS delivery receipts |
