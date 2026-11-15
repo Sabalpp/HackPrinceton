@@ -284,7 +284,9 @@ def test_tiger_projection_and_cutoff_share_parent_local_calendar_dates():
     rows = []
     for age in range(13):
         day = today - timedelta(days=age)
-        begin = datetime.combine(day, datetime.min.time(), zone) + timedelta(hours=9)
+        # Daily step projections require full coverage, including 23/25-hour
+        # local days. Keep this test focused on the parent's calendar cutoff.
+        begin = datetime.combine(day, datetime.min.time(), zone)
         rows.append(
             {
                 "event_id": f"step_fixture_{age}",
@@ -293,7 +295,7 @@ def test_tiger_projection_and_cutoff_share_parent_local_calendar_dates():
                 "source_stream": "watch_fixture",
                 "metric": "steps",
                 "observed_at": begin,
-                "ended_at": begin + timedelta(minutes=1),
+                "ended_at": begin + timedelta(days=1),
                 "local_date": day,
                 "value": 2000 if age <= 5 else 4000,
                 "unit": "count",

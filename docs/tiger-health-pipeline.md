@@ -134,8 +134,14 @@ stale after two days. Stale values stay dated. Missing or invalid values stay
 Instantaneous BPM is never called resting HR and is never used to infer HRV,
 blood pressure, SpO2, a fall or a raw waveform. Cloud steps are explicitly an
 interval value in this endpoint, not an invented daily total. Daily summaries use
-the existing stricter projection, excluding today's incomplete step totals and
-ambiguous overlapping streams.
+the stricter projection, excluding today's incomplete step totals and ambiguous
+overlapping streams. A daily step total requires contiguous intervals covering
+the entire source-local day. Gaps, unknown source offsets, or conflicting clock
+metadata leave the daily total missing; they never become zero steps or an
+activity-decline alert. Source offsets and actual timezone boundaries preserve
+23-hour and 25-hour daylight-saving days. A complete explicit zero-step day is
+still valid. This conservative rule may omit daily totals from sparse exports;
+the individual reported step intervals remain available above.
 
 ## Daily synchronization and messages
 

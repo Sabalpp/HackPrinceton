@@ -7,7 +7,7 @@ per-field provenance; those require coordinated additive contract/UI changes.
 
 Days are source local-date labels encoded as UTC midnight, not physical sample
 times. Missing/ambiguous metrics remain null, including today's incomplete steps.
-Steps require one stream and non-overlapping intervals. Sleep requires exactly one
+Steps require one stream and contiguous, non-overlapping full-day intervals. Sleep requires exactly one
 explicit main, non-nap session, assigned to its wake date. Resting HR alone is
 rounded to the nearest integer (half up) because the existing contract is integer.
 """
@@ -17,6 +17,7 @@ import math
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from datetime import UTC, date, datetime, time, timedelta
+from datetime import timezone as fixed_timezone
 from numbers import Real
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -115,13 +116,43 @@ def observation_id(parent_id: str, subject_id: str, day: date) -> str:
     return f"fitbit_{identity}_{day.isoformat()}"
 
 
-def _daily_steps(rows: list[Mapping[str, Any]], now: datetime) -> int | None:
+def _step_endpoint_zone(attrs: Mapping[str, Any], key: str, zone: ZoneInfo):
+    """Use preserved source offsets; never infer a clock from a civil date alone."""
+    if key not in attrs:
+        if attrs.get("local_date_basis") in ("source_civil_date", "source_utc_offset"):
+            return None
+        return zone
+    value = attrs[key]
+    if not isinstance(value, str) or not value.endswith("s"):
+        return None
+    try:
+        seconds = float(value[:-1])
+    except (ValueError, OverflowError):
+        return None
+    if not math.isfinite(seconds) or not seconds.is_integer() or abs(seconds) >= 86400:
+        return None
+    return fixed_timezone(timedelta(seconds=seconds))
+
+
+def _daily_steps(
+    rows: list[Mapping[str, Any]], now: datetime, *, day: date, zone: ZoneInfo
+) -> int | None:
+    """Only a complete interval union establishes a daily total.
+
+    A successful page, an old date or a first/last reading on the same date does
+    not prove export/wear coverage. We have no export-completion manifest in the
+    canonical schema, so gaps remain missing rather than becoming zero steps.
+    Actual UTC interval adjacency handles 23/25-hour days without assuming 24h.
+    """
     if not rows or len({row.get("source_stream") for row in rows}) != 1:
         return None
     intervals: list[tuple[datetime, datetime, int]] = []
     for row in rows:
         begin, finish = _instant(row.get("observed_at")), _instant(row.get("ended_at"))
         value = _integer(row.get("value"), 0, 200_000)
+        attrs = _attrs(row)
+        start_zone = _step_endpoint_zone(attrs, "source_start_utc_offset", zone)
+        end_zone = _step_endpoint_zone(attrs, "source_end_utc_offset", zone)
         if (
             not row.get("source_stream")
             or row.get("kind") != "interval"
@@ -131,11 +162,29 @@ def _daily_steps(rows: list[Mapping[str, Any]], now: datetime) -> int | None:
             or finish <= begin
             or finish > now
             or value is None
+            or start_zone is None
+            or end_zone is None
+            or attrs.get("interval_end_exclusive", True) is not True
+        ):
+            return None
+        # Reject mismatched source-clock metadata rather than assigning a daily
+        # count to another local date. The final endpoint is exclusive.
+        if (
+            begin.astimezone(start_zone).date() != day
+            or (finish - timedelta(microseconds=1)).astimezone(end_zone).date() != day
         ):
             return None
         intervals.append((begin, finish, value))
     intervals.sort()
-    if any(right[0] < left[1] for left, right in zip(intervals, intervals[1:], strict=False)):
+    if any(right[0] != left[1] for left, right in zip(intervals, intervals[1:], strict=False)):
+        return None
+    first = min(rows, key=lambda row: _instant(row.get("observed_at")))
+    last = max(rows, key=lambda row: _instant(row.get("ended_at")))
+    begin_zone = _step_endpoint_zone(_attrs(first), "source_start_utc_offset", zone)
+    finish_zone = _step_endpoint_zone(_attrs(last), "source_end_utc_offset", zone)
+    expected_start = datetime.combine(day, time.min, begin_zone).astimezone(UTC)
+    expected_end = datetime.combine(day + timedelta(days=1), time.min, finish_zone).astimezone(UTC)
+    if intervals[0][0] != expected_start or intervals[-1][1] != expected_end:
         return None
     total = sum(item[2] for item in intervals)
     return total if total <= 200_000 else None
@@ -253,7 +302,7 @@ def project_daily(
             data_mode=DataMode.live,
             timestamp=datetime.combine(day, time.min, UTC),
             steps=(
-                _daily_steps(steps[day], instant)
+                _daily_steps(steps[day], instant, day=day, zone=zone)
                 if day < today and day not in ambiguous_steps
                 else None
             ),

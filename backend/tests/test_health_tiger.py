@@ -4,6 +4,7 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -49,6 +50,10 @@ def record(metric="steps", *, day=DAY, value=100, stream="watch_a", **overrides)
         "end_local_date": day.isoformat(),
         "coverage_end_local_date": day.isoformat(),
         "crosses_local_midnight": False,
+        "local_date_basis": "source_utc_offset",
+        "source_start_utc_offset": "0s",
+        "source_end_utc_offset": "0s",
+        "interval_end_exclusive": True,
     }
     if metric == "resting_heart_rate_bpm":
         kind, unit, finish = "daily", "bpm", None
@@ -58,6 +63,10 @@ def record(metric="steps", *, day=DAY, value=100, stream="watch_a", **overrides)
         finish = begin + timedelta(hours=8)
         day = begin.date()
         attrs = {"end_local_date": finish.date().isoformat(), "main_sleep": True, "nap": False}
+    elif metric == "steps":
+        begin = datetime.combine(day, datetime.min.time(), UTC)
+        finish = begin + timedelta(days=1)
+        attrs["end_local_date"] = finish.date().isoformat()
     row = {
         "event_id": f"event_{metric}_{stream}",
         "subject_id": "wearer",
@@ -86,11 +95,12 @@ def project(rows, **overrides):
 
 def test_projects_canonical_three_metrics_without_relabeling_live_hr():
     rows = [
-        record(value=100),
+        record(value=100, ended_at=datetime(2026, 11, 10, 12, tzinfo=UTC)),
         record(
             value=150,
-            observed_at=datetime(2026, 11, 10, 8, 10, tzinfo=UTC),
-            ended_at=datetime(2026, 11, 10, 8, 20, tzinfo=UTC),
+            event_id="second_half",
+            observed_at=datetime(2026, 11, 10, 12, tzinfo=UTC),
+            ended_at=datetime(2026, 11, 11, tzinfo=UTC),
         ),
         record("resting_heart_rate_bpm", value=62.5),
         record("sleep_minutes_asleep", value=420),
@@ -141,6 +151,91 @@ def test_midnight_exclusive_endpoint_is_not_a_second_day():
     assert project([row])[0].steps == 100
 
 
+@pytest.mark.parametrize("hours", [(8, 9), (0, 12), (12, 24)])
+def test_partial_export_interval_never_becomes_a_full_daily_total(hours):
+    midnight = datetime.combine(DAY, datetime.min.time(), UTC)
+    row = record(
+        observed_at=midnight + timedelta(hours=hours[0]),
+        ended_at=midnight + timedelta(hours=hours[1]),
+    )
+    assert project([row])[0].steps is None
+
+
+def test_missing_middle_export_page_cannot_look_like_lower_daily_activity():
+    midnight = datetime.combine(DAY, datetime.min.time(), UTC)
+    rows = [
+        record(event_id="morning", value=100, ended_at=midnight + timedelta(hours=8)),
+        record(event_id="evening", value=200, observed_at=midnight + timedelta(hours=16)),
+    ]
+    assert project(rows)[0].steps is None
+    # Once the missing interval arrives, full coverage can be established.
+    rows.append(
+        record(
+            event_id="midday",
+            value=300,
+            observed_at=midnight + timedelta(hours=8),
+            ended_at=midnight + timedelta(hours=16),
+        )
+    )
+    assert project(rows)[0].steps == 600
+    assert project(list(reversed(rows)))[0].steps == 600
+    assert project([*rows, rows[0]])[0].steps is None
+
+
+def test_explicit_full_day_zero_is_distinct_from_missing_coverage():
+    assert project([record(value=0)])[0].steps == 0
+    assert project([])[0].steps is None
+
+
+@pytest.mark.parametrize("day,expected_hours", [(date(2026, 3, 8), 23), (date(2026, 11, 1), 25)])
+def test_full_day_coverage_uses_real_timezone_boundaries_across_dst(day, expected_hours):
+    zone = ZoneInfo("America/New_York")
+    begin = datetime.combine(day, datetime.min.time(), zone).astimezone(UTC)
+    finish = datetime.combine(day + timedelta(days=1), datetime.min.time(), zone).astimezone(UTC)
+    assert (finish - begin).total_seconds() == expected_hours * 3600
+    row = record(
+        day=day,
+        observed_at=begin,
+        ended_at=finish,
+        attributes={
+            "local_date_basis": "configured_timezone",
+            "start_local_date": day.isoformat(),
+            "coverage_end_local_date": day.isoformat(),
+            "interval_end_exclusive": True,
+        },
+    )
+    assert project([row], start=day, end=day, timezone=zone.key)[0].steps == 100
+
+
+def test_source_offsets_establish_day_boundaries_even_when_parent_timezone_differs():
+    begin = datetime(2026, 11, 9, 18, 15, tzinfo=UTC)
+    row = record(observed_at=begin, ended_at=begin + timedelta(days=1))
+    row["attributes"].update(source_start_utc_offset="20700s", source_end_utc_offset="20700s")
+    assert project([row], timezone="America/New_York")[0].steps == 100
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        {"local_date_basis": "source_civil_date"},
+        {"local_date_basis": "source_utc_offset", "source_start_utc_offset": "0s"},
+        {"source_start_utc_offset": "nan", "source_end_utc_offset": "0s"},
+        {"source_start_utc_offset": "86400s", "source_end_utc_offset": "0s"},
+        {"source_start_utc_offset": "0s", "source_end_utc_offset": "3600s"},
+        {"interval_end_exclusive": False},
+    ],
+)
+def test_unknown_conflicting_or_nonexclusive_coverage_stays_missing(attrs):
+    row = record(
+        attributes={
+            "start_local_date": DAY.isoformat(),
+            "coverage_end_local_date": DAY.isoformat(),
+            **attrs,
+        }
+    )
+    assert project([row])[0].steps is None
+
+
 def test_today_steps_are_null_using_explicit_timezone_and_missing_days_stay_null():
     today_la = date(2026, 11, 13)
     rows = [record(day=today_la), record(day=today_la - timedelta(days=1))]
@@ -163,11 +258,11 @@ def test_steps_reject_invalid_or_fractional_values(value):
 
 
 def test_sum_range_and_declared_resting_metric_are_enforced():
-    first = record(value=150_000)
+    first = record(value=150_000, ended_at=datetime(2026, 11, 10, 12, tzinfo=UTC))
     second = record(
         value=100_000,
-        observed_at=datetime(2026, 11, 10, 9, tzinfo=UTC),
-        ended_at=datetime(2026, 11, 10, 9, 10, tzinfo=UTC),
+        observed_at=datetime(2026, 11, 10, 12, tzinfo=UTC),
+        ended_at=datetime(2026, 11, 11, tzinfo=UTC),
     )
     assert project([first, second])[0].steps is None
     assert project([record("resting_heart_rate_bpm", value=19.9)])[0].resting_heart_rate is None
