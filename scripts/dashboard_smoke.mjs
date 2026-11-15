@@ -124,6 +124,22 @@ async function run() {
     return tab;
   }
   const mutation = (tab, path) => tab.waitForResponse(r => r.url()===`${api}${path}` && r.request().method()==='POST' && r.ok());
+  async function phoneWidths(tab, name) {
+    for (const width of [320, 390]) {
+      await tab.setViewportSize({width,height:844});
+      check(`${name} fits a ${width}px phone without horizontal scrolling`,
+        await tab.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    }
+  }
+  const mobileLogin = await rolePage({width:375,height:812});
+  await mobileLogin.getByRole('heading',{name:'Welcome back',exact:true,level:1}).waitFor();
+  const signIn = await mobileLogin.getByRole('button',{name:'Sign in',exact:true}).boundingBox();
+  check('Phone sign-in is visible without scrolling past a marketing hero',
+    signIn!==null && signIn.y>=0 && signIn.y+signIn.height<=812);
+  const invitationLink = await mobileLogin.getByRole('link',{name:'I have an invitation',exact:true}).boundingBox();
+  check('Invitation entry has a touch target at least 44px high',invitationLink!==null && invitationLink.height>=44);
+  await mobileLogin.screenshot({path:path.join(artifacts,'login-mobile.png'),fullPage:true});
+  await phoneWidths(mobileLogin,'Sign-in');
   page = await rolePage();
   const meResponse = page.waitForResponse(response => response.url()===`${api}/api/me` && response.status()===200);
   const overviewResponse = page.waitForResponse(response => response.url()===`${api}/api/parents/parent_001/overview` && response.status()===200);
@@ -198,6 +214,7 @@ async function run() {
   await parent.getByText('Your check-in is saved.',{exact:true}).waitFor();
   await parent.locator('[data-testid="live-sensors"]:visible').getByText('Watch not linked',{exact:true}).waitFor();
   check('Parent mobile layout has no horizontal overflow',await parent.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(parent,'Parent dashboard');
   await parent.screenshot({path:path.join(artifacts,'parent-mobile.png'),fullPage:true});
 
   const helper = await rolePage({width:390,height:844});
@@ -220,6 +237,7 @@ async function run() {
   await helper.getByRole('button',{name:'Yes, I can help',exact:true}).click();
   check('Helper accepts a real assigned request',(await (await accepted).json()).status==='accepted');
   check('Helper mobile layout has no horizontal overflow',await helper.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(helper,'Helper dashboard');
   await helper.screenshot({path:path.join(artifacts,'helper-mobile.png'),fullPage:true});
   const completed = mutation(helper,`/api/responder/tasks/${request.request_id}/reply`);
   await helper.getByRole('button',{name:'Mark complete',exact:true}).click();
@@ -227,6 +245,16 @@ async function run() {
   check('Helper UI never requests private family or health routes',!helperPaths.some(p=>p.startsWith('/api/parents/')));
   const home = await (await parent.context().request.get(`${api}/api/parent/home`)).json();
   check('Parent sees completion and a running standalone worker',home.requests.some(r=>r.request_id===request.request_id && r.status==='completed') && home.agent.status==='healthy');
+  const longName = 'N'.repeat(80);
+  const longNameRoute = route => route.fulfill({status:200,contentType:'application/json',
+    body:JSON.stringify({...home,parent:{...home.parent,display_name:longName}})});
+  await parent.route(`${api}/api/parent/home`,longNameRoute);
+  await parent.reload({waitUntil:'domcontentloaded'});
+  await parent.getByRole('heading',{name:`Hello, ${longName}.`,exact:true}).waitFor();
+  await phoneWidths(parent,'Parent dashboard with a long display name');
+  await parent.setViewportSize({width:320,height:844});
+  await parent.screenshot({path:path.join(artifacts,'parent-narrow-long-name.png'),fullPage:true});
+  await parent.unroute(`${api}/api/parent/home`,longNameRoute);
   const familyRequests = await (await page.context().request.get(`${api}/api/parents/parent_001/care-requests`)).json();
   check('The family account sees the completed task',familyRequests.some(r=>r.request_id===request.request_id && r.status==='completed'));
   await page.goto(`${web}/demo`,{waitUntil:'domcontentloaded'});
@@ -240,10 +268,14 @@ async function run() {
   await more.getByRole('link',{name:'Family setup & invitations',exact:true}).click();
   await page.waitForURL(`${web}/setup`);
   check('Mobile family navigation opens the authenticated setup screen',true);
+  await page.getByRole('heading',{level:1}).waitFor();
+  await phoneWidths(page,'Family setup');
+  await page.screenshot({path:path.join(artifacts,'setup-mobile.png'),fullPage:true});
   await page.goto(`${web}/family`,{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Sita',exact:true,level:1}).waitFor();
   await page.locator('span:text-is("Simulated"):visible').first().waitFor();
   check('Family mobile layout has no horizontal overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  await phoneWidths(page,'Family dashboard');
   await page.screenshot({path:path.join(artifacts,'family-mobile.png'),fullPage:true});
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog').getByRole('button',{name:'Sign out',exact:true}).click();

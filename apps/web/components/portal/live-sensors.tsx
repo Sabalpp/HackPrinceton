@@ -70,7 +70,7 @@ function PulseHistory({ points }: { points: SensorHealthReport["recent_heart_rat
   }
   paths.push(path);
   return <figure className="mt-4">
-    <div className="flex justify-between text-xs text-muted"><span>Recent received samples</span><span>{low}–{high} bpm · scaled to this window</span></div>
+    <div className="flex flex-col gap-1 text-xs text-muted sm:flex-row sm:justify-between"><span>Recent received samples</span><span>{low}–{high} bpm · scaled to this window</span></div>
     <svg viewBox="0 0 600 88" role="img" aria-label={`Heart rate history: ${sorted.length} received samples, ${Math.min(...values)} to ${Math.max(...values)} beats per minute. Gaps mean missing samples.`} className="mt-2 h-24 w-full text-primary" preserveAspectRatio="none">{paths.filter(Boolean).map((d, i) => <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" />)}</svg>
     <figcaption className="flex justify-between text-xs text-muted"><span>{new Date(start).toLocaleTimeString()}</span><span>{new Date(end).toLocaleTimeString()}</span></figcaption>
   </figure>;
@@ -97,7 +97,7 @@ function SensorContent({ parentId, compact }: { parentId: string; compact: boole
   const metric = data?.live_heart_rate;
   const current = !failed && data?.connection_status === "available" && metric?.freshness === "fresh";
   const hasValue = metric?.value != null;
-  return <section aria-label="Watch readings" className="rounded-2xl border border-border bg-surface p-5 sm:p-6" data-testid="live-sensors">
+  return <section aria-label="Watch readings" className="min-w-0 rounded-2xl border border-border bg-surface p-5 [overflow-wrap:anywhere] sm:p-6" data-testid="live-sensors">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-lg font-bold"><Watch size={20} className="text-primary" aria-hidden="true" />Watch readings</h2><span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${current ? "bg-primary-tint text-on-tint" : "bg-inset text-muted"}`}>{current && <Radio size={13} aria-hidden="true" />}{!loaded ? "Checking connection…" : current ? "Live · Fitbit BLE" : data?.connection_status === "not_linked" ? "Watch not linked" : hasValue ? "Last known reading" : "No live reading"}</span></div>
     {failed && <p className="mt-3 text-sm text-watch-body" role="status">Refresh unavailable. Any value below is the last received reading. Retrying automatically.</p>}
     {data?.connection_status === "not_linked" ? <p className="mt-3 text-sm text-body">A watch has not been linked to this profile yet. Your care coordinator can connect it with your permission.</p> : data && <>
